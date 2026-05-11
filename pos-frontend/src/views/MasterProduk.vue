@@ -88,27 +88,29 @@ const editProduct = (product) => {
 };
 
 const submitProduct = async () => {
-    const formData = new FormData();
-    formData.append('nama_produk', form.value.name);
-    formData.append('sku', form.value.sku);
-    formData.append('kategori', form.value.category);
-    formData.append('harga_beli', form.value.cost_price);
-    formData.append('harga_jual', form.value.price);
-    formData.append('stok', form.value.stock);
-    if (form.value.image) formData.append('image', form.value.image);
+    // Kita bungkus datanya jadi JSON rapi, pastikan angka jadi Number
+    const payload = {
+        nama_produk: form.value.name,
+        sku: form.value.sku,
+        kategori: form.value.category,
+        harga_beli: Number(form.value.cost_price),
+        harga_jual: Number(form.value.price),
+        stok: Number(form.value.stock)
+    };
 
     try {
         if (isEditing.value) {
-            await api.put(`/products/${editId.value}`, formData);
+            await api.put(`/products/${editId.value}`, payload);
             alert('Produk berhasil diperbarui!');
         } else {
-            await api.post('/products', formData);
-            alert('Produk berhasil ditambahkan!');
+            await api.post('/products', payload);
+            alert('Produk berhasil ditambahkan! 🚀');
         }
         showFormModal.value = false;
         fetchProducts(currentPage.value);
     } catch (error) {
-        alert('Gagal menyimpan produk: ' + (error.response?.data?.message || 'Error Server'));
+        alert('Gagal menyimpan produk: ' + (error.response?.data?.error || 'Error Server'));
+        console.error("Detail Error:", error);
     }
 };
 

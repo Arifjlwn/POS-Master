@@ -32,24 +32,20 @@ const handleImageChange = (e) => {
 
 const submit = async () => {
     isLoading.value = true;
-    
-    // Gunakan FormData karena ada file (QRIS)
-    const formData = new FormData();
-    formData.append('nama_toko', form.value.nama_toko);
-    formData.append('tipe_bisnis', form.value.tipe_bisnis);
-    formData.append('alamat_toko', form.value.alamat_toko);
-    formData.append('telepon', form.value.telepon);
-    formData.append('fitur_opsional', JSON.stringify(form.value.fitur_opsional));
-    if (form.value.qris_image) {
-        formData.append('qris_image', form.value.qris_image);
-    }
-
     try {
-        await api.post('/setup-toko', formData);
+        // Kita kirim paket JSON murni ke Golang
+        await api.post('/setup-toko', {
+            nama_toko: form.value.nama_toko,
+            tipe_bisnis: form.value.tipe_bisnis,
+            alamat_toko: form.value.alamat_toko,
+            telepon: form.value.telepon
+        });
+        
         alert('Toko Berhasil Dibuat! Selamat datang Bos Arif.');
-        router.push('/dashboard'); // Langsung gas ke Dashboard
+        router.push('/dashboard'); 
     } catch (error) {
-        alert('Gagal setup toko. Cek koneksi ke server Golang.');
+        alert('Gagal setup toko. Coba cek terminal Golang ada error apa.');
+        console.error(error);
     } finally {
         isLoading.value = false;
     }

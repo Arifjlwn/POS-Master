@@ -2,9 +2,9 @@ package config
 
 import (
 	"log"
-	"pos-backend/models"
+	"pos-backend/models" // Pastikan path ini benar sesuai struktur folder Mas
 
-	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres" // Ganti dari mysql ke postgres
 	"gorm.io/gorm"
 )
 
@@ -12,18 +12,20 @@ import (
 var DB *gorm.DB
 
 func ConnectDatabase() {
-	// Format: username:password@tcp(host:port)/nama_database?opsi_tambahan
-	// Sesuaikan jika MYSQL pakai password
-	dsn := "root:@tcp(127.0.0.1:3306)/pos_saas?charset=utf8mb4&parseTime=True&loc=Local"
-	database, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	// MASUKKAN URI DARI SUPABASE DI SINI
+	// Pastikan [PASSWORD] sudah diganti dengan password asli Mas tanpa kurung siku
+	dsn := "postgresql://postgres:Arifjlwn020700@db.pxxjqewukgpfxmbwjnni.supabase.co:5432/postgres"
+	
+	// Gunakan postgres.Open bukan mysql.Open
+	database, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 
 	if err != nil {
-		log.Fatal("Gagal Menyambung ke database ! Error: ", err)
+		log.Fatal("Gagal Menyambung ke Supabase! Error: ", err)
 	}
 
-	log.Println("✅ Berhasil terhubung ke Database pos_saas!")
+	log.Println("✅ Berhasil terhubung ke Database Supabase (Postgres)!")
 
-	// Auto Migrate
+	// Auto Migrate (GORM bakal otomatis ngebangun tabel di Supabase)
 	err = database.AutoMigrate(
 		&models.Store{},
 		&models.User{},
@@ -31,10 +33,11 @@ func ConnectDatabase() {
 		&models.Transaction{},
 		&models.TransactionDetail{},
 	)
+	
 	if err != nil {
-		log.Fatal("Gagal Melakukan Migrasi Database ! Error: ", err)
+		log.Fatal("Gagal Melakukan Migrasi Database! Error: ", err)
 	}
-	log.Println("✅ Tabel database berhasil di-generate!")
+	log.Println("✅ Tabel database berhasil di-generate di Cloud Supabase!")
 
 	DB = database
 }

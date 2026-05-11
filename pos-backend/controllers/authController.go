@@ -51,7 +51,7 @@ func Register(c *gin.Context) {
 
 	// Simpan data User dan kaitkan dengan ID Toko yang baru terbuat
 	user := models.User{
-		StoreID:  store.ID,
+		StoreID:  &store.ID,
 		Name:     input.Name,
 		Email:    &input.Email, 
 		Password: string(hashedPassword),
@@ -110,9 +110,13 @@ func Login(c *gin.Context) {
 
 	// PEMBUATAN TIKET (JWT)
 	// Kita simpan ID User dan ID Toko di dalam tiket ini
+	var storeID uint = 0
+	if user.StoreID != nil {
+		storeID = *user.StoreID
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id":  user.ID,
-		"store_id": user.StoreID, // Ini penting banget buat nyari barang toko dia aja!
+		"store_id": storeID,
 		"role":     user.Role,
 		"exp":      time.Now().Add(time.Hour * 72).Unix(), // Karcis hangus dalam 3 hari (72 Jam)
 	})

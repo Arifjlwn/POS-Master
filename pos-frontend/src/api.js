@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:8080/api', // <-- Awas jangan sampai typo titik duanya ya! 😂
+    baseURL: 'http://localhost:8080/api',
 });
 
 // Otomatis bawa tiket JWT setiap kali Kurir pergi
