@@ -1,14 +1,15 @@
 package main
 
 import (
-	"time"
 	"net/http"
 	"pos-backend/config"
 	"pos-backend/controllers"
 	"pos-backend/middlewares"
+	"pos-backend/models"
+	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -75,12 +76,20 @@ func main() {
 		// Rute Laporan (Dashboard)
 		api.GET("/report/dashboard", controllers.GetDashboardReport)
 
-		// --- PERBAIKAN RUTE SETUP TOKO ---
-		// Gunakan "api" bukan "protected"
+		// --- RUTE SETUP TOKO ---
 		api.POST("/setup-toko", func(c *gin.Context) {
+			// 1. Ambil User ID dari Satpam JWT (Ingat, dari JWT itu bentuknya float64, harus diconvert)
+			userIDRaw, exists := c.Get("user_id")
+			if !exists {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "User tidak valid"})
+				return
+			}
+			userID := uint(userIDRaw.(float64))
+
+			// 2. Tangkap JSON dari Frontend Vue
 			var input struct {
-				NamaToko   string `json:"nama_toko"`
-				TipeBisnis string `json:"tipe_bisnis"`
+				NamaToko   string `json:"nama_toko" binding:"required"`
+				TipeBisnis string `json:"tipe_bisnis" binding:"required"`
 				AlamatToko string `json:"alamat_toko"`
 				Telepon    string `json:"telepon"`
 			}
@@ -90,11 +99,29 @@ func main() {
 				return
 			}
 
-			// (Opsional) Di sini nanti kodenya untuk save ke tabel Stores pakai db.Create(&store)
-			// Untuk sekarang kita kasih respon sukses dulu
+			// 3. Masukkan ke tabel Stores di Supabase
+			newStore := models.Store{
+				NamaToko:     input.NamaToko,
+				BusinessType: input.TipeBisnis,
+				Alamat:       input.AlamatToko,
+				Telepon:      input.Telepon,
+			}
+			
+			if err := config.DB.Create(&newStore).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat toko"})
+				return
+			}
+
+			// 4. Update Akun Bos! (Kaitkan ID User dengan ID Toko yang baru dibuat)
+			if err := config.DB.Model(&models.User{}).Where("id = ?", userID).Update("store_id", newStore.ID).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengaitkan toko ke akun Anda"})
+				return
+			}
+
+			// 5. Berhasil!
 			c.JSON(http.StatusOK, gin.H{
-				"message": "Toko berhasil dibuat!",
-				"data":    input,
+				"message": "Toko berhasil dibuat! Selamat berbisnis.",
+				"store_id": newStore.ID,
 			})
 		})
 	}
