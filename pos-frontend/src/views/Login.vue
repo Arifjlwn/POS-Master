@@ -1,16 +1,16 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import Swal from 'sweetalert2'; // 🚀 Import SweetAlert2
 
 const router = useRouter();
 
-// State (Ganti nama variabel biar lebih general)
 const identifier = ref(''); 
 const password = ref('');
+const showPassword = ref(false);
 const errorMessage = ref('');
 const isLoading = ref(false);
 
-// Fungsi untuk hit API Login
 const handleLogin = async () => {
   isLoading.value = true;
   errorMessage.value = '';
@@ -22,32 +22,69 @@ const handleLogin = async () => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        identifier: identifier.value, // 🚀 Dikirim ke Golang sebagai identifier
+        identifier: identifier.value,
         password: password.value
       })
     });
 
     const data = await response.json();
+    console.log("Data dari API:", data);
 
     if (!response.ok) {
       throw new Error(data.error || 'Gagal login, silakan coba lagi.');
     }
 
-    // 1. Simpan Karcis VIP (Token) ke brankas browser (Local Storage)
+    // 1. Simpan ke Local Storage
     localStorage.setItem('token', data.token);
-    localStorage.setItem('role', data.role);
-    localStorage.setItem('name', data.name);
+    localStorage.setItem('role', data.role.toLowerCase()); // Simpan kecil semua biar aman dicek
+    localStorage.setItem('name', data.name || '');
+    localStorage.setItem('storeName', data.store_name || 'Toko Belum Di-Setup');
 
-    // 2. Logika Redirect Cerdas (Setup Toko vs Dashboard)
+    // 🚀 2. SWEETALERT LOGIN BERHASIL
+    const Toast = Swal.mixin({
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 3000,
+      timerProgressBar: true,
+    });
+
+    Toast.fire({
+      icon: 'success',
+      title: `Halo, ${data.name}!`,
+      text: 'Berhasil masuk ke sistem.'
+    });
+
+    // 🚀 3. LOGIKA REDIRECT CERDAS BERDASARKAN ROLE
     if (data.has_setup_store === false) {
-      alert("Login Berhasil! Silakan lengkapi data toko Anda terlebih dahulu.");
-      router.push('/setup-toko'); // Arahkan ke halaman setup toko
+      // Jika toko belum di-setup, owner wajib setup dulu
+      Swal.fire({
+        icon: 'info',
+        title: 'Setup Toko',
+        text: 'Lengkapi data toko Anda untuk memulai.',
+        confirmButtonColor: '#2563eb'
+      });
+      router.push('/setup-toko');
     } else {
-      router.push('/dashboard'); // Arahkan ke dashboard
+      // 🟢 DISINI KITA FILTER ROLE-NYA
+      if (data.role.toLowerCase() === 'owner') {
+        router.push('/dashboard');
+      } else {
+        // 🚀 Karyawan / Kasir langsung diarahkan ke Absensi atau Kasir
+        // Sesuai request Mas, kita arahkan ke Absensi
+        router.push('/absensi'); 
+      }
     }
 
   } catch (error) {
     errorMessage.value = error.message;
+    // Tampilkan SweetAlert Error juga kalau mau
+    Swal.fire({
+      icon: 'error',
+      title: 'Login Gagal',
+      text: error.message,
+      confirmButtonColor: '#ef4444'
+    });
   } finally {
     isLoading.value = false;
   }
@@ -55,48 +92,95 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-100">
-    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-t-8 border-blue-600">
-      <div class="text-center mb-8">
-        <h2 class="text-3xl font-black text-gray-900">POS UMKM</h2>
-        <p class="text-gray-500 font-medium mt-1">Silakan masuk ke akun Anda</p>
+  <div class="min-h-screen flex items-center justify-center bg-slate-100 font-sans">
+    <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md border-t-[12px] border-blue-600 relative overflow-hidden">
+      <div class="absolute -right-10 -top-10 w-32 h-32 bg-blue-50 rounded-full"></div>
+      
+      <div class="text-center mb-8 relative">
+        <h2 class="text-4xl font-black text-gray-900 tracking-tighter">POS<span class="text-blue-600">UMKM</span></h2>
+        <p class="text-gray-400 font-bold text-sm mt-1 uppercase tracking-widest">Sistem Manajemen Retail</p>
       </div>
       
-      <div v-if="errorMessage" class="mb-5 p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-bold text-center">
+      <div v-if="errorMessage" class="mb-5 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-xl text-xs font-black uppercase transition-all animate-shake">
         {{ errorMessage }}
       </div>
 
-      <form @submit.prevent="handleLogin" class="space-y-5">
+      <form @submit.prevent="handleLogin" class="space-y-6 relative">
         <div>
-          <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5">Email Owner / NIK Kasir</label>
-          <input 
-            v-model="identifier" 
-            type="text" 
-            required 
-            class="w-full px-4 py-3 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-bold text-gray-800 outline-none transition-all"
-            placeholder="admin@toko.com atau 20260001"
-          >
+          <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 ml-1">Identitas Masuk</label>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">👤</span>
+            <input 
+              v-model="identifier" 
+              type="text" 
+              required 
+              class="w-full pl-11 pr-4 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 font-bold text-gray-800 outline-none transition-all placeholder:text-gray-300"
+              placeholder="Email / NIK Karyawan"
+            >
+          </div>
         </div>
 
         <div>
-          <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5">Password</label>
-          <input 
-            v-model="password" 
-            type="password" 
-            required 
-            class="w-full px-4 py-3 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-bold text-gray-800 outline-none transition-all"
-            placeholder="••••••••"
-          >
+          <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 ml-1">Kata Sandi</label>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔒</span>
+            <input 
+              v-model="password" 
+              :type="showPassword ? 'text' : 'password'" 
+              required 
+              class="w-full pl-11 pr-4 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 font-bold text-gray-800 outline-none transition-all placeholder:text-gray-300"
+              placeholder="••••••••"
+            >
+            <button
+              type="button"
+              @click="showPassword = !showPassword"
+              class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors focus:outline-none"
+            >
+              <span v-if="showPassword">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              </span>
+      <span v-else>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.05 10.05 0 014.13-4.13m4.13-4.13A10.05 10.05 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-4.13 4.13m-4.13-4.13L3 3m3.24 3.24l10.52 10.52" />
+        </svg>
+      </span>
+            </button>
+          </div>
         </div>
 
         <button 
           type="submit" 
           :disabled="isLoading"
-          class="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-lg shadow-blue-100 text-sm font-black text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-all active:scale-95 mt-2"
+          class="w-full flex justify-center py-4 px-4 border border-transparent rounded-2xl shadow-xl shadow-blue-200 text-sm font-black text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-all active:scale-95 mt-4"
         >
-          {{ isLoading ? 'Memeriksa Data...' : 'Masuk ke Sistem 🚀' }}
+          <span v-if="!isLoading" class="flex items-center gap-2">MASUK KE SISTEM 🚀</span>
+          <span v-else class="flex items-center gap-2">
+            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            MEMERIKSA...
+          </span>
         </button>
       </form>
+      
+      <div class="mt-8 text-center text-[10px] font-black text-gray-300 uppercase tracking-widest">
+        &copy; 2026 - ARIF JULIAWAN
+      </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+.animate-shake {
+  animation: shake 0.2s ease-in-out 0s 2;
+}
+</style>

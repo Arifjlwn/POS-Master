@@ -1,28 +1,57 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import Swal from 'sweetalert2';
 
 const router = useRouter();
-const route = useRoute(); // Untuk ngecek URL yang lagi aktif
+const route = useRoute();
 
-// State sidebar
 const sidebarOpen = ref(false);
 
-// Data Dummy Sementara (Karena Laravel udah kita buang, nanti ini ditarik dari API/Token)
+// --- STATE DINAMIS (Ambil dari Brankas) ---
 const user = ref({
-    name: 'Arif Juliawan',
-    role: 'owner',
-    store: {
-        nama_toko: 'Indo UMKM',
-        fitur_opsional: ['absensi', 'qris'] // Contoh Bos milih absensi pas setup toko
-    }
+    name: localStorage.getItem('name') || 'User',
+    role: localStorage.getItem('role') || 'kasir',
+    storeName: localStorage.getItem('storeName') || 'Indo UMKM'
 });
 
-// Fungsi Logout SPA
+// Update data saat sidebar dimunculkan (biar sinkron kalau ada perubahan)
+onMounted(() => {
+    user.value.name = localStorage.getItem('name') || 'User';
+    user.value.role = localStorage.getItem('role') || 'kasir';
+});
+
+// --- FUNGSI LOGOUT MEWAH ---
 const logout = () => {
-    localStorage.removeItem('token'); // Buang tiket masuk
-    localStorage.removeItem('role');
-    router.push('/login'); // Lempar ke halaman login tanpa loading
+    Swal.fire({
+        title: 'Mau keluar, Bos?',
+        text: "Pastikan semua kerjaan sudah beres ya!",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#2563eb',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Logout Sekarang',
+        cancelButtonText: 'Batal',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            localStorage.clear(); // Bersihkan semua data
+            router.push('/login');
+            
+            // Toast notifikasi sukses logout
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2000,
+                timerProgressBar: true
+            });
+            Toast.fire({
+                icon: 'success',
+                title: 'Berhasil keluar sistem'
+            });
+        }
+    });
 };
 </script>
 
@@ -43,13 +72,13 @@ const logout = () => {
             </div>
 
             <div class="flex items-center gap-3">
-                <div class="hidden sm:flex items-center gap-2.5 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-200 shadow-sm cursor-pointer hover:bg-gray-100 transition-colors">
-                    <div class="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-black shadow-inner uppercase">
+                <div class="hidden sm:flex items-center gap-2.5 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-200 shadow-sm">
+                    <div class="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-[10px] font-black shadow-inner uppercase">
                         {{ user.name.substring(0, 2) }}
                     </div>
                     <div class="flex flex-col pr-2">
-                        <span class="text-xs font-black text-gray-800 leading-none">{{ user.name }}</span>
-                        <span class="text-[10px] font-bold text-gray-500 capitalize">{{ user.role }}</span>
+                        <span class="text-xs font-black text-gray-800 leading-none uppercase">{{ user.name.split(' ')[0] }}</span>
+                        <span class="text-[10px] font-bold text-gray-500 uppercase">{{ user.role }}</span>
                     </div>
                 </div>
             </div>
@@ -60,7 +89,7 @@ const logout = () => {
         <div :class="sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'" class="fixed inset-y-0 left-0 w-72 bg-white border-r border-gray-100 transform transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-50 flex flex-col">
             
             <div class="flex items-center justify-between h-[61px] px-6 border-b border-gray-100 bg-white shrink-0">
-                <div class="font-black text-2xl text-blue-600 tracking-tighter drop-shadow-sm">
+                <div class="font-black text-2xl text-blue-600 tracking-tighter">
                     POS<span class="text-gray-800">UMKM</span>
                 </div>
                 <button @click="sidebarOpen = false" class="p-2 -mr-2 text-gray-400 hover:text-red-500 rounded-xl hover:bg-red-50 transition-colors active:scale-95">
@@ -71,97 +100,76 @@ const logout = () => {
             </div>
 
             <nav class="flex-1 px-4 py-6 space-y-2.5 overflow-y-auto custom-scrollbar">
-                <div 
-                    class="text-xs font-black text-gray-400 uppercase tracking-widest px-4 mb-4"
-                    >
-                    Menu Utama
-                </div>
+                <div class="text-xs font-black text-gray-400 uppercase tracking-widest px-4 mb-4">Menu Utama</div>
 
-                <router-link 
-                    to="/kasir" 
-                    @click="sidebarOpen = false" 
-                    class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" 
-                    :class="route.path === '/kasir' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'"
-                    >
+                <router-link to="/kasir" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" :class="route.path === '/kasir' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'">
                     <span class="text-xl">🛒</span> POS Kasir
                 </router-link>
 
-                <router-link 
-                    to="/riwayat"
-                    @click="sidebarOpen = false"
-                    class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all"
-                    :class="route.path.startsWith('/riwayat') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'"
-                    >
+                <router-link to="/riwayat" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" :class="route.path.startsWith('/riwayat') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'">
                     <span class="text-xl">📜</span> Riwayat Transaksi
                 </router-link>
 
-                <router-link 
-                    v-if="user.store?.fitur_opsional?.includes('absensi')" 
-                    to="/absensi" 
-                    @click="sidebarOpen = false"
-                    class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all"
-                    :class="route.path === '/absensi' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'"
-                    >
-                    <span class="text-xl">📅</span> Absensi Kehadiran
+                <router-link to="/absensi" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" :class="route.path === '/absensi' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'">
+                    <span class="text-xl">📸</span> Absensi Selfie
                 </router-link>
 
-                <div v-if="user.role === 'owner'" class="pt-4 mt-4 border-t border-gray-100">
+                <div class="pt-4 mt-4 border-t border-gray-100">
                     <div class="text-xs font-black text-gray-400 uppercase tracking-widest px-4 mb-4">Administrasi Toko</div>
 
-                    <router-link 
-                        to="/dashboard"
-                        @click="sidebarOpen = false"
-                        class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" 
-                        :class="route.path.startsWith('/dashboard') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'"
-                        >
-                        <span class="text-xl">📊</span> Dashboard
-                    </router-link>
+                    <template v-if="user.role === 'owner'">
+                        <router-link to="/dashboard" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" :class="route.path.startsWith('/dashboard') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'">
+                            <span class="text-xl">📊</span> Dashboard
+                        </router-link>
+                    </template>
+                    <div v-else class="flex items-center justify-between gap-4 px-4 py-3.5 rounded-2xl text-gray-400 bg-gray-50 cursor-not-allowed opacity-60">
+                        <div class="flex items-center gap-4">
+                            <span class="text-xl grayscale">📊</span> 
+                            <span class="text-sm font-bold">Dashboard</span>
+                        </div>
+                        <span class="text-[9px] font-black bg-gray-200 px-1.5 py-0.5 rounded text-gray-500 uppercase tracking-tighter">🔒 Lock</span>
+                    </div>
 
-                    <router-link 
-                    to="/produk" 
-                    @click="sidebarOpen = false" 
-                    class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" 
-                    :class="route.path.startsWith('/produk') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'"
-                    >
-                        <span class="text-xl">📦</span> Master Produk
-                    </router-link>
+                    <template v-if="user.role === 'owner'">
+                        <router-link to="/produk" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" :class="route.path.startsWith('/produk') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'">
+                            <span class="text-xl">📦</span> Master Produk
+                        </router-link>
+                    </template>
+                    <div v-else class="flex items-center justify-between gap-4 px-4 py-3.5 rounded-2xl text-gray-400 bg-gray-50 cursor-not-allowed opacity-60">
+                        <div class="flex items-center gap-4">
+                            <span class="text-xl grayscale">📦</span> 
+                            <span class="text-sm font-bold">Master Produk</span>
+                        </div>
+                        <span class="text-[9px] font-black bg-gray-200 px-1.5 py-0.5 rounded text-gray-500 uppercase tracking-tighter">🔒 Lock</span>
+                    </div>
 
-                    <router-link 
-                        to="/karyawan" 
-                        @click="sidebarOpen = false" 
-                        class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" 
-                        :class="route.path.startsWith('/karyawan') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'"
-                        >
-                        <span class="text-xl">👥</span> Kelola Karyawan
-                    </router-link>
-
-                    <router-link 
-                    to="/setup" 
-                    @click="sidebarOpen = false" 
-                    class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" 
-                    :class="route.path.startsWith('/setup') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'"
-                    >
-                        <span class="text-xl">⚙️</span> Pengaturan Toko
-                    </router-link>
+                    <template v-if="user.role === 'owner'">
+                        <router-link to="/karyawan" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" :class="route.path.startsWith('/karyawan') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'">
+                            <span class="text-xl">👥</span> Kelola Karyawan
+                        </router-link>
+                        <router-link to="/setup" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" :class="route.path.startsWith('/setup') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'">
+                            <span class="text-xl">⚙️</span> Pengaturan Toko
+                        </router-link>
+                    </template>
                 </div>
             </nav>
 
             <div class="p-5 border-t border-gray-100 bg-gray-50 shrink-0">
                 <div class="mb-4 pb-4 border-b border-gray-200">
                     <div class="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1.5">Lokasi Kerja</div>
-                    <div class="flex items-center gap-2 text-sm font-black text-blue-900">
-                        <span>🏪</span> {{ user.store?.nama_toko || 'Belum Ada Toko' }}
+                    <div class="flex items-center gap-2 text-sm font-black text-blue-900 uppercase">
+                        <span>🏪</span> {{ user.storeName }}
                     </div>
                 </div>
 
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-blue-100 border-2 border-white shadow-sm overflow-hidden flex items-center justify-center">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 border-2 border-white shadow-sm flex items-center justify-center overflow-hidden">
                             <span class="text-blue-700 font-black text-sm uppercase">{{ user.name.substring(0, 2) }}</span>
                         </div>
                         <div>
-                            <div class="text-sm font-black text-gray-800 leading-tight">{{ user.name.split(' ')[0] }}</div>
-                            <div class="text-[10px] font-bold text-gray-500 capitalize uppercase tracking-wider">{{ user.role }}</div>
+                            <div class="text-sm font-black text-gray-800 leading-tight uppercase">{{ user.name.split(' ')[0] }}</div>
+                            <div class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{{ user.role }}</div>
                         </div>
                     </div>
 

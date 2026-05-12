@@ -13,7 +13,7 @@ func GetDashboardReport(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	role, _ := c.Get("role")
 
-	// 1. Gembok! Cuma Bos yang boleh lihat laporan keuangan
+	// 1. Gembok Keamanan
 	if role != "owner" {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Akses ditolak! Laporan keuangan cuma untuk Owner."})
 		return
@@ -21,63 +21,81 @@ func GetDashboardReport(c *gin.Context) {
 
 	storeID := uint(storeIDRaw.(float64))
 
-	// 2. Tentukan rentang waktu "Hari Ini" (00:00:00 sampai 23:59:59)
-	now := time.Now()
-	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	endOfDay := startOfDay.Add(24 * time.Hour)
+	// 🚀 2. TANGKAP FILTER DARI VUE
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
 
-	// --- LOGIKA HITUNG OMZET & JUMLAH TRANSAKSI (HARI INI) ---
+	now := time.Now()
+	location := now.Location()
+
+	start, _ := time.ParseInLocation("2006-01-02", startDateStr, location)
+	if startDateStr == "" {
+		start = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, location)
+	}
+
+	end, _ := time.ParseInLocation("2006-01-02", endDateStr, location)
+	if endDateStr == "" {
+		end = start.Add(24 * time.Hour)
+	} else {
+		end = end.Add(24 * time.Hour)
+	}
+
+	// --- LOGIKA SUMMARY (BERDASARKAN RANGE TANGGAL) ---
 	var report struct {
-		OmzetHariIni       float64 `json:"omzet_hari_ini"`
+		TotalOmzet         float64 `json:"total_omzet"`
 		JumlahTransaksi    int64   `json:"jumlah_transaksi"`
 		TotalProdukTerjual float64 `json:"total_produk_terjual"`
+		AvgTransaksi       float64 `json:"avg_transaksi"`
 	}
 
 	config.DB.Model(&models.Transaction{}).
-		Where("store_id = ? AND created_at BETWEEN ? AND ?", storeID, startOfDay, endOfDay).
-		Select("COALESCE(SUM(total_harga), 0) as omzet_hari_ini, COUNT(id) as jumlah_transaksi").
+		Where("store_id = ? AND created_at BETWEEN ? AND ?", storeID, start, end).
+		Select("COALESCE(SUM(total_harga), 0) as total_omzet, COUNT(id) as jumlah_transaksi").
 		Scan(&report)
 
-	// --- LOGIKA HITUNG TOTAL PRODUK TERJUAL (HARI INI) ---
+	if report.JumlahTransaksi > 0 {
+		report.AvgTransaksi = report.TotalOmzet / float64(report.JumlahTransaksi)
+	}
+
+	// --- LOGIKA PRODUK TERJUAL ---
 	config.DB.Table("transaction_details").
 		Joins("JOIN transactions ON transactions.id = transaction_details.transaction_id").
-		Where("transactions.store_id = ? AND transactions.created_at BETWEEN ? AND ?", storeID, startOfDay, endOfDay).
+		Where("transactions.store_id = ? AND transactions.created_at BETWEEN ? AND ?", storeID, start, end).
 		Select("COALESCE(SUM(transaction_details.kuantitas), 0)").
 		Row().Scan(&report.TotalProdukTerjual)
 
-	// --- LOGIKA STOK MENIPIS (ALERT) ---
+	// --- LOGIKA STOK MENIPIS (lowStockProducts) ---
 	var lowStockProducts []models.Product
-	config.DB.Where("store_id = ? AND stok < ?", storeID, 10).
-		Find(&lowStockProducts)
+	config.DB.Where("store_id = ? AND stok < ?", storeID, 10).Find(&lowStockProducts)
 
-	// 🚀 --- LOGIKA GRAFIK 7 HARI TERAKHIR ---
+	// --- LOGIKA GRAFIK (grafikPenjualan) ---
 	type GrafikData struct {
 		Tanggal string  `json:"tanggal"`
 		Omzet   float64 `json:"omzet"`
 	}
-	var grafik7Hari []GrafikData
+	var grafikPenjualan []GrafikData
 
-	// Looping mundur dari 6 hari yang lalu sampai hari ini
-	for i := 6; i >= 0; i-- {
-		targetDate := startOfDay.AddDate(0, 0, -i)
-		targetDateEnd := targetDate.Add(24 * time.Hour)
+	days := int(end.Sub(start).Hours() / 24)
+	if days <= 0 { days = 1 }
+	if days > 31 { days = 31 }
+
+	for i := 0; i < days; i++ {
+		tgl := start.AddDate(0, 0, i)
+		tglEnd := tgl.Add(24 * time.Hour)
 
 		var dailyOmzet float64
 		config.DB.Model(&models.Transaction{}).
-			Where("store_id = ? AND created_at BETWEEN ? AND ?", storeID, targetDate, targetDateEnd).
+			Where("store_id = ? AND created_at BETWEEN ? AND ?", storeID, tgl, tglEnd).
 			Select("COALESCE(SUM(total_harga), 0)").
 			Row().Scan(&dailyOmzet)
 
-		grafik7Hari = append(grafik7Hari, GrafikData{
-			Tanggal: targetDate.Format("02 Jan"), // Format: "12 May"
+		grafikPenjualan = append(grafikPenjualan, GrafikData{
+			Tanggal: tgl.Format("02 Jan"),
 			Omzet:   dailyOmzet,
 		})
 	}
 
-	// 🚀 --- LOGIKA TOP 5 BEST SELLER (BULAN INI) ---
-	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
-	endOfMonth := startOfMonth.AddDate(0, 1, 0)
-
+	// --- LOGIKA TOP 5 BEST SELLER (bestSellers) ---
 	type BestSeller struct {
 		NamaProduk string  `json:"nama_produk"`
 		SKU        string  `json:"sku"`
@@ -90,20 +108,19 @@ func GetDashboardReport(c *gin.Context) {
 		Select("products.nama_produk, products.sku, SUM(transaction_details.kuantitas) as qty_terjual, SUM(transaction_details.sub_total) as total_omzet").
 		Joins("JOIN transactions ON transactions.id = transaction_details.transaction_id").
 		Joins("JOIN products ON products.id = transaction_details.product_id").
-		Where("transactions.store_id = ? AND transactions.created_at BETWEEN ? AND ?", storeID, startOfMonth, endOfMonth).
-		Group("transaction_details.product_id, products.nama_produk, products.sku").
+		Where("transactions.store_id = ? AND transactions.created_at BETWEEN ? AND ?", storeID, start, end).
+		Group("products.nama_produk, products.sku").
 		Order("qty_terjual DESC").
 		Limit(5).
 		Scan(&bestSellers)
 
-	// 3. Kirim hasil laporan lengkap ke Frontend
+	// 3. KIRIM JSON (Satu Nama, Gak Dobel)
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Data laporan berhasil ditarik! 📊",
 		"data": gin.H{
-			"summary":       report,
-			"low_stock":     lowStockProducts,
-			"grafik_7_hari": grafik7Hari, // Data buat Chart.js
-			"best_sellers":  bestSellers, // Data buat Tabel Ranking
+			"summary":          report,
+			"grafik_penjualan": grafikPenjualan,
+			"best_sellers":     bestSellers,
+			"low_stock":        lowStockProducts,
 		},
 	})
 }

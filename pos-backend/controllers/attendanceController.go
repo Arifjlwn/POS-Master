@@ -88,23 +88,43 @@ func StoreAttendance(c *gin.Context) {
 }
 
 // 📋 FUNGSI TARIK DATA ABSENSI BERDASARKAN TANGGAL
+// 📋 FUNGSI TARIK DATA ABSENSI (HARIAN & BULANAN)
+// 📋 FUNGSI TARIK DATA ABSENSI (HARIAN & BULANAN)
 func GetAttendance(c *gin.Context) {
-	storeIDRaw, _ := c.Get("store_id")
-	storeID := uint(storeIDRaw.(float64))
-	
-	tanggal := c.Query("tanggal") // Format: YYYY-MM-DD
-	if tanggal == "" {
-		tanggal = time.Now().Format("2006-01-02")
-	}
+    storeIDRaw, _ := c.Get("store_id")
+    storeID := uint(storeIDRaw.(float64))
+    
+    // Ambil parameter dari URL (dikirim oleh Vue)
+    tanggal := c.Query("tanggal") // Untuk Harian (YYYY-MM-DD)
+    bulan := c.Query("bulan")     // Untuk Bulanan (MM)
+    tahun := c.Query("tahun")     // Untuk Bulanan (YYYY)
 
-	var riwayat []models.Attendance
-	// Preload "User" agar kita bisa narik Nama dan NIK kasir sekalian
-	if err := config.DB.Preload("User").Where("store_id = ? AND tanggal = ?", storeID, tanggal).Find(&riwayat).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menarik data log absensi"})
-		return
-	}
+    var riwayat []models.Attendance
+    // Awali Query dengan Preload User biar Nama Karyawan muncul
+    query := config.DB.Preload("User").Where("store_id = ?", storeID)
 
-	c.JSON(http.StatusOK, gin.H{"data": riwayat})
+    // 🚀 LOGIKA FILTER DINAMIS
+    if tanggal != "" {
+        // Mode Harian
+        query = query.Where("tanggal = ?", tanggal)
+    } else if bulan != "" && tahun != "" {
+    // Di Postgres, kolom 'tanggal' harus diubah jadi TEXT dulu baru bisa pakai LIKE
+    // Kita pakai cast(tanggal as text)
+    prefixBulan := fmt.Sprintf("%s-%s-%%", tahun, bulan)
+    query = query.Where("tanggal::text LIKE ?", prefixBulan) // Tambahkan ::text
+    } else {
+        // Default: Ambil Hari ini
+        today := time.Now().Format("2006-01-02")
+        query = query.Where("tanggal = ?", today)
+    }
+
+    // Urutkan dari yang terbaru (Descending)
+    if err := query.Order("tanggal DESC, jam_masuk DESC").Find(&riwayat).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menarik data log absensi"})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"data": riwayat})
 }
 
 // 📊 FUNGSI EXPORT LAPORAN ABSENSI KE CSV

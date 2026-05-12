@@ -10,16 +10,21 @@ const router = useRouter();
 const getUserInfo = () => {
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role') || 'kasir';
-    const name = localStorage.getItem('name') || 'Kasir Toko'; // Nama kasir
+    let name = localStorage.getItem('name'); 
 
-    let userId = 0;
     if (token) {
         try {
             const payload = JSON.parse(atob(token.split('.')[1]));
-            userId = payload.user_id;
-        } catch (e) {}
+            // 🚀 Kalau di localStorage kosong, coba ambil dari payload token
+            if (!name || name === 'undefined' || name === '') {
+                name = payload.name || payload.username || 'Kasir Toko';
+            }
+            return { userId: payload.user_id, role, name };
+        } catch (e) {
+            return { userId: 0, role, name: 'Kasir Toko' };
+        }
     }
-    return { userId, role, name };
+    return { userId: 0, role, name: 'Kasir Toko' };
 };
 const currentUser = ref(getUserInfo());
 
@@ -120,7 +125,7 @@ const addToCart = (product) => {
         Swal.fire({
             icon: 'error',
             title: 'Stok Habis !',
-            text: 'Stok ${product.name} sudah kosong',
+            text: `Stok ${product.name} sudah kosong`,
             confirmButtonColor: '#2563eb'
         });
         return;
@@ -130,7 +135,12 @@ const addToCart = (product) => {
         if (existingItem.qty < product.stock) {
             existingItem.qty++;
         } else {
-            alert("Kuantitas melebihi stok yang ada!");
+            Swal.fire({
+                icon: 'warning',
+                title: 'Stok Terbatas',
+                text: 'Kuantitas tidak bisa melebihi stok tersedia!',
+                confirmButtonColor: '#2563eb'
+            });
         }
     } else {
         cart.value.push({ id: product.id, name: product.name, price: product.price, qty: 1 });
@@ -303,7 +313,7 @@ const goToDashboard = () => {
     if (currentUser.value.role === 'owner') {
         router.push('/dashboard');
     } else {
-        alert('Maaf, hanya Owner yang bisa mengakses Dashboard Laporan!');
+        router.push('/absensi');
     }
 };
 

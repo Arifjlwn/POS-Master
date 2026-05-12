@@ -73,16 +73,18 @@ func Login(c *gin.Context) {
 	var user models.User
 	// Deteksi login
 	if strings.Contains(input.Identifier, "@") {
-		if err := config.DB.Where("email = ?", input.Identifier).First(&user).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Email tidak terdaftar !"})
-			return
-		}
-	} else {
-		if err := config.DB.Where("nik = ?", input.Identifier).First(&user).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "NIK tidak ditemukan !"})
-			return
-		}
-	}
+    // 🚀 Tambahkan Preload("Store") di sini
+    if err := config.DB.Preload("Store").Where("email = ?", input.Identifier).First(&user).Error; err != nil {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "Email tidak terdaftar !"})
+        return
+    }
+} else {
+    // 🚀 Dan di sini juga
+    if err := config.DB.Preload("Store").Where("nik = ?", input.Identifier).First(&user).Error; err != nil {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "NIK tidak ditemukan !"})
+        return
+    }
+}
 
 	// Cocokan password
 	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password))
@@ -112,9 +114,11 @@ func Login(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"mesage": "Login Sukses ! Selamat Datang Bos.",
+		"message": "Login Sukses ! Selamat Datang Bos.",
 		"token": tokenString,
 		"role": user.Role,
+		"name": user.Name,
 		"has_setup_store": storeID != 0, // Indikator buat Frontend Vue: false = suruh ke SetupToko, true = ke Dashboard
+		"store_name": user.Store.NamaToko,
 	})
 }
