@@ -1,67 +1,98 @@
 <script setup>
 import { ref } from 'vue';
-import { useRouter } from 'vue-router'; // <-- Router murni Vue
-import api from '../api'; // <-- Panggil kurir
+import { useRouter } from 'vue-router';
 
-const identifier = ref('');
+const router = useRouter();
+
+// State (Variabel penampung inputan)
+const email = ref('');
 const password = ref('');
 const errorMessage = ref('');
 const isLoading = ref(false);
-const router = useRouter();
 
+// Fungsi untuk hit API Login
 const handleLogin = async () => {
-    isLoading.value = true;
-    errorMessage.value = '';
+  isLoading.value = true;
+  errorMessage.value = '';
 
-    try {
-        const response = await api.post('/login', {
-            identifier: identifier.value,
-            password: password.value
-        });
-        
-        // Simpan tiket di brankas
-        localStorage.setItem('token', response.data.token);
-        
-        // Meluncur ke Dashboard tanpa kedip!
-        router.push('/dashboard');
-    } catch (error) {
-        if (error.response && error.response.status === 401) {
-            errorMessage.value = 'Email/NIK atau Password salah!';
-        } else {
-            errorMessage.value = 'Gagal terhubung ke server.';
-        }
-    } finally {
-        isLoading.value = false;
+  try {
+    const response = await fetch('http://localhost:8080/api/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        identifier: email.value,
+        password: password.value
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Gagal login, silakan coba lagi.');
     }
+
+    // 1. Simpan Karcis VIP (Token) ke brankas browser (Local Storage)
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('role', data.role);
+
+    // 2. Logika Redirect Cerdas (Setup Toko vs Dashboard)
+    if (data.has_setup_store === false) {
+      alert("Login Berhasil! Silakan lengkapi data toko Anda terlebih dahulu.");
+      router.push('/setup'); // Arahkan ke halaman setup toko
+    } else {
+      router.push('/dashboard'); // Arahkan ke dashboard
+    }
+
+  } catch (error) {
+    errorMessage.value = error.message;
+  } finally {
+    isLoading.value = false;
+  }
 };
 </script>
 
 <template>
-    <div class="min-h-screen flex items-center justify-center bg-gray-100">
-        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-            <div class="text-center mb-8">
-                <h1 class="text-3xl font-black text-gray-800">
-                    <span class="text-red-600 italic">Indo</span><span class="text-blue-600 italic">UMKM</span>
-                </h1>
-                <p class="text-gray-500 mt-2 font-medium">Sistem POS Enterprise</p>
-            </div>
+  <div class="min-h-screen flex items-center justify-center bg-gray-100">
+    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+      <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Login POS UMKM</h2>
+      
+      <div v-if="errorMessage" class="mb-4 p-3 bg-red-100 text-red-700 rounded text-sm text-center">
+        {{ errorMessage }}
+      </div>
 
-            <form @submit.prevent="handleLogin" class="space-y-6">
-                <div v-if="errorMessage" class="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-bold text-center border border-red-200">
-                    {{ errorMessage }}
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Email / NIK Kasir</label>
-                    <input type="text" v-model="identifier" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Password</label>
-                    <input type="password" v-model="password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
-                </div>
-                <button type="submit" :disabled="isLoading" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all shadow-md disabled:opacity-50">
-                    {{ isLoading ? 'Memproses...' : 'MASUK' }}
-                </button>
-            </form>
+      <form @submit.prevent="handleLogin" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Email</label>
+          <input 
+            v-model="email" 
+            type="email" 
+            required 
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            placeholder="admin@toko.com"
+          >
         </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Password</label>
+          <input 
+            v-model="password" 
+            type="password" 
+            required 
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            placeholder="••••••••"
+          >
+        </div>
+
+        <button 
+          type="submit" 
+          :disabled="isLoading"
+          class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+        >
+          {{ isLoading ? 'Memproses...' : 'Masuk' }}
+        </button>
+      </form>
     </div>
+  </div>
 </template>

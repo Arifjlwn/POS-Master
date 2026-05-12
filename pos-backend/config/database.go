@@ -14,7 +14,7 @@ var DB *gorm.DB
 func ConnectDatabase() {
 	// MASUKKAN URI DARI SUPABASE DI SINI
 	// Pastikan [PASSWORD] sudah diganti dengan password asli Mas tanpa kurung siku
-	dsn := "postgresql://postgres:Arifjlwn020700@db.pxxjqewukgpfxmbwjnni.supabase.co:5432/postgres"
+	dsn := "postgresql://postgres.pxxjqewukgpfxmbwjnni:Arifjlwn020700@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres"
 	
 	// Gunakan postgres.Open bukan mysql.Open
 	database, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})

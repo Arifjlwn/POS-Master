@@ -1,6 +1,9 @@
 import { createApp } from 'vue'
-import './style.css' // Panggil Tailwind
 import App from './App.vue'
 import router from './router' // Panggil Router
+import './style.css' // Panggil Tailwind
 
-createApp(App).use(router).mount('#app')
+const app = createApp(App)
+
+app.use(router)
+app.mount('#app')
