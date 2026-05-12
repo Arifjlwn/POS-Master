@@ -102,7 +102,7 @@ const logout = () => {
             <nav class="flex-1 px-4 py-6 space-y-2.5 overflow-y-auto custom-scrollbar">
                 <div class="text-xs font-black text-gray-400 uppercase tracking-widest px-4 mb-4">Menu Utama</div>
 
-                <router-link to="/kasir" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" :class="route.path === '/kasir' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'">
+                <router-link to="/pos/kasir" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" :class="route.path === '/pos/kasir' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'">
                     <span class="text-xl">🛒</span> POS Kasir
                 </router-link>
 

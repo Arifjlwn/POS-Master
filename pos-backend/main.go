@@ -80,6 +80,11 @@ func main() {
 		api.POST("/attendance", controllers.StoreAttendance)
 		api.GET("/attendance", controllers.GetAttendance)
 		api.GET("/attendance/export", controllers.ExportAttendance)
+
+		// Rute Session
+		// 🚀 --- RUTE SESSION KASIR (BUKA/CEK KASIR) ---
+        api.POST("/pos/open-session", controllers.OpenSession)
+        api.GET("/pos/check-session", controllers.CheckSessionStatus)
 		
 		// Rute Transaksi (Mesin Kasir)
 		api.POST("/checkout", controllers.CreateTransaction)

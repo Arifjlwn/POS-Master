@@ -1,7 +1,8 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import api from '../api.js';
+import axios from 'axios';
+import api from '../../api.js';
 import Swal from 'sweetalert2';
 
 const router = useRouter();
@@ -15,7 +16,6 @@ const getUserInfo = () => {
     if (token) {
         try {
             const payload = JSON.parse(atob(token.split('.')[1]));
-            // 🚀 Kalau di localStorage kosong, coba ambil dari payload token
             if (!name || name === 'undefined' || name === '') {
                 name = payload.name || payload.username || 'Kasir Toko';
             }
@@ -26,7 +26,9 @@ const getUserInfo = () => {
     }
     return { userId: 0, role, name: 'Kasir Toko' };
 };
+
 const currentUser = ref(getUserInfo());
+const currentSession = ref(null);
 
 // Fungsi Jam Realtime
 const currentTime = ref('');
@@ -56,6 +58,7 @@ const searchInput = ref(null);
 // Tarik Data dari Golang
 const fetchProducts = async () => {
     try {
+        // Gunakan axios murni jika api.get bermasalah, atau tetap pakai api.get jika sudah stabil
         const response = await api.get('/products');
         products.value = response.data.data.map(p => ({
             id: p.id,
@@ -67,18 +70,42 @@ const fetchProducts = async () => {
         }));
     } catch (error) {
         console.error("Gagal narik produk:", error);
-        if (error.response && error.response.status === 401) {
-            router.push('/login');
-        }
     } finally {
         isLoadingProducts.value = false;
     }
 };
 
-onMounted(() => {
-    fetchProducts();
-    if (searchInput.value) searchInput.value.focus();
-    
+onMounted(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) { router.push('/login'); return; }
+
+    try {
+        // 🛡️ LANGKAH 1: Validasi Session (Gembok Utama)
+        const res = await axios.get('http://localhost:8080/api/pos/check-session', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!res.data.has_session) {
+            Swal.fire('Akses Ditolak', 'Isi modal awal atau absen dulu ya!', 'warning');
+            router.push('/pos/buka-kasir');
+            return;
+        }
+
+        // 🚀 SIMPAN DATA SESSION KE REF
+        currentSession.value = res.data.session;
+        
+        // 🚀 LANGKAH 2: Tarik produk & fokus search
+        await fetchProducts();
+        if (searchInput.value) searchInput.value.focus();
+
+    } catch (error) {
+        console.error("Gagal masuk kasir:", error);
+        if (error.response?.status === 401) {
+            router.push('/login');
+        }
+    }
+
+    // Timer Jam Realtime
     timer = setInterval(() => {
         const now = new Date();
         currentTime.value = now.toLocaleString('id-ID', {
@@ -86,10 +113,6 @@ onMounted(() => {
             hour: '2-digit', minute: '2-digit', second: '2-digit'
         }).replace(/\//g, '.');
     }, 1000);
-});
-
-onUnmounted(() => {
-    clearInterval(timer);
 });
 
 const filteredProducts = computed(() => {
@@ -238,6 +261,7 @@ const executeCheckout = async() => {
 
     try {
         const response = await api.post('/checkout', {
+            session_id: currentSession.value.id, // 🚀 Kirim ID Session ke Backend
             items: payloadItems,
             nominal_bayar: payAmount.value
         });
@@ -366,8 +390,13 @@ const logout = () => {
                         </div>
                         
                         <div class="hidden sm:flex items-center gap-4 border-l border-blue-700 pl-4">
-                            <span class="flex items-center gap-1 opacity-90">🕒 Shift: <strong class="text-white">1</strong></span>
-                            <span class="flex items-center gap-1 opacity-90">💻 Station: <strong class="text-white">01</strong></span>
+                            <span class="flex items-center gap-1 opacity-90">
+                                🕒 Shift: <strong class="text-white">1</strong>
+                            </span>
+                            <span class="flex items-center gap-1 opacity-90">
+                                💻 Station: 
+                                <strong class="text-white">{{ currentSession?.station_number || '00' }}</strong>
+                            </span>
                         </div>
 
                         <button @click="logout" title="Akhiri Shift (Logout)" class="bg-red-500 hover:bg-red-600 text-white p-1.5 md:px-3 md:py-1.5 rounded-lg transition-colors shadow-sm ml-1 md:ml-2 active:scale-95 flex items-center gap-1">

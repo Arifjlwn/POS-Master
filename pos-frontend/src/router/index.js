@@ -14,8 +14,13 @@ const routes = [
         meta: { requiresAuth: true } // Kunci pintu!
     },
     { 
-        path: '/kasir', 
-        component: () => import('../views/Kasir.vue'),
+        path: '/pos/kasir', 
+        component: () => import('../views/pos/Kasir.vue'),
+        meta: { requiresAuth: true } // Kunci pintu!
+    },
+    { 
+        path: '/pos/buka-kasir', 
+        component: () => import('../views/pos/BukaKasir.vue'),
         meta: { requiresAuth: true } // Kunci pintu!
     },
     { 
@@ -52,19 +57,29 @@ const router = createRouter({
 
 // SATPAM FRONTEND (Route Guard)
 router.beforeEach((to, from, next) => {
-    const isAuthenticated = localStorage.getItem('token');
-
-    // Kalau mau ke halaman yang dikunci tapi belum punya token, tendang ke login!
-    if (to.meta.requiresAuth && !isAuthenticated) {
-        next('/login');
-    } 
-    // Kalau udah login tapi iseng buka halaman login lagi, arahkan ke dashboard!
-    else if (to.path === '/login' && isAuthenticated) {
-        next('/dashboard');
-    } 
-    else {
-        next(); // Silakan lewat
+    const role = localStorage.getItem('role');
+    const token = localStorage.getItem('token');
+    
+    // 1. Cek Login (Wajib ada token untuk semua rute kecuali login)
+    if (to.meta.requiresAuth && !token) {
+        return next('/login');
     }
+
+    // 2. Logic khusus area POS
+    if (to.path.startsWith('/pos')) {
+        // Jika tujuannya ke mesin kasir (/pos/kasir), 
+        // tapi dia belum inisialisasi modal, kita jangan kasih lewat!
+        // Tapi pengecekan inisial modal ini paling akurat dilakukan di onMounted Kasir.vue
+        // Untuk di router, kita kasih lewat dulu aja
+        return next();
+    }
+
+    // 3. Proteksi Dashboard (Hanya Owner)
+    if (to.path === '/dashboard' && role !== 'owner') {
+        return next('/pos/buka-kasir');
+    }
+
+    next();
 });
 
 export default router;
