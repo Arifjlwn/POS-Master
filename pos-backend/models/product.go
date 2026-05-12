@@ -11,6 +11,7 @@ type Product struct {
 	HargaModal float64   `gorm:"type:decimal(10,2);default:0" json:"harga_modal"`
 	HargaJual  float64   `gorm:"type:decimal(10,2);not null" json:"harga_jual"`
 	Stok       int       `gorm:"default:0" json:"stok"`
+	Gambar	   string	 `gorm:"type:varchar(255)" json:"gambar"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 

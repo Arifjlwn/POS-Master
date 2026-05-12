@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../api.js';
 import Sidebar from '../components/Sidebar.vue';
@@ -7,8 +7,19 @@ import Sidebar from '../components/Sidebar.vue';
 const router = useRouter();
 
 // State Data
-const products = ref({ data: [], links: [], from: 0, to: 0, total: 0 });
-const categories = ref(['Minuman', 'Makanan', 'Rokok', 'Kebutuhan Pokok', 'Lainnya']);
+const products = ref([]);
+
+const categories = ref([]);
+
+const fetchCategories = async () => {
+    try {
+        const response = await api.get('/categories');
+        categories.value = response.data.data;
+    } catch (error) {
+        console.error("Gagal ambil kategori:", error)
+    }
+};
+
 const isLoading = ref(true);
 
 // State Filter & Search
@@ -21,6 +32,7 @@ const showFormModal = ref(false);
 const isEditing = ref(false);
 const editId = ref(null);
 const fileInput = ref(null);
+const imagePreview = ref(null); // Tambahan untuk preview foto
 
 const form = ref({
     name: '',
@@ -31,6 +43,11 @@ const form = ref({
     stock: 0,
     image: null,
 });
+
+// Helper untuk nampilin gambar dari Golang
+const getImageUrl = (path) => {
+    return path ? `http://localhost:8080${path}` : null;
+};
 
 // --- FUNGSI TARIK DATA (API GOLANG) ---
 const fetchProducts = async (page = 1) => {
@@ -43,9 +60,7 @@ const fetchProducts = async (page = 1) => {
                 category: selectedCategory.value
             }
         });
-        // Sesuaikan dengan format respons JSON Golang Mas
         products.value = response.data.data; 
-        currentPage.value = page;
     } catch (error) {
         console.error("Gagal ambil produk:", error);
     } finally {
@@ -53,9 +68,11 @@ const fetchProducts = async (page = 1) => {
     }
 };
 
-onMounted(() => fetchProducts());
+onMounted(() =>{
+     fetchProducts();
+     fetchCategories();
+});
 
-// Watcher untuk Search (Auto Search tanpa refresh)
 let searchTimer;
 watch([searchQuery, selectedCategory], () => {
     clearTimeout(searchTimer);
@@ -64,11 +81,22 @@ watch([searchQuery, selectedCategory], () => {
     }, 500);
 });
 
-// --- FUNGSI CRUD ---
+// --- FUNGSI CRUD & UPLOAD FOTO ---
+
+// Nangkap file foto pas user milih gambar
+const onFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        form.value.image = file;
+        imagePreview.value = URL.createObjectURL(file); // Bikin preview instan
+    }
+};
+
 const openAddModal = () => {
     isEditing.value = false;
     editId.value = null;
     form.value = { name: '', sku: '', category: '', cost_price: 0, price: 0, stock: 0, image: null };
+    imagePreview.value = null; // Reset preview
     showFormModal.value = true;
 };
 
@@ -76,46 +104,73 @@ const editProduct = (product) => {
     isEditing.value = true;
     editId.value = product.id;
     form.value = {
-        name: product.name,
+        name: product.nama_produk || '',
         sku: product.sku || '',
-        category: product.category || '',
-        cost_price: product.cost_price,
-        price: product.price,
-        stock: product.stock,
+        category: product.kategori || '',
+        cost_price: product.harga_modal || 0,
+        price: product.harga_jual || 0,
+        stock: product.stok || 0,
         image: null
     };
+    // Tampilkan gambar lama jika ada
+    imagePreview.value = getImageUrl(product.gambar);
     showFormModal.value = true;
 };
 
 const submitProduct = async () => {
-    // Kita bungkus datanya jadi JSON rapi, pastikan angka jadi Number
-    const payload = {
-        nama_produk: form.value.name,
-        sku: form.value.sku,
-        kategori: form.value.category,
-        harga_beli: Number(form.value.cost_price),
-        harga_jual: Number(form.value.price),
-        stok: Number(form.value.stock)
-    };
+    // 1. Siapkan Paketnya
+    const formData = new FormData();
+    formData.append('nama_produk', form.value.name);
+    formData.append('sku', form.value.sku);
+    formData.append('kategori', form.value.category);
+    formData.append('harga_modal', Number(form.value.cost_price));
+    formData.append('harga_jual', Number(form.value.price));
+    formData.append('stok', Number(form.value.stock));
+
+    if (form.value.image) {
+        formData.append('gambar', form.value.image);
+    }
 
     try {
-        if (isEditing.value) {
-            await api.put(`/products/${editId.value}`, payload);
-            alert('Produk berhasil diperbarui!');
-        } else {
-            await api.post('/products', payload);
-            alert('Produk berhasil ditambahkan! 🚀');
+        // 2. Ambil Karcis VIP
+        const token = localStorage.getItem('token');
+        
+        // 3. Tentukan Tujuan (Tambah atau Edit)
+        const url = isEditing.value 
+            ? `http://localhost:8080/api/products/${editId.value}` 
+            : 'http://localhost:8080/api/products';
+            
+        const method = isEditing.value ? 'PUT' : 'POST';
+
+        // 🚀 4. KITA BYPASS api.js PAKAI NATIVE FETCH
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Authorization': `Bearer ${token}`
+                // 🚨 PENTING: JANGAN ADA 'Content-Type' DI SINI SAMA SEKALI!
+            },
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Gagal menyimpan produk dari server');
         }
+
+        alert(`Produk berhasil ${isEditing.value ? 'diperbarui ✏️' : 'ditambahkan 🚀'}!`);
         showFormModal.value = false;
         fetchProducts(currentPage.value);
+        fetchCategories();
+
     } catch (error) {
-        alert('Gagal menyimpan produk: ' + (error.response?.data?.error || 'Error Server'));
+        alert('Gagal menyimpan produk: ' + error.message);
         console.error("Detail Error:", error);
     }
 };
 
 const deleteProduct = async (id) => {
-    if (confirm('Yakin ingin menghapus produk ini?')) {
+    if (confirm('Yakin ingin menghapus produk ini? 🗑️')) {
         try {
             await api.delete(`/products/${id}`);
             fetchProducts(currentPage.value);
@@ -125,7 +180,6 @@ const deleteProduct = async (id) => {
     }
 };
 
-// --- IMPORT / EXPORT ---
 const triggerImport = () => fileInput.value.click();
 
 const handleImport = async (event) => {
@@ -145,6 +199,31 @@ const handleImport = async (event) => {
         event.target.value = '';
     }
 };
+
+const exportCSV = async () => {
+    const token = localStorage.getItem('token');
+    
+    // Tarik file pakai fetch biar token bisa dikirim di Header
+    try {
+        const response = await fetch('http://localhost:8080/api/products/export', {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) throw new Error("Gagal ekspor");
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'katalog_produk.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    } catch (error) {
+        alert("Gagal mengunduh file CSV.");
+    }
+};
 </script>
 
 <template>
@@ -157,6 +236,10 @@ const handleImport = async (event) => {
                 </div>
 
                 <div class="hidden sm:flex gap-2">
+                    <button @click="exportCSV" class="bg-green-100 hover:bg-green-200 text-green-700 px-4 py-2.5 rounded-xl font-bold transition-all shadow-sm items-center gap-2 border border-green-200 flex text-xs">
+                        📤 Ekspor CSV
+                    </button>
+
                     <button @click="triggerImport" class="bg-orange-100 hover:bg-orange-200 text-orange-700 px-4 py-2.5 rounded-xl font-bold transition-all shadow-sm items-center gap-2 border border-orange-200 flex text-xs">
                         📥 Import CSV
                     </button>
@@ -195,22 +278,25 @@ const handleImport = async (event) => {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50">
-                            <tr v-for="product in products.data" :key="product.id" class="hover:bg-blue-50/30 transition-colors group">
+                            <tr v-for="product in products" :key="product.id" class="hover:bg-blue-50/30 transition-colors group">
                                 <td class="p-4 flex items-center gap-4">
-                                    <div class="w-12 h-12 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-center text-xl shadow-inner">📦</div>
+                                    <div class="w-12 h-12 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-center text-xl shadow-inner overflow-hidden">
+                                        <img v-if="product.gambar" :src="getImageUrl(product.gambar)" class="w-full h-full object-cover">
+                                        <span v-else>📦</span>
+                                    </div>
                                     <div>
-                                        <div class="font-bold text-gray-800 text-sm">{{ product.name }}</div>
+                                        <div class="font-bold text-gray-800 text-sm">{{ product.nama_produk }}</div>
                                         <div class="text-[10px] text-gray-400 font-mono mt-0.5 tracking-tighter">📟 {{ product.sku || '-' }}</div>
                                     </div>
                                 </td>
                                 <td class="p-4">
-                                    <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg font-bold text-[10px] uppercase tracking-wider">{{ product.category || 'General' }}</span>
+                                    <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg font-bold text-[10px] uppercase tracking-wider">{{ product.kategori || 'General' }}</span>
                                 </td>
-                                <td class="p-4 text-gray-500 font-bold text-right text-sm">Rp {{ product.cost_price.toLocaleString('id-ID') }}</td>
-                                <td class="p-4 text-blue-700 font-black text-right text-sm">Rp {{ product.price.toLocaleString('id-ID') }}</td>
+                                <td class="p-4 text-gray-500 font-bold text-right text-sm">Rp {{ (product.harga_modal || 0).toLocaleString('id-ID') }}</td>
+                                <td class="p-4 text-blue-700 font-black text-right text-sm">Rp {{ (product.harga_jual || 0).toLocaleString('id-ID') }}</td>
                                 <td class="p-4 text-center">
-                                    <span class="px-3 py-1 text-[11px] rounded-lg font-black shadow-sm" :class="product.stock > 10 ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-red-50 text-red-600 border border-red-100'">
-                                        {{ product.stock }}
+                                    <span class="px-3 py-1 text-[11px] rounded-lg font-black shadow-sm" :class="(product.stok || 0) > 10 ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-red-50 text-red-600 border border-red-100'">
+                                        {{ product.stok || 0 }}
                                     </span>
                                 </td>
                                 <td class="p-4 text-center">
@@ -223,14 +309,6 @@ const handleImport = async (event) => {
                         </tbody>
                     </table>
                 </div>
-
-                <div v-if="products.total > 0" class="p-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
-                    <span class="text-xs font-bold text-gray-500">Total: {{ products.total }} Produk</span>
-                    <div class="flex gap-2">
-                        <button @click="fetchProducts(currentPage - 1)" :disabled="currentPage === 1" class="px-3 py-1 bg-white border border-gray-200 rounded-lg text-xs font-bold disabled:opacity-50">Sblmnya</button>
-                        <button @click="fetchProducts(currentPage + 1)" class="px-3 py-1 bg-white border border-gray-200 rounded-lg text-xs font-bold">Brktnya</button>
-                    </div>
-                </div>
             </div>
 
             <div v-if="showFormModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 backdrop-blur-sm transition-all">
@@ -238,6 +316,18 @@ const handleImport = async (event) => {
                     <div class="p-6">
                         <h2 class="text-2xl font-black text-gray-800 mb-6">{{ isEditing ? 'Edit Produk' : 'Produk Baru' }}</h2>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            
+                            <div class="md:col-span-2 flex items-center gap-4 mb-2">
+                                <div class="w-16 h-16 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 overflow-hidden shrink-0">
+                                    <img v-if="imagePreview" :src="imagePreview" class="w-full h-full object-cover">
+                                    <span v-else class="text-2xl text-gray-400">📷</span>
+                                </div>
+                                <div class="flex-1">
+                                    <label class="text-[10px] font-black text-gray-400 uppercase mb-1 block">Foto Produk (Opsional)</label>
+                                    <input type="file" @change="onFileChange" accept="image/*" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                                </div>
+                            </div>
+
                             <div class="md:col-span-2">
                                 <label class="text-[10px] font-black text-gray-400 uppercase mb-1 block">Nama Barang</label>
                                 <input v-model="form.name" type="text" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none font-bold">
@@ -248,9 +338,10 @@ const handleImport = async (event) => {
                             </div>
                             <div>
                                 <label class="text-[10px] font-black text-gray-400 uppercase mb-1 block">Kategori</label>
-                                <select v-model="form.category" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none font-bold bg-white">
-                                    <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
-                                </select>
+                                <input list="kategori-list" v-model="form.category" placeholder="Pilih atau ketik baru..." class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none font-bold bg-white">
+                                <datalist id="kategori-list">
+                                    <option v-for="cat in categories" :key="cat" :value="cat"></option>
+                                </datalist>
                             </div>
                             <div>
                                 <label class="text-[10px] font-black text-gray-400 uppercase mb-1 block">Harga Modal</label>

@@ -19,8 +19,23 @@ const routes = [
         meta: { requiresAuth: true } // Kunci pintu!
     },
     { 
+        path: '/absensi', 
+        component: () => import('../views/Absensi.vue'),
+        meta: { requiresAuth: true } // Kunci pintu!
+    },
+    { 
+        path: '/riwayat', 
+        component: () => import('../views/Riwayat.vue'),
+        meta: { requiresAuth: true } // Kunci pintu!
+    },
+    { 
         path: '/produk', 
         component: () => import('../views/MasterProduk.vue'),
+        meta: { requiresAuth: true } 
+    },
+    { 
+        path: '/karyawan', 
+        component: () => import('../views/ManageKaryawan.vue'),
         meta: { requiresAuth: true } 
     },
     { 

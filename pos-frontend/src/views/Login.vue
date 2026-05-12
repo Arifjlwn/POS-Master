@@ -4,8 +4,8 @@ import { useRouter } from 'vue-router';
 
 const router = useRouter();
 
-// State (Variabel penampung inputan)
-const email = ref('');
+// State (Ganti nama variabel biar lebih general)
+const identifier = ref(''); 
 const password = ref('');
 const errorMessage = ref('');
 const isLoading = ref(false);
@@ -22,7 +22,7 @@ const handleLogin = async () => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        identifier: email.value,
+        identifier: identifier.value, // 🚀 Dikirim ke Golang sebagai identifier
         password: password.value
       })
     });
@@ -36,11 +36,12 @@ const handleLogin = async () => {
     // 1. Simpan Karcis VIP (Token) ke brankas browser (Local Storage)
     localStorage.setItem('token', data.token);
     localStorage.setItem('role', data.role);
+    localStorage.setItem('name', data.name);
 
     // 2. Logika Redirect Cerdas (Setup Toko vs Dashboard)
     if (data.has_setup_store === false) {
       alert("Login Berhasil! Silakan lengkapi data toko Anda terlebih dahulu.");
-      router.push('/setup'); // Arahkan ke halaman setup toko
+      router.push('/setup-toko'); // Arahkan ke halaman setup toko
     } else {
       router.push('/dashboard'); // Arahkan ke dashboard
     }
@@ -55,32 +56,35 @@ const handleLogin = async () => {
 
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gray-100">
-    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-      <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Login POS UMKM</h2>
+    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-t-8 border-blue-600">
+      <div class="text-center mb-8">
+        <h2 class="text-3xl font-black text-gray-900">POS UMKM</h2>
+        <p class="text-gray-500 font-medium mt-1">Silakan masuk ke akun Anda</p>
+      </div>
       
-      <div v-if="errorMessage" class="mb-4 p-3 bg-red-100 text-red-700 rounded text-sm text-center">
+      <div v-if="errorMessage" class="mb-5 p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-bold text-center">
         {{ errorMessage }}
       </div>
 
-      <form @submit.prevent="handleLogin" class="space-y-4">
+      <form @submit.prevent="handleLogin" class="space-y-5">
         <div>
-          <label class="block text-sm font-medium text-gray-700">Email</label>
+          <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5">Email Owner / NIK Kasir</label>
           <input 
-            v-model="email" 
-            type="email" 
+            v-model="identifier" 
+            type="text" 
             required 
-            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            placeholder="admin@toko.com"
+            class="w-full px-4 py-3 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-bold text-gray-800 outline-none transition-all"
+            placeholder="admin@toko.com atau 20260001"
           >
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700">Password</label>
+          <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5">Password</label>
           <input 
             v-model="password" 
             type="password" 
             required 
-            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            class="w-full px-4 py-3 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-bold text-gray-800 outline-none transition-all"
             placeholder="••••••••"
           >
         </div>
@@ -88,9 +92,9 @@ const handleLogin = async () => {
         <button 
           type="submit" 
           :disabled="isLoading"
-          class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+          class="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-lg shadow-blue-100 text-sm font-black text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-all active:scale-95 mt-2"
         >
-          {{ isLoading ? 'Memproses...' : 'Masuk' }}
+          {{ isLoading ? 'Memeriksa Data...' : 'Masuk ke Sistem 🚀' }}
         </button>
       </form>
     </div>

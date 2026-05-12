@@ -74,7 +74,7 @@ func Login(c *gin.Context) {
 	// Deteksi login
 	if strings.Contains(input.Identifier, "@") {
 		if err := config.DB.Where("email = ?", input.Identifier).First(&user).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Email tidak terdafta !"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Email tidak terdaftar !"})
 			return
 		}
 	} else {

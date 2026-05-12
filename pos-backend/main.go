@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func main() {
@@ -29,6 +30,8 @@ func main() {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
+
+	r.Static("/uploads", "./uploads")
 
 	// Membuat endpoint API sederhana (Route GET)
 	r.GET("/ping", func(c *gin.Context) {
@@ -65,13 +68,22 @@ func main() {
 		api.GET("/products", controllers.GetProducts)
 		api.PUT("/products/:id", controllers.UpdateProduct)
 		api.DELETE("/products/:id", controllers.DeleteProduct)
+		api.GET("/products/export", controllers.ExportProducts)
+		api.GET("/categories", controllers.GetCategories)
 
 		// -- Rute Karyawan --
 		api.POST("/employees", controllers.CreateEmployee)
 		api.GET("/employees", controllers.GetEmployees)
 
+		// --RUTE ABSENSI--
+		// --- MODULE ABSENSI ---
+		api.POST("/attendance", controllers.StoreAttendance)
+		api.GET("/attendance", controllers.GetAttendance)
+		api.GET("/attendance/export", controllers.ExportAttendance)
+		
 		// Rute Transaksi (Mesin Kasir)
 		api.POST("/checkout", controllers.CreateTransaction)
+		api.GET("/transactions", controllers.GetTransactions)
 
 		// Rute Laporan (Dashboard)
 		api.GET("/report/dashboard", controllers.GetDashboardReport)
@@ -118,10 +130,25 @@ func main() {
 				return
 			}
 
+			// 🚀 OPERASI SENYAP DIMULAI DI SINI: Cetak ulang tiket VIP!
+			newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+				"user_id":  userID,
+				"store_id": newStore.ID, // 👈 Sekarang udah terisi ID Toko yang baru dibuat!
+				"role":     "owner",
+				"exp":      time.Now().Add(time.Hour * 72).Unix(),
+			})
+
+			tokenString, err := newToken.SignedString([]byte("KUNCI_RAHASIA_SUPER_KUAT_123"))
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Toko dibuat, tapi gagal cetak tiket baru"})
+				return
+			}
+
 			// 5. Berhasil!
 			c.JSON(http.StatusOK, gin.H{
 				"message": "Toko berhasil dibuat! Selamat berbisnis.",
 				"store_id": newStore.ID,
+				"token": tokenString,
 			})
 		})
 	}

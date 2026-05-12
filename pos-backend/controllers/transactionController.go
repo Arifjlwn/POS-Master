@@ -133,3 +133,46 @@ func CreateTransaction(c *gin.Context) {
 		"kembali": savedTransaction.Kembalian,
 	})
 }
+
+// --- FUNGSI LIHAT RIWAYAT TRANSAKSI ---
+func GetTransactions(c *gin.Context) {
+	// Ambil ID Toko dari token
+	storeIDRaw, _ := c.Get("store_id")
+	storeID := uint(storeIDRaw.(float64))
+
+	// Tangkap filter tanggal dari Vue
+	tanggal := c.Query("tanggal")
+	if tanggal == "" {
+		tanggal = time.Now().Format("2006-01-02") // Default hari ini
+	}
+
+	// Ubah string tanggal jadi format waktu untuk nge-filter database
+	parsedDate, err := time.ParseInLocation("2006-01-02", tanggal, time.Local)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format tanggal tidak valid"})
+		return
+	}
+
+	// Rentang waktu 1 hari penuh (00:00:00 - 23:59:59)
+	startOfDay := parsedDate
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	var transactions []models.Transaction
+
+	// 🚀 Tarik data sekaligus: Transaksi + Kasir (User) + Rincian Barang (Details) + Nama Barang (Product)
+	if err := config.DB.
+		Preload("User").
+		Preload("Details").
+		Preload("Details.Product").
+		Where("store_id = ? AND created_at BETWEEN ? AND ?", storeID, startOfDay, endOfDay).
+		Order("created_at DESC"). // Urutkan dari yang paling baru
+		Find(&transactions).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menarik riwayat transaksi"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Riwayat transaksi berhasil ditarik!",
+		"data":    transactions,
+	})
+}

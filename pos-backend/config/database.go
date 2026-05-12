@@ -17,7 +17,10 @@ func ConnectDatabase() {
 	dsn := "postgresql://postgres.pxxjqewukgpfxmbwjnni:Arifjlwn020700@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres"
 	
 	// Gunakan postgres.Open bukan mysql.Open
-	database, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	database, err := gorm.Open(postgres.New(postgres.Config{
+		DSN: dsn,
+		PreferSimpleProtocol: true,
+	}), &gorm.Config{})
 
 	if err != nil {
 		log.Fatal("Gagal Menyambung ke Supabase! Error: ", err)
@@ -32,6 +35,7 @@ func ConnectDatabase() {
 		&models.Product{},
 		&models.Transaction{},
 		&models.TransactionDetail{},
+		&models.Attendance{},
 	)
 	
 	if err != nil {

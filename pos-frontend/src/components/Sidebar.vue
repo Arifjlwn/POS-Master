@@ -14,13 +14,14 @@ const user = ref({
     role: 'owner',
     store: {
         nama_toko: 'Indo UMKM',
-        fitur_opsional: ['absensi']
+        fitur_opsional: ['absensi', 'qris'] // Contoh Bos milih absensi pas setup toko
     }
 });
 
 // Fungsi Logout SPA
 const logout = () => {
     localStorage.removeItem('token'); // Buang tiket masuk
+    localStorage.removeItem('role');
     router.push('/login'); // Lempar ke halaman login tanpa loading
 };
 </script>
@@ -70,24 +71,76 @@ const logout = () => {
             </div>
 
             <nav class="flex-1 px-4 py-6 space-y-2.5 overflow-y-auto custom-scrollbar">
-                <div class="text-xs font-black text-gray-400 uppercase tracking-widest px-4 mb-4">Menu Utama</div>
+                <div 
+                    class="text-xs font-black text-gray-400 uppercase tracking-widest px-4 mb-4"
+                    >
+                    Menu Utama
+                </div>
 
-                <router-link to="/kasir" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" :class="route.path === '/kasir' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'">
+                <router-link 
+                    to="/kasir" 
+                    @click="sidebarOpen = false" 
+                    class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" 
+                    :class="route.path === '/kasir' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'"
+                    >
                     <span class="text-xl">🛒</span> POS Kasir
+                </router-link>
+
+                <router-link 
+                    to="/riwayat"
+                    @click="sidebarOpen = false"
+                    class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all"
+                    :class="route.path.startsWith('/riwayat') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'"
+                    >
+                    <span class="text-xl">📜</span> Riwayat Transaksi
+                </router-link>
+
+                <router-link 
+                    v-if="user.store?.fitur_opsional?.includes('absensi')" 
+                    to="/absensi" 
+                    @click="sidebarOpen = false"
+                    class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all"
+                    :class="route.path === '/absensi' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'"
+                    >
+                    <span class="text-xl">📅</span> Absensi Kehadiran
                 </router-link>
 
                 <div v-if="user.role === 'owner'" class="pt-4 mt-4 border-t border-gray-100">
                     <div class="text-xs font-black text-gray-400 uppercase tracking-widest px-4 mb-4">Administrasi Toko</div>
 
-                    <router-link to="/dashboard" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" :class="route.path.startsWith('/dashboard') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'">
+                    <router-link 
+                        to="/dashboard"
+                        @click="sidebarOpen = false"
+                        class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" 
+                        :class="route.path.startsWith('/dashboard') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'"
+                        >
                         <span class="text-xl">📊</span> Dashboard
                     </router-link>
 
-                    <router-link to="/produk" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" :class="route.path.startsWith('/produk') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'">
+                    <router-link 
+                    to="/produk" 
+                    @click="sidebarOpen = false" 
+                    class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" 
+                    :class="route.path.startsWith('/produk') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'"
+                    >
                         <span class="text-xl">📦</span> Master Produk
                     </router-link>
 
-                    <router-link to="/setup" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" :class="route.path.startsWith('/setup') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'">
+                    <router-link 
+                        to="/karyawan" 
+                        @click="sidebarOpen = false" 
+                        class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" 
+                        :class="route.path.startsWith('/karyawan') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'"
+                        >
+                        <span class="text-xl">👥</span> Kelola Karyawan
+                    </router-link>
+
+                    <router-link 
+                    to="/setup" 
+                    @click="sidebarOpen = false" 
+                    class="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all" 
+                    :class="route.path.startsWith('/setup') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-blue-600'"
+                    >
                         <span class="text-xl">⚙️</span> Pengaturan Toko
                     </router-link>
                 </div>
@@ -122,7 +175,8 @@ const logout = () => {
         </div>
 
         <main class="flex-1 w-full max-w-full overflow-y-auto bg-gray-50 h-[calc(100vh-61px)] relative">
-            <slot /> </main>
+            <slot /> 
+        </main>
 
     </div>
 </template>

@@ -20,6 +20,7 @@ type Transaction struct {
 
 	// Relasi ke tabel rincian barang
 	Details []TransactionDetail `gorm:"foreignKey:TransactionID" json:"details"`
+	User User `gorm:"foreignKey:UserID" json:"User"`
 }
 
 // 2. Model untuk Rincian Barang di Struk (Body)

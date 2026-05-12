@@ -33,15 +33,24 @@ const handleImageChange = (e) => {
 const submit = async () => {
     isLoading.value = true;
     try {
-        // Kita kirim paket JSON murni ke Golang
-        await api.post('/setup-toko', {
+        // 1. Tangkap respon dari Golang setelah kirim data
+        const response = await api.post('/setup-toko', {
             nama_toko: form.value.nama_toko,
             tipe_bisnis: form.value.tipe_bisnis,
             alamat_toko: form.value.alamat_toko,
             telepon: form.value.telepon
         });
         
+        // 2. 🚀 OPERASI SENYAP: Ambil token baru dari respon dan simpan ke brankas browser
+        if (response.data && response.data.token) {
+            localStorage.setItem('token', response.data.token);
+            // Konsol log buat mastiin aja pas lagi dev (opsional)
+            console.log("Token diperbarui dengan Store ID baru!");
+        }
+        
         alert('Toko Berhasil Dibuat! Selamat datang Bos Arif.');
+        
+        // 3. Langsung lempar ke dashboard dengan token yang sudah 'fresh'
         router.push('/dashboard'); 
     } catch (error) {
         alert('Gagal setup toko. Coba cek terminal Golang ada error apa.');
