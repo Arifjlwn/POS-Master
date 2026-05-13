@@ -29,6 +29,17 @@ const routes = [
         meta: { requiresAuth: true } // Kunci pintu!
     },
     { 
+        path: '/stock-opname', 
+        component: () => import('../views/StockOpname.vue'),
+        meta: { requiresAuth: true } // Kunci pintu!
+    },
+    { 
+        path: '/stock-opname/report',
+        name: 'SrockOpnameReport', 
+        component: () => import('../views/StockOpnameReport.vue'),
+        meta: { requiresAuth: true } // Kunci pintu!
+    },
+    { 
         path: '/riwayat', 
         component: () => import('../views/Riwayat.vue'),
         meta: { requiresAuth: true } // Kunci pintu!
@@ -36,6 +47,11 @@ const routes = [
     { 
         path: '/produk', 
         component: () => import('../views/MasterProduk.vue'),
+        meta: { requiresAuth: true } 
+    },
+    { 
+        path: '/penerimaan-barang', 
+        component: () => import('../views/PenerimaanBarang.vue'),
         meta: { requiresAuth: true } 
     },
     { 

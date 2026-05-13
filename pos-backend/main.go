@@ -33,6 +33,12 @@ func main() {
 
 	r.Static("/uploads", "./uploads")
 
+	r.Use(func(c *gin.Context) {
+    // Batasi 5MB secara manual
+    c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 5*1024*1024)
+    c.Next()
+})
+
 	// Membuat endpoint API sederhana (Route GET)
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -50,18 +56,18 @@ func main() {
 	api.Use(middlewares.RequireAuth)
 	{
 		// Rute untuk melihat profil sendiri
-		api.GET("/me", func(c *gin.Context) {
-			userID, _ := c.Get("user_id")
-			storeID, _ := c.Get("store_id")
-			role, _ := c.Get("role")
+		// api.GET("/me", func(c *gin.Context) {
+		// 	userID, _ := c.Get("user_id")
+		// 	storeID, _ := c.Get("store_id")
+		// 	role, _ := c.Get("role")
 
-			c.JSON(http.StatusOK, gin.H{
-				"message":  "Ini adalah area rahasia",
-				"user_id":  userID,
-				"store_id": storeID,
-				"role":     role,
-			})
-		})
+		// 	c.JSON(http.StatusOK, gin.H{
+		// 		"message":  "Ini adalah area rahasia",
+		// 		"user_id":  userID,
+		// 		"store_id": storeID,
+		// 		"role":     role,
+		// 	})
+		// })
 
 		// -- Rute Produk (CRUD) --
 		api.POST("/products", controllers.CreateProduct)
@@ -74,21 +80,33 @@ func main() {
 		// -- Rute Karyawan --
 		api.POST("/employees", controllers.CreateEmployee)
 		api.GET("/employees", controllers.GetEmployees)
+		api.PUT("/employees/:id", controllers.UpdateEmployee)
+		api.GET("/me", controllers.GetMe)
 
 		// --RUTE ABSENSI--
-		// --- MODULE ABSENSI ---
 		api.POST("/attendance", controllers.StoreAttendance)
 		api.GET("/attendance", controllers.GetAttendance)
 		api.GET("/attendance/export", controllers.ExportAttendance)
+
+		// Rute LPB
+		api.POST("/purchases", controllers.CreateLPB)
+
+		// Rute Stock Opname
+		api.POST("/stock-opname", controllers.CreateStockOpname)
+		api.GET("/stock-opname/history", controllers.GetStockOpnameHistory)
 
 		// Rute Session
 		// 🚀 --- RUTE SESSION KASIR (BUKA/CEK KASIR) ---
         api.POST("/pos/open-session", controllers.OpenSession)
         api.GET("/pos/check-session", controllers.CheckSessionStatus)
+
+		// --- RUTE CLOSING ---
+		api.POST("/pos/close-session/:id", controllers.CloseSession)
 		
 		// Rute Transaksi (Mesin Kasir)
 		api.POST("/checkout", controllers.CreateTransaction)
 		api.GET("/transactions", controllers.GetTransactions)
+		
 
 		// Rute Laporan (Dashboard)
 		api.GET("/report/dashboard", controllers.GetDashboardReport)

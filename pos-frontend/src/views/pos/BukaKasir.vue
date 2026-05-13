@@ -62,18 +62,18 @@ const handleBukaKasir = async () => {
         
         // 🚀 LOGIKA: Jika ditolak karena belum absen
         if (msg.toLowerCase().includes('absen')) {
-    Swal.fire({
-        title: 'Belum Absen!',
-        text: 'Mas Arif wajib absen wajah dulu.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Absen Sekarang 📸',
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Ganti router.push dengan ini:
-            window.location.href = '/absensi'; 
-        }
-    });
+            Swal.fire({
+                title: 'Belum Absen!',
+                text: 'Mas Arif wajib absen wajah dulu.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Absen Sekarang 📸',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Ganti router.push dengan ini:
+                    window.location.href = '/absensi'; 
+                }
+            });
         } else if (error.response?.status === 401) {
             router.push('/login');
         } else {

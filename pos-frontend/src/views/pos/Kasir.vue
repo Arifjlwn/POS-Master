@@ -44,6 +44,8 @@ const paymentMethod = ref('Cash');
 const showReceipt = ref(false);
 const showQrisModal = ref(false);
 const lastTransaction = ref(null);
+const showReceiptClosing = ref(false);
+const lastClosingData = ref(null);
 
 // 🚀 Update BaseURL kalau pakai IP Address HP (Ganti sesuai IP Mas)
 const getImageUrl = (path) => {
@@ -263,7 +265,8 @@ const executeCheckout = async() => {
         const response = await api.post('/checkout', {
             session_id: currentSession.value.id, // 🚀 Kirim ID Session ke Backend
             items: payloadItems,
-            nominal_bayar: payAmount.value
+            nominal_bayar: payAmount.value,
+            metode_bayar: paymentMethod.value
         });
 
         lastTransaction.value = {
@@ -328,8 +331,69 @@ const processCheckout = () => {
     }
 };
 
+// Fungsi Closing Shift
+
+const showClosingModal = ref(false);
+const pecahan = ref({
+    p100k: 0, p50k: 0, p20k: 0, p10k: 0, p5k: 0, p2k: 0, p1k: 0,
+    p500: 0, p200: 0, p100: 0, p50: 0, p25: 0
+});
+
+const totalUangFisik = computed(() => {
+    return (pecahan.value.p100k * 100000) + (pecahan.value.p50k * 50000) + 
+           (pecahan.value.p20k * 20000) + (pecahan.value.p10k * 10000) + 
+           (pecahan.value.p5k * 5000) + (pecahan.value.p2k * 2000) + 
+           (pecahan.value.p1k * 1000) + (pecahan.value.p500 * 500) + 
+           (pecahan.value.p200 * 200) + (pecahan.value.p100 * 100) + 
+           (pecahan.value.p50 * 50) + (pecahan.value.p25 * 25);
+});
+
+const handleClosing = async () => {
+    try {
+        const res = await api.post(`/pos/close-session/${currentSession.value.id}`, {
+            total_aktual: totalUangFisik.value,
+            pecahan: pecahan.value // Optional: buat audit detail
+        });
+
+        Swal.fire('Closing Berhasil!', 'Struk closing akan dicetak.', 'success');
+        
+        // Simpan data untuk struk closing
+        lastClosingData.value = res.data; 
+        showClosingModal.value = false;
+        showReceiptClosing.value = true;
+        
+    } catch (error) {
+        Swal.fire('Gagal Closing', error.response?.data?.error, 'error');
+    }
+};
+
+// Print Struk belanja
 const printReceipt = () => {
     window.print();
+};
+
+// Print Struk Tutup Shift
+const printClosing = () => {
+    const printContent = document.getElementById('print-closing').innerHTML;
+    const originalContent = document.body.innerHTML;
+    
+    // Simpan konten asli
+    document.body.innerHTML = printContent;
+    
+    // Jalankan print
+    window.print();
+    
+    // Kembalikan konten asli setelah print selesai/dicancel
+    document.body.innerHTML = originalContent;
+    
+    // 🚀 REFRESH KONDISI VUE: Setelah manipulasi DOM manual, 
+    // paling aman adalah reload atau redirect pakai router
+    window.location.reload(); 
+};
+
+const finishClosing = () => {
+    // Gunakan router agar cepat dan tidak terhalang proses lain
+    router.push('/absensi');
 };
 
 // 🚀 LOGIKA KEMBALI KE DASHBOARD (Diperbaiki)
@@ -344,18 +408,18 @@ const goToDashboard = () => {
 // 🚀 LOGOUT CEPAT UNTUK KASIR
 const logout = () => {
     Swal.fire({
-        title: 'Akhiri Shift?',
-        text: "Pastikan semua transaksi sudah selesai dicatat.",
+        title: 'Akhiri Shift ?',
+        text: "Anda akan menghitung uang laci dan mencetak struk closing.",
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#2563eb',
         cancelButtonColor: '#64748b',
-        confirmButtonText: 'Ya, Logout Sekarang',
+        confirmButtonText: 'Ya, Tutup Shift',
         cancelButtonText: 'Batal'
     }).then((result) => {
         if (result.isConfirmed) {
-            localStorage.clear();
-            router.push('/login');
+            Object.keys(pecahan.value).forEach(k => pecahan.value[k] = 0);
+            showClosingModal.value = true;
         }
     });
 };
@@ -401,7 +465,7 @@ const logout = () => {
 
                         <button @click="logout" title="Akhiri Shift (Logout)" class="bg-red-500 hover:bg-red-600 text-white p-1.5 md:px-3 md:py-1.5 rounded-lg transition-colors shadow-sm ml-1 md:ml-2 active:scale-95 flex items-center gap-1">
                             <span class="text-sm">🚪</span>
-                            <span class="text-[10px] font-black uppercase tracking-wider hidden md:block">Keluar</span>
+                            <span class="text-[10px] font-black uppercase tracking-wider hidden md:block">Tutup Shift</span>
                         </button>
                     </div>
 
@@ -565,53 +629,241 @@ const logout = () => {
             </div>
         </div>
 
-        <div v-if="showReceipt" class="fixed inset-0 bg-gray-900/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div class="bg-gray-200 p-4 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border-t-8 border-gray-800">
-                <div id="print-area" class="text-left font-mono text-[11px] leading-tight uppercase text-black bg-white p-4 mx-auto" style="width: 58mm;">
+        <!-- Struk Belanja -->
+        <div 
+            v-if="showReceipt"
+            class="fixed inset-0 bg-gray-900/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+        >
+            <div 
+                class="bg-gray-200 p-4 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border-t-8 border-gray-800"
+            >
+                <div 
+                    id="print-area" 
+                    class="text-left font-mono text-[11px] leading-tight uppercase text-black bg-white p-4 mx-auto" 
+                    style="width: 58mm;"
+                >
                     <div class="text-center mb-3">
-                        <h2 class="font-black text-sm mb-1">INDO UMKM</h2>
-                        <p class="font-medium">JL. KEBON KOSONG NO 56 F</p>
+                        <h2 class="font-black text-sm mb-1">
+                            {{ currentSession?.store?.nama_toko || 'ARZU STORE' }}
+                        </h2>
+                        <p class="font-medium text-[9px]">
+                            {{ currentSession?.store?.alamat || 'JL. KEBON KOSONG NO 56 F' }}
+                        </p>
                     </div>
-                    <div class="text-center my-2 font-bold tracking-widest border-y border-black py-1">
+                    <div 
+                        class="text-center my-2 font-bold tracking-widest border-y border-black py-1"
+                    >
                         <p>S T R U K   B E L A N J A</p>
                     </div>
-                    <div class="mb-2 text-[10px] font-bold">
-                        <p>{{ lastTransaction?.date }} / {{ currentUser.name.split(' ')[0] }} / 01</p>
+                    <div class="mb-2 text-[10px] font-bold flex justify-between">
+                        <span>{{ lastTransaction?.date }}</span>
+                        <span>{{ currentUser.name.split(' ')[0] }} / {{ currentSession?.station_number }}</span>
                     </div>
                     <p class="border-b border-dashed border-black mb-2"></p>
-                    <div v-for="item in lastTransaction?.cart" :key="item.id" class="mb-1.5 font-bold">
-                        <div class="truncate w-full pr-2">{{ item.name }}</div>
+            
+                    <div 
+                        v-for="item in lastTransaction?.cart" 
+                        :key="item.id" 
+                        class="mb-1.5 font-bold"
+                    >
+                        <div class="truncate w-full pr-2">
+                            {{ item.name }}
+                        </div>
                         <div class="flex justify-between pl-4 text-[10px]">
-                            <span>{{ item.qty }} x {{ item.price.toLocaleString('id-ID') }}</span>
-                            <span>{{ (item.price * item.qty).toLocaleString('id-ID') }}</span>
+                            <span>
+                                {{ item.qty }} x {{ item.price.toLocaleString('id-ID') }}
+                            </span>
+                            <span>
+                                {{ (item.price * item.qty).toLocaleString('id-ID') }}
+                            </span>
                         </div>
                     </div>
+            
                     <p class="border-t border-dashed border-black mt-2 pt-2"></p>
                     <div class="flex justify-between font-black text-xs mb-2">
                         <span>TOTAL BELANJA :</span>
                         <span>{{ lastTransaction?.total.toLocaleString('id-ID') }}</span>
                     </div>
                     <p class="border-b border-dashed border-black mb-2"></p>
+            
                     <div class="flex justify-between mb-1 font-bold">
-                        <span>{{ lastTransaction?.method === 'Cash' ? 'TUNAI' : 'QRIS/DEBIT' }} :</span>
+                        <span>{{ lastTransaction?.method }} :</span>
                         <span>{{ lastTransaction?.pay.toLocaleString('id-ID') }}</span>
                     </div>
-                    <div v-if="lastTransaction?.method === 'Cash'" class="flex justify-between mb-2 font-bold">
+                    <div 
+                        v-if="lastTransaction?.method === 'Cash'" 
+                        class="flex justify-between mb-2 font-bold">
                         <span>KEMBALIAN :</span>
                         <span>{{ lastTransaction?.return.toLocaleString('id-ID') }}</span>
                     </div>
+            
                     <div class="mt-4 text-[9px] font-medium text-center border-t border-dashed border-black pt-2">
                         <p>SUBTOTAL: {{ lastTransaction?.subtotal.toLocaleString('id-ID') }} | PAJAK: {{ lastTransaction?.pajak.toLocaleString('id-ID') }}</p>
-                        <p class="mt-1">TRX-ID: {{ lastTransaction?.invoice }}</p>
+                        <p class="mt-1 font-black">TRX-ID: {{ lastTransaction?.invoice }}</p>
                     </div>
+            
                     <div class="text-center mt-4 font-bold">
                         <p>=== TERIMA KASIH ===</p>
-                        <p>BARANG SUDAH DIBELI TIDAK DAPAT DITUKAR</p>
+                        <p class="text-[9px]">BARANG SUDAH DIBELI TIDAK DAPAT DITUKAR</p>
                     </div>
                 </div>
                 <div class="mt-4 flex gap-3 no-print">
                     <button @click="printReceipt" class="flex-1 bg-gray-800 text-white py-3 rounded-xl font-black hover:bg-gray-900 transition-colors shadow-md">🖨️ CETAK</button>
                     <button @click="showReceipt = false" class="flex-1 bg-white border border-gray-300 py-3 rounded-xl font-black text-gray-800 hover:bg-gray-50 transition-colors">TUTUP</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Struk Tutup Shift -->
+        <div 
+            v-if="showReceiptClosing" 
+            class="fixed inset-0 bg-slate-900/90 flex items-center justify-center z-[70] p-4 backdrop-blur-sm"
+        >
+            <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border-t-8 border-blue-600">
+                <div id="print-closing" class="text-left font-mono text-[11px] leading-tight uppercase text-black bg-white p-4 mx-auto" style="width: 58mm;">
+                    <div class="text-center mb-3">
+                        <h2 class="font-black text-sm mb-1">{{ currentSession?.store?.nama_toko || 'ARZU STORE' }}</h2>
+                        <p class="font-medium text-[9px]">CLOSING REPORT - STATION {{ currentSession?.station_number }}</p>
+                    </div>
+            
+                    <p class="border-b border-dashed border-black mb-2"></p>
+                    <div class="flex justify-between mb-1">
+                        <span>MULAI :</span>
+                        <span>{{ lastClosingData?.start_time }}</span>
+                    </div>
+                    <div class="flex justify-between mb-1">
+                        <span>SELESAI :</span>
+                        <span>{{ lastClosingData?.end_time }}</span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span>KASIR :</span>
+                        <span>{{ currentUser.name.split(' ')[0] }}</span>
+                    </div>
+            
+                    <p class="border-b border-dashed border-black mb-2"></p>
+                    <div class="flex justify-between">
+                        <span>SALES :</span>
+                        <span>{{ lastClosingData?.sales_gross.toLocaleString('id-ID') }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>PPN TERKUMPUL :</span>
+                        <span>{{ lastClosingData?.total_tax.toLocaleString('id-ID') }}</span>
+                    </div>
+                    <p class="border-b border-black my-1"></p>
+                    <div class="flex justify-between font-black">
+                        <span>NET SALES :</span>
+                        <span>{{ lastClosingData?.net_sales.toLocaleString('id-ID') }}</span>
+                    </div>
+            
+                    <p class="border-b border-dashed border-black my-2"></p>
+                    <div class="flex justify-between">
+                        <span>MODAL AWAL :</span>
+                        <span>{{ currentSession?.modal_awal.toLocaleString('id-ID') }}</span>
+                    </div>
+                    <div class="flex justify-between font-bold">
+                        <span>SALES TUNAI</span>
+                        <span>{{ lastClosingData?.sales_cash.toLocaleString('id-ID') }}</span>
+                    </div>
+
+                    <div class="border-t border-dashed my-1"></div>
+
+                    <div class="flex justify-between font-bold">
+                        <span>SALES NON-TUNAI</span>
+                        <span>{{ lastClosingData?.sales_non_tunai.toLocaleString('id-ID') }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm pl-4 italic">
+                        <span>- QRIS</span>
+                        <span>{{ lastClosingData?.sales_qris.toLocaleString('id-ID') }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm pl-4 italic">
+                        <span>- BANK BCA</span>
+                        <span>{{ lastClosingData?.sales_bca.toLocaleString('id-ID') }}</span>
+                    </div>
+                    <div class="flex justify-between font-black">
+                        <span>TOTAL MASUK :</span>
+                        <span>{{ lastClosingData?.total_expected.toLocaleString('id-ID') }}</span>
+                    </div>
+            
+                    <p class="border-b border-dashed border-black my-2"></p>
+                    <div class="flex justify-between font-bold text-blue-700">
+                        <span>UANG FISIK :</span>
+                        <span>{{ lastClosingData?.total_actual.toLocaleString('id-ID') }}</span>
+                    </div>
+                    <div class="flex justify-between font-black" :class="lastClosingData?.selisih < 0 ? 'text-red-600' : 'text-green-600'">
+                        <span>SELISIH :</span>
+                        <span>{{ lastClosingData?.selisih.toLocaleString('id-ID') }}</span>
+                    </div>
+            
+                    <p class="border-b border-dashed border-black mt-4"></p>
+                    <div class="text-center mt-2 font-bold">
+                        <p>=== SHIFT SELESAI ===</p>
+                        <p class="text-[8px] mt-1">DIPERIKSA OLEH : ___________</p>
+                    </div>
+                </div>
+                <div class="mt-4 flex gap-3 no-print">
+                    <button @click="printClosing" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-black">
+                        🖨️ CETAK STRUK
+                    </button>
+                    <button @click="finishClosing" class="flex-1 bg-slate-100 py-3 rounded-xl font-black text-slate-700">
+                        ABSEN PULANG
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- UI Input Aktual Kas -->
+        <div 
+            v-if="showClosingModal"
+            class="fixed inset-0 bg-slate-900/90 flex items-center justify-center z-[60] p-4 backdrop-blur-md"
+        >
+            <div class="bg-white rounded-[40px] w-full max-w-2xl overflow-hidden shadow-2xl border-[10px] border-slate-800">
+                <div class="bg-slate-800 p-6 text-center">
+                    <h2 class="text-white font-black text-2xl tracking-tighter">HITUNG UANG LACI (CASH COUNT)</h2>
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Input jumlah lembar/koin tiap pecahan</p>
+                </div>
+
+                <div class="p-8 grid grid-cols-2 md:grid-cols-3 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                    <div v-for="denon in [
+                        { label: '100.000', key: 'p100k' },
+                        { label: '50.000', key: 'p50k' },
+                        { label: '20.000', key: 'p20k' },
+                        { label: '10.000', key: 'p10k' },
+                        { label: '5.000', key: 'p5k' },
+                        { label: '2.000', key: 'p2k' },
+                        { label: '1.000', key: 'p1k' },
+                        { label: '500', key: 'p500' },
+                        { label: '200', key: 'p200' },
+                        { label: '100', key: 'p100' },
+                        { label: '50', key: 'p50' },
+                        { label: '25', key: 'p25' }
+                    ]" 
+                    :key="denon.key" 
+                    class="bg-slate-50 p-3 rounded-2xl border-2 border-slate-100 focus-within:border-blue-500">
+                        <label class="text-[10px] font-black text-slate-400 uppercase">Rp {{ denon.label }}</label>
+                        <input 
+                            type="number" 
+                            v-model.number="pecahan[denon.key]" 
+                            class="w-full bg-transparent text-xl font-black text-slate-800 outline-none" 
+                            placeholder="0"
+                            min="0"
+                        >
+                    </div>
+                </div>
+
+                <div class="p-8 bg-slate-50 border-t border-slate-200">
+                    <div class="flex justify-between items-center mb-6">
+                        <span class="text-slate-500 font-bold uppercase tracking-widest">Total Fisik:</span>
+                        <span class="text-4xl font-black text-blue-600">Rp {{ totalUangFisik.toLocaleString('id-ID') }}</span>
+                    </div>
+                    <div class="flex gap-4">
+                        <button @click="showClosingModal = false" class="flex-1 py-4 font-black text-slate-400 uppercase tracking-widest">
+                            Batal
+                        </button>
+                        
+                        <button @click="handleClosing" class="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-black text-lg shadow-lg shadow-blue-200">
+                            PROSES CLOSING 🏁
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

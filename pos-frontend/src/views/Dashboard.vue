@@ -28,18 +28,30 @@ const renderChart = (grafikData) => {
         type: 'line',
         data: {
             labels: grafikData.map(d => d.tanggal),
-            datasets: [{
-                label: 'Omzet Penjualan',
-                data: grafikData.map(d => d.omzet),
-                borderColor: '#2563eb',
-                backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                borderWidth: 4,
-                tension: 0.4,
-                fill: true,
-                pointBackgroundColor: '#fff',
-                pointBorderWidth: 3,
-                pointRadius: 6
-            }]
+            datasets: [
+                {
+                    label: 'Omzet Penjualan',
+                    data: grafikData.map(d => d.omzet),
+                    borderColor: '#2563eb', // Biru
+                    backgroundColor: 'rgba(37, 99, 235, 0.05)',
+                    borderWidth: 4,
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 4
+                },
+                // 🚀 Jika Mas Arif mau tambahkan garis laba di grafik nantinya:
+                {
+                    label: 'Laba Bersih',
+                    data: grafikData.map(d => d.laba || 0), 
+                    borderColor: '#10b981', // Hijau
+                    backgroundColor: 'transparent',
+                    borderWidth: 3,
+                    borderDash: [5, 5],
+                    tension: 0.4,
+                    pointRadius: 4
+                } 
+                
+            ]
         },
         options: {
             responsive: true,
@@ -95,29 +107,34 @@ watch([startDate, endDate], fetchData);
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                <div class="bg-white p-8 rounded-[35px] border border-white shadow-xl shadow-slate-200/60 relative overflow-hidden group hover:scale-[1.02] transition-all">
-                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
-                    <div class="relative">
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Total Omzet</p>
-                        <p class="text-2xl font-black text-slate-900">{{ formatRupiah(reportData?.summary?.total_omzet || 0) }}</p>
-                    </div>
-                </div>
-                
-                <div class="bg-white p-8 rounded-[35px] border border-white shadow-xl shadow-slate-200/60 group hover:scale-[1.02] transition-all">
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Jumlah Struk</p>
-                    <p class="text-2xl font-black text-slate-900">{{ reportData?.summary?.jumlah_transaksi }} <span class="text-sm font-bold text-slate-300 italic">Orders</span></p>
-                </div>
+    <div class="bg-white p-8 rounded-[35px] border border-white shadow-xl shadow-slate-200/60 relative">
+        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Total Omzet</p>
+        <p class="text-2xl font-black text-slate-900">
+            {{ formatRupiah(reportData?.summary?.total_omzet || 0) }}
+        </p>
+    </div>
+    
+    <div class="bg-emerald-500 p-8 rounded-[35px] shadow-xl shadow-emerald-100 text-white">
+        <p class="text-[10px] font-black text-emerald-100 uppercase tracking-widest mb-2">Estimasi Laba</p>
+        <p class="text-2xl font-black">
+            {{ formatRupiah(reportData?.summary?.total_laba || 0) }}
+        </p>
+    </div>
 
-                <div class="bg-white p-8 rounded-[35px] border border-white shadow-xl shadow-slate-200/60 group hover:scale-[1.02] transition-all">
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Pcs Terjual</p>
-                    <p class="text-2xl font-black text-slate-900">{{ reportData?.summary?.total_produk_terjual }} <span class="text-sm font-bold text-slate-300 italic">Items</span></p>
-                </div>
+    <div class="bg-white p-8 rounded-[35px] border border-white shadow-xl shadow-slate-200/60">
+        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Barang Terjual</p>
+        <p class="text-2xl font-black text-slate-900">
+            {{ reportData?.summary?.total_produk_terjual || 0 }} <span class="text-sm font-bold text-slate-300 italic">Pcs</span>
+        </p>
+    </div>
 
-                <div class="bg-blue-600 p-8 rounded-[35px] shadow-xl shadow-blue-200 group hover:scale-[1.02] transition-all text-white">
-                    <p class="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-2">Avg. Basket</p>
-                    <p class="text-2xl font-black">{{ formatRupiah(reportData?.summary?.avg_transaksi || 0) }}</p>
-                </div>
-            </div>
+    <div class="bg-blue-600 p-8 rounded-[35px] shadow-xl shadow-blue-100 text-white">
+        <p class="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-2">Avg. Per Struk</p>
+        <p class="text-2xl font-black">
+            {{ formatRupiah(reportData?.summary?.avg_transaksi || 0) }}
+        </p>
+    </div>
+</div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div class="lg:col-span-2 bg-white rounded-[45px] p-10 shadow-xl shadow-slate-200/50 border border-white">

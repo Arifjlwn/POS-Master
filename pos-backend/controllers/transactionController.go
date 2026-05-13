@@ -22,6 +22,7 @@ type CartItem struct {
 type TransactionInput struct {
 	Items        []CartItem `json:"items" binding:"required,gt=0"`
 	NominalBayar float64    `json:"nominal_bayar" binding:"required"`
+	MetodeBayar  string     `json:"metode_bayar"`
 }
 
 func CreateTransaction(c *gin.Context) {
@@ -37,6 +38,14 @@ func CreateTransaction(c *gin.Context) {
 
 	// --- MULAI DATABASE TRANSACTION (Biar Aman dari Error) ---
 	err := config.DB.Transaction(func(tx *gorm.DB) error {
+		// Session kasir lagi aktif
+		var activeSession models.CashierSession
+        if err := tx.Where("user_id = ? AND store_id = ? AND status = ?", 
+            uint(userID.(float64)), uint(storeID.(float64)), "open").First(&activeSession).Error; err != nil {
+            return fmt.Errorf("session kasir tidak ditemukan, silakan buka kasir dulu")
+        }
+
+
 		// 1. Ambil data Toko untuk ngecek PPN-nya
 		var store models.Store
 		if err := tx.First(&store, storeID).Error; err != nil {
@@ -98,6 +107,7 @@ func CreateTransaction(c *gin.Context) {
 
 		// 5. Simpan header struk
 		savedTransaction = models.Transaction{
+			SessionID:    activeSession.ID,      // 👈 MASUKKAN SESSION ID
 			StoreID:      uint(storeID.(float64)),
 			UserID:       uint(userID.(float64)),
 			NoInvoice:    noInvoice,
@@ -105,9 +115,10 @@ func CreateTransaction(c *gin.Context) {
 			Pajak:        pajak,
 			Pembulatan:   pembulatan,
 			TotalHarga:   roundedTotal,
+			MetodeBayar:  input.MetodeBayar,     // 👈 MASUKKAN METODE BAYAR (CASH/QRIS)
 			NominalBayar: input.NominalBayar,
 			Kembalian:    kembalian,
-			Details:      details, // GORM otomatis masukin detail ini ke tabel sebelahnya!
+			Details:      details,
 		}
 
 		// Eksekusi Penyimpanan

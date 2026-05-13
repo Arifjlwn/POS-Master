@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"pos-backend/config"
 	"pos-backend/models"
@@ -40,29 +41,54 @@ func GetDashboardReport(c *gin.Context) {
 		end = end.Add(24 * time.Hour)
 	}
 
-	// --- LOGIKA SUMMARY (BERDASARKAN RANGE TANGGAL) ---
-	var report struct {
-		TotalOmzet         float64 `json:"total_omzet"`
-		JumlahTransaksi    int64   `json:"jumlah_transaksi"`
-		TotalProdukTerjual float64 `json:"total_produk_terjual"`
-		AvgTransaksi       float64 `json:"avg_transaksi"`
-	}
+	// --- LOGIKA SUMMARY (VERSI MANUAL SCAN) ---
+var report struct {
+    TotalOmzet         float64 `json:"total_omzet"`
+    TotalLaba          float64 `json:"total_laba"`
+    JumlahTransaksi    int64   `json:"jumlah_transaksi"`
+    TotalProdukTerjual float64 `json:"total_produk_terjual"`
+    AvgTransaksi       float64 `json:"avg_transaksi"`
+}
 
-	config.DB.Model(&models.Transaction{}).
-		Where("store_id = ? AND created_at BETWEEN ? AND ?", storeID, start, end).
-		Select("COALESCE(SUM(total_harga), 0) as total_omzet, COUNT(id) as jumlah_transaksi").
-		Scan(&report)
+// 1. Ambil Omzet & Produk Terjual (Gunakan Map untuk keamanan tipe data)
+var resultSummary struct {
+    Omzet float64
+    Qty   float64
+}
+config.DB.Table("transaction_details").
+    Joins("JOIN transactions ON transactions.id = transaction_details.transaction_id").
+    Where("transactions.store_id = ? AND transactions.created_at BETWEEN ? AND ?", storeID, start, end).
+    Select("COALESCE(SUM(transaction_details.sub_total), 0) as omzet, COALESCE(SUM(transaction_details.kuantitas), 0) as qty").
+    Scan(&resultSummary)
 
-	if report.JumlahTransaksi > 0 {
-		report.AvgTransaksi = report.TotalOmzet / float64(report.JumlahTransaksi)
-	}
+report.TotalOmzet = resultSummary.Omzet
+report.TotalProdukTerjual = resultSummary.Qty
 
-	// --- LOGIKA PRODUK TERJUAL ---
-	config.DB.Table("transaction_details").
-		Joins("JOIN transactions ON transactions.id = transaction_details.transaction_id").
-		Where("transactions.store_id = ? AND transactions.created_at BETWEEN ? AND ?", storeID, start, end).
-		Select("COALESCE(SUM(transaction_details.kuantitas), 0)").
-		Row().Scan(&report.TotalProdukTerjual)
+// 2. Ambil Total Laba (Pecah Query agar tidak konflik join)
+var totalLaba float64
+
+// 🚀 Ganti harga_beli menjadi harga_modal sesuai database Supabase Mas Arif
+err := config.DB.Table("transaction_details").
+    Select("COALESCE(SUM(transaction_details.sub_total - (COALESCE(products.harga_modal, 0) * transaction_details.kuantitas)), 0)").
+    Joins("JOIN transactions ON transactions.id = transaction_details.transaction_id").
+    Joins("LEFT JOIN products ON products.id = transaction_details.product_id").
+    Where("transactions.store_id = ? AND transactions.created_at BETWEEN ? AND ?", storeID, start, end).
+    Row().Scan(&totalLaba) // 👈 Pakai Row().Scan agar mappingnya presisi
+
+if err != nil {
+    fmt.Println("Gagal hitung laba:", err)
+}
+
+report.TotalLaba = totalLaba
+
+// 3. Hitung Jumlah Transaksi
+config.DB.Model(&models.Transaction{}).
+    Where("store_id = ? AND created_at BETWEEN ? AND ?", storeID, start, end).
+    Count(&report.JumlahTransaksi)
+
+if report.JumlahTransaksi > 0 {
+    report.AvgTransaksi = report.TotalOmzet / float64(report.JumlahTransaksi)
+}
 
 	// --- LOGIKA STOK MENIPIS (lowStockProducts) ---
 	var lowStockProducts []models.Product
@@ -72,6 +98,7 @@ func GetDashboardReport(c *gin.Context) {
 	type GrafikData struct {
 		Tanggal string  `json:"tanggal"`
 		Omzet   float64 `json:"omzet"`
+		Laba float64 `json:"laba"`
 	}
 	var grafikPenjualan []GrafikData
 
@@ -83,17 +110,28 @@ func GetDashboardReport(c *gin.Context) {
 		tgl := start.AddDate(0, 0, i)
 		tglEnd := tgl.Add(24 * time.Hour)
 
-		var dailyOmzet float64
-		config.DB.Model(&models.Transaction{}).
-			Where("store_id = ? AND created_at BETWEEN ? AND ?", storeID, tgl, tglEnd).
-			Select("COALESCE(SUM(total_harga), 0)").
-			Row().Scan(&dailyOmzet)
+		var dailyData struct {
+        Omzet float64
+        Laba  float64
+    }
 
-		grafikPenjualan = append(grafikPenjualan, GrafikData{
-			Tanggal: tgl.Format("02 Jan"),
-			Omzet:   dailyOmzet,
-		})
-	}
+    // Query untuk ambil Omzet dan Laba sekaligus per hari
+    config.DB.Table("transaction_details").
+        Select(`
+            COALESCE(SUM(transaction_details.sub_total), 0) as omzet,
+            COALESCE(SUM(transaction_details.sub_total - (COALESCE(products.harga_modal, 0) * transaction_details.kuantitas)), 0) as laba
+        `).
+        Joins("JOIN transactions ON transactions.id = transaction_details.transaction_id").
+        Joins("LEFT JOIN products ON products.id = transaction_details.product_id").
+        Where("transactions.store_id = ? AND transactions.created_at BETWEEN ? AND ?", storeID, tgl, tglEnd).
+        Scan(&dailyData)
+
+    grafikPenjualan = append(grafikPenjualan, GrafikData{
+        Tanggal: tgl.Format("02 Jan"),
+        Omzet:   dailyData.Omzet,
+        Laba:    dailyData.Laba, // 🚀 Masukkan hasil laba ke array
+    })
+}
 
 	// --- LOGIKA TOP 5 BEST SELLER (bestSellers) ---
 	type BestSeller struct {

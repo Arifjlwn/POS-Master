@@ -118,7 +118,34 @@ func Login(c *gin.Context) {
 		"token": tokenString,
 		"role": user.Role,
 		"name": user.Name,
+		"foto_url": user.FotoURL,
 		"has_setup_store": storeID != 0, // Indikator buat Frontend Vue: false = suruh ke SetupToko, true = ke Dashboard
 		"store_name": user.Store.NamaToko,
+	})
+}
+
+// --- FUNGSI AMBIL PROFIL SENDIRI (PENTING BUAT ABSEN) ---
+func GetMe(c *gin.Context) {
+	// 1. Ambil ID User dari Satpam JWT
+	userIDRaw, _ := c.Get("user_id")
+	userID := uint(userIDRaw.(float64))
+
+	var user models.User
+	// 2. Cari di DB (Preload Store sekalian biar lengkap)
+	if err := config.DB.Preload("Store").First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User tidak ditemukan!"})
+		return
+	}
+
+	// 3. KIRIM DATA LENGKAP KE VUE (Termasuk FotoURL)
+	c.JSON(http.StatusOK, gin.H{
+		"user_id":       user.ID,
+		"name":          user.Name,
+		"nik":           user.NIK,
+		"role":          user.Role,
+		"foto_url":      user.FotoURL,      // 🚀 INI YANG DITUNGGU VUE!
+		"tempat_lahir":  user.TempatLahir,
+		"tanggal_lahir": user.TanggalLahir,
+		"store_name":    user.Store.NamaToko,
 	})
 }
