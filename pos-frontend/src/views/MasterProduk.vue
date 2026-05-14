@@ -46,7 +46,7 @@ const form = ref({
 
 // Helper untuk nampilin gambar dari Golang
 const getImageUrl = (path) => {
-    return path ? `http://localhost:8080${path}` : null;
+    return path ? `${import.meta.env.VITE_API_BASE_URL}${path}` : null;
 };
 
 // --- FUNGSI TARIK DATA (API GOLANG) ---
@@ -137,8 +137,8 @@ const submitProduct = async () => {
         
         // 3. Tentukan Tujuan (Tambah atau Edit)
         const url = isEditing.value 
-            ? `http://localhost:8080/api/products/${editId.value}` 
-            : 'http://localhost:8080/api/products';
+            ? `${import.meta.env.VITE_API_BASE_URL}/api/products/${editId.value}` 
+            : `${import.meta.env.VITE_API_BASE_URL}/api/products`;
             
         const method = isEditing.value ? 'PUT' : 'POST';
 
@@ -205,7 +205,8 @@ const exportCSV = async () => {
     
     // Tarik file pakai fetch biar token bisa dikirim di Header
     try {
-        const response = await fetch('http://localhost:8080/api/products/export', {
+        // 🚀 Menggunakan .env untuk jalur ekspor data produk retail
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/products/export`, {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${token}` }
         });

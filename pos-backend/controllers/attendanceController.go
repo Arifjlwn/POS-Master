@@ -103,7 +103,14 @@ func StoreAttendance(c *gin.Context) {
 // 📋 FUNGSI TARIK DATA ABSENSI (HARIAN & BULANAN)
 func GetAttendance(c *gin.Context) {
     storeIDRaw, _ := c.Get("store_id")
-    storeID := uint(storeIDRaw.(float64))
+    
+    // Ambil store_id dengan tipe data aman
+    var storeID uint
+    if val, ok := storeIDRaw.(float64); ok {
+        storeID = uint(val)
+    } else if val, ok := storeIDRaw.(uint); ok {
+        storeID = val
+    }
 
     tanggal := c.Query("tanggal") 
     bulan := c.Query("bulan")     
@@ -112,33 +119,71 @@ func GetAttendance(c *gin.Context) {
     var riwayat []models.Attendance
     query := config.DB.Preload("User").Where("store_id = ?", storeID)
 
-    // 🚀 PERBAIKAN LOGIKA FILTER
+    // Filter Tanggal / Bulan
+    loc, _ := time.LoadLocation("Asia/Jakarta")
+    now := time.Now().In(loc)
+    todayStr := now.Format("2006-01-02")
+
     if tanggal != "" {
-        // Mode Harian: Pastikan formatnya YYYY-MM-DD
         query = query.Where("tanggal = ?", tanggal)
     } else if bulan != "" && tahun != "" {
-        // Mode Bulanan
         prefixBulan := fmt.Sprintf("%s-%s-%%", tahun, bulan)
         query = query.Where("tanggal::text LIKE ?", prefixBulan)
     } else {
-        // DEFAULT: Hari ini (WIB)
-        loc, _ := time.LoadLocation("Asia/Jakarta")
-        // Paksa format yang sama persis dengan yang disimpan saat StoreAttendance
-        today := time.Now().In(loc).Format("2006-01-02")
-        query = query.Where("tanggal = ?", today)
+        query = query.Where("tanggal = ?", todayStr)
     }
-
-    // 🔍 DEBUG: Tambahkan ini biar Mas bisa lihat di terminal VS Code
-    // fmt.Println("DEBUG: Mencari absen tanggal:", tanggal)
 
     if err := query.Order("tanggal DESC, jam_masuk DESC").Find(&riwayat).Error; err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menarik data log absensi"})
         return
     }
 
+    // 🚀 LOGIKA DINAMIS PENGECEKAN STATUS (Hadir / Lupa Absen Pulang)
+    for i := 0; i < len(riwayat); i++ {
+        // Jika sudah ada jam masuk dan jam pulang
+        if riwayat[i].JamMasuk != "" && riwayat[i].JamPulang != "" {
+            riwayat[i].Status = "Hadir"
+        } else if riwayat[i].JamMasuk != "" && riwayat[i].JamPulang == "" {
+            // Jika tanggal log absensi sudah lebih lampau dari hari ini, berarti dia lupa absen pulang
+            if riwayat[i].Tanggal < todayStr {
+                riwayat[i].Status = "Lupa Absen Pulang"
+                
+                // (Opsional) Langsung update statusnya di database Supabase biar permanen
+                config.DB.Model(&riwayat[i]).Update("status", "Lupa Absen Pulang")
+            } else {
+                riwayat[i].Status = "Hadir" // Jika masih hari ini dan belum pulang, biarkan Hadir/Aktif dulu
+            }
+        }
+    }
+
     c.JSON(http.StatusOK, gin.H{"data": riwayat})
 }
 
+func CheckMangkirOtomatis(storeID uint, tanggalKemarin string) {
+    var jadwalMasuk []models.Schedule
+    
+    // 1. Ambil semua jadwal karyawan yang harusnya masuk (bukan OFF) pada tanggal tersebut
+    config.DB.Where("store_id = ? AND tanggal = ? AND shift_type != ?", storeID, tanggalKemarin, "OFF").Find(&jadwalMasuk)
+
+    for _, j := range jadwalMasuk {
+        var attendance models.Attendance
+        // 2. Cek apakah ada record absennya di tabel attendance?
+        err := config.DB.Where("user_id = ? AND tanggal = ?", j.UserID, tanggalKemarin).First(&attendance).Error
+        
+        // 3. Jika Error (artinya Record Not Found / tidak ada absen sama sekali)
+        if err != nil {
+            mangkirLog := models.Attendance{
+                StoreID:   storeID,
+                UserID:    j.UserID,
+                Tanggal:   tanggalKemarin,
+                JamMasuk:  "-",
+                JamPulang: "-",
+                Status:    "Mangkir", // 🚀 Otomatis Mangkir!
+            }
+            config.DB.Create(&mangkirLog)
+        }
+    }
+}
 // 📊 FUNGSI EXPORT LAPORAN ABSENSI KE CSV
 func ExportAttendance(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")

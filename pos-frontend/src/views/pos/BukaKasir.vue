@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import api from '../../api.js';
 import Swal from 'sweetalert2';
 
 const role = localStorage.getItem('role');
@@ -13,9 +14,9 @@ const loading = ref(false);
 
 onMounted(async () => {
     try {
-        const res = await axios.get('http://localhost:8080/api/pos/check-session', {
-            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        });
+        const res = await api.get('/pos/check-session', {
+    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+});
         
         if (res.data.has_session) {
             router.push('/pos/kasir'); 
@@ -40,12 +41,13 @@ const handleBukaKasir = async () => {
     try {
         const token = localStorage.getItem('token');
         
-        const res = await axios.post('http://localhost:8080/api/pos/open-session', {
-            station_number: stationNumber.value,
-            modal_awal: parseFloat(modalAwal.value)
-        }, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
+        // 🚀 Menggunakan instance api biar kode makin pendek dan auto-env
+const res = await api.post('/pos/open-session', {
+    station_number: stationNumber.value,
+    modal_awal: parseFloat(modalAwal.value)
+}, {
+    headers: { Authorization: `Bearer ${token}` }
+});
 
         Swal.fire({
             icon: 'success',

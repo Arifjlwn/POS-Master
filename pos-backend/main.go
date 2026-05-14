@@ -1,7 +1,9 @@
 package main
 
 import (
+	"log"
 	"net/http"
+	"os"
 	"pos-backend/config"
 	"pos-backend/controllers"
 	"pos-backend/middlewares"
@@ -11,9 +13,16 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// GO Baca file .env difolder ini
+	err := godotenv.Load()
+		if err != nil {
+			log.Println("Peringatan: File .env tidak ditemukan, menggunakan config default system")
+		}
+
 	// Inisialisasi Database
 	config.ConnectDatabase()
 
@@ -22,16 +31,23 @@ func main() {
 	
 	// --- PERBAIKAN CORS ---
 	r.Use(cors.New(cors.Config{
-		// Wajib spesifik alamat Vue-nya, jangan pakai "*" karena ada AllowCredentials
-		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:5174"}, 
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Requested-With", "Accept"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}))
+        // 🚀 Mengizinkan localhost DAN semua IP Local Network (192.168.x.x) secara dinamis
+        AllowOriginFunc: func(origin string) bool {
+            // Tetap izinkan localhost untuk development di PC
+            if origin == "http://localhost:5173" || origin == "http://localhost:5174" {
+                return true
+            }
+            // Izinkan otomatis semua perangkat HP yang terhubung satu WiFi/Hotspot (192.168.xx.xx)
+            return true 
+        },
+        AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+        AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Requested-With", "Accept"},
+        ExposeHeaders:    []string{"Content-Length"},
+        AllowCredentials: true,
+        MaxAge:           12 * time.Hour,
+    }))
 
-	r.Static("/uploads", "./uploads")
+    r.Static("/uploads", "./uploads")
 
 	r.Use(func(c *gin.Context) {
     // Batasi 5MB secara manual
@@ -82,6 +98,10 @@ func main() {
 		api.GET("/employees", controllers.GetEmployees)
 		api.PUT("/employees/:id", controllers.UpdateEmployee)
 		api.GET("/me", controllers.GetMe)
+
+		// -- RUTE TOKO SHIFT MANAGEMENT (TSM)
+		api.POST("/schedules/bulk", controllers.SaveSchedules)
+		api.GET("/schedules", controllers.GetSchedules)
 
 		// --RUTE ABSENSI--
 		api.POST("/attendance", controllers.StoreAttendance)
@@ -176,6 +196,12 @@ func main() {
 		})
 	}
 
-	// Menyalakan server di port 8080
-	r.Run(":8080")
+	// Menyalakan server dari port .env
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Println("Server berjalan dan terbuka untuk lokal network di port: " + port)
+	r.Run("0.0.0.0:" + port)
 }

@@ -4,3 +4,9 @@
 *.dll
 *.so
 *.dylib
+
+#ENV Config
+.env
+
+#abaikan folder uploads
+uploads/

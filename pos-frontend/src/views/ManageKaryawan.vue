@@ -11,6 +11,7 @@ const showModal = ref(false);
 const isProcessing = ref(false);
 const isEditMode = ref(false);
 const selectedId = ref(null);
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const form = ref({
     name: '',
@@ -18,6 +19,7 @@ const form = ref({
     tempat_lahir: '',
     tanggal_lahir: '',
     no_hp: '',
+    role: 'staff',
     foto: null
 });
 
@@ -52,7 +54,7 @@ onMounted(() => fetchKaryawan());
 const openAddModal = () => {
     isEditMode.value = false;
     selectedId.value = null;
-    form.value = { name: '', password: '', tempat_lahir: '', tanggal_lahir: '', no_hp: '', foto: null };
+    form.value = { name: '', password: '', tempat_lahir: '', tanggal_lahir: '', no_hp: '', role: 'staff', foto: null };
     fotoPreview.value = null;
     showModal.value = true;
 };
@@ -62,13 +64,14 @@ const openEditModal = (user) => {
     selectedId.value = user.id;
     form.value = {
         name: user.name,
-        password: '', // Password dikosongkan saat edit kecuali mau diubah
+        password: '',
         tempat_lahir: user.tempat_lahir || '',
         tanggal_lahir: user.tanggal_lahir || '',
         no_hp: user.no_hp || '',
+        role: user.role || 'staff',
         foto: null
     };
-    fotoPreview.value = user.foto_url;
+    fotoPreview.value = user.foto_url ? import.meta.env.VITE_API_BASE_URL + user.foto_url : null;
     showModal.value = true;
 };
 
@@ -85,6 +88,7 @@ const submit = async () => {
     formData.append('tempat_lahir', form.value.tempat_lahir);
     formData.append('tanggal_lahir', form.value.tanggal_lahir);
     formData.append('no_hp', form.value.no_hp);
+    formData.append('role', form.value.role); // 🚀 KIRIM JABATAN KE GOLANG
     
     if (form.value.password) formData.append('password', form.value.password);
     if (form.value.foto) formData.append('foto', form.value.foto);
@@ -100,7 +104,7 @@ const submit = async () => {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             const newEmp = response.data.data;
-            Swal.fire('Berhasil!', `NIK: ${newEmp.nik} berhasil dibuat.`, 'success');
+            Swal.fire('Berhasil!', `Karyawan dengan NIK: ${newEmp.nik} & Jabatan: ${newEmp.jabatan.toUpperCase()} berhasil dibuat.`, 'success');
         }
         
         closeModal();
@@ -149,25 +153,29 @@ const deleteKaryawan = async (id) => {
             </div>
 
             <div class="bg-white rounded-[35px] shadow-xl shadow-slate-200/50 border border-white overflow-hidden">
-                <table class="w-full text-left">
+                <table class="w-full text-left whitespace-nowrap">
                     <thead class="bg-slate-50 border-b border-slate-100">
                         <tr>
                             <th class="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Karyawan</th>
                             <th class="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">ID Login (NIK)</th>
+                            <th class="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Jabatan</th>
                             <th class="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">No. HP</th>
                             <th class="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50 font-bold">
                         <tr v-if="isLoading">
-                            <td colspan="4" class="px-8 py-10 text-center text-slate-400 italic">Memuat data tim...</td>
+                            <td colspan="5" class="px-8 py-10 text-center text-slate-400 italic">Memuat data tim...</td>
+                        </tr>
+                        <tr v-else-if="karyawan.length === 0">
+                            <td colspan="5" class="px-8 py-10 text-center text-slate-400 italic">Belum ada data karyawan terdaftar.</td>
                         </tr>
                         <tr v-for="user in karyawan" :key="user.id" class="hover:bg-slate-50/50 transition-colors">
                             <td class="px-8 py-5">
                                 <div class="flex items-center gap-4">
                                     <img 
                                         v-if="user.foto_url" 
-                                        :src="'http://localhost:8080' + user.foto_url"
+                                        :src="API_BASE_URL + user.foto_url"
                                         class="w-12 h-12 rounded-2xl object-cover border-2 border-white shadow-md"
                                     >
                                     <div v-else class="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 font-black text-xs">
@@ -180,10 +188,27 @@ const deleteKaryawan = async (id) => {
                                 </div>
                             </td>
                             <td class="px-8 py-5 text-blue-600 font-black tracking-widest">{{ user.nik }}</td>
+                            
+                            <td class="px-8 py-5">
+                                <span v-if="user.role === 'owner'" class="bg-slate-900 text-white font-black px-3 py-1.5 rounded-xl text-[9px] uppercase tracking-wider shadow-sm">
+                                    👑 OWNER
+                                </span>
+                                <span v-else-if="user.role === 'manager'" class="bg-purple-100 text-purple-700 font-black px-3 py-1.5 rounded-xl text-[9px] uppercase tracking-wider shadow-sm">
+                                    💼 MANAGER
+                                </span>
+                                <span v-else-if="user.role === 'supervisor'" class="bg-blue-100 text-blue-700 font-black px-3 py-1.5 rounded-xl text-[9px] uppercase tracking-wider shadow-sm">
+                                    ⚡ SUPERVISOR
+                                </span>
+                                <span v-else class="bg-green-100 text-green-700 font-black px-3 py-1.5 rounded-xl text-[9px] uppercase tracking-wider shadow-sm">
+                                    📦 STAFF
+                                </span>
+                            </td>
+
                             <td class="px-8 py-5 text-slate-500 text-sm">{{ user.no_hp || '-' }}</td>
                             <td class="px-8 py-5 text-right space-x-2">
-                                <button @click="openEditModal(user)" class="text-amber-600 bg-amber-50 px-4 py-2 rounded-xl text-xs font-black hover:bg-amber-100 transition-all">EDIT</button>
-                                <button @click="deleteKaryawan(user.id)" class="text-red-500 bg-red-50 px-4 py-2 rounded-xl text-xs hover:bg-red-500 hover:text-white transition-all">PECAT</button>
+                                <button v-if="user.role !== 'owner'" @click="openEditModal(user)" class="text-amber-600 bg-amber-50 px-4 py-2 rounded-xl text-xs font-black hover:bg-amber-100 transition-all">EDIT</button>
+                                <button v-if="user.role !== 'owner'" @click="deleteKaryawan(user.id)" class="text-red-500 bg-red-50 px-4 py-2 rounded-xl text-xs hover:bg-red-500 hover:text-white transition-all">PECAT</button>
+                                <span v-else class="text-slate-300 text-xs italic font-medium pr-4">Sistem Terkunci</span>
                             </td>
                         </tr>
                     </tbody>
@@ -204,6 +229,16 @@ const deleteKaryawan = async (id) => {
                             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Nama Lengkap</label>
                             <input v-model="form.name" type="text" required class="w-full p-4 bg-slate-50 rounded-2xl outline-none border-2 border-transparent focus:border-blue-600 font-bold">
                         </div>
+                        
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Jabatan / Role Tim</label>
+                            <select v-model="form.role" required class="w-full p-4 bg-slate-50 rounded-2xl outline-none border-2 border-transparent focus:border-blue-600 font-black text-sm text-gray-700 bg-white cursor-pointer">
+                                <option value="manager">MANAGER</option>
+                                <option value="supervisor">SUPERVISOR</option>
+                                <option value="staff">STAFF /KASIR / PRAMUNIAGA</option>
+                            </select>
+                        </div>
+
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Tempat Lahir</label>

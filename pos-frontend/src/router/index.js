@@ -29,6 +29,11 @@ const routes = [
         meta: { requiresAuth: true } // Kunci pintu!
     },
     { 
+        path: '/schedule', 
+        component: () => import('../views/Schedule.vue'),
+        meta: { requiresAuth: true } // Kunci pintu!
+    },
+    { 
         path: '/stock-opname', 
         component: () => import('../views/StockOpname.vue'),
         meta: { requiresAuth: true } // Kunci pintu!

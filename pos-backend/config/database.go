@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"os"
 	"pos-backend/models" // Pastikan path ini benar sesuai struktur folder Mas
 
 	"gorm.io/driver/postgres" // Ganti dari mysql ke postgres
@@ -14,7 +15,7 @@ var DB *gorm.DB
 func ConnectDatabase() {
 	// MASUKKAN URI DARI SUPABASE DI SINI
 	// Pastikan [PASSWORD] sudah diganti dengan password asli Mas tanpa kurung siku
-	dsn := "postgresql://postgres.pxxjqewukgpfxmbwjnni:Arifjlwn020700@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres"
+	dsn := os.Getenv("DB_URL")
 	
 	// Gunakan postgres.Open bukan mysql.Open
 	database, err := gorm.Open(postgres.New(postgres.Config{
@@ -41,6 +42,7 @@ func ConnectDatabase() {
 		&models.PurchaseDetail{},
 		&models.StockOpname{},
 		&models.StockOpnameDetail{},
+		&models.Schedule{},
 	)
 	
 	if err != nil {

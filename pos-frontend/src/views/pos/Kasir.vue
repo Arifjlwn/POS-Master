@@ -50,7 +50,7 @@ const lastClosingData = ref(null);
 // 🚀 Update BaseURL kalau pakai IP Address HP (Ganti sesuai IP Mas)
 const getImageUrl = (path) => {
     if (!path) return null;
-    return `http://localhost:8080${path}`;
+    return `${import.meta.env.VITE_API_BASE_URL}${path}`;
 }
 
 // Pencarian Produk & Barcode Scan
@@ -83,9 +83,9 @@ onMounted(async () => {
 
     try {
         // 🛡️ LANGKAH 1: Validasi Session (Gembok Utama)
-        const res = await axios.get('http://localhost:8080/api/pos/check-session', {
-            headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await api.get('/pos/check-session', {
+    headers: { Authorization: `Bearer ${token}` }
+});
 
         if (!res.data.has_session) {
             Swal.fire('Akses Ditolak', 'Isi modal awal atau absen dulu ya!', 'warning');

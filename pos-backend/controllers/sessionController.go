@@ -16,62 +16,71 @@ type OpenSessionInput struct {
 }
 
 func OpenSession(c *gin.Context) {
-    userIDRaw, _ := c.Get("user_id")
-    userID := uint(userIDRaw.(float64))
-    storeIDRaw, _ := c.Get("store_id")
-    storeID := uint(storeIDRaw.(float64))
+	userIDRaw, _ := c.Get("user_id")
+	userID := uint(userIDRaw.(float64))
+	storeIDRaw, _ := c.Get("store_id")
+	storeID := uint(storeIDRaw.(float64))
+	
+	// 🚀 AMBIL ROLE USER DARI CONTEXT JWT (Pastikan middleware auth Mas sudah nge-set "role")
+	userRoleRaw, exists := c.Get("role")
+	userRole := ""
+	if exists {
+		userRole = userRoleRaw.(string)
+	}
 
-    var input OpenSessionInput
-    if err := c.ShouldBindJSON(&input); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak lengkap!"})
-        return
-    }
+	var input OpenSessionInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak lengkap!"})
+		return
+	}
 
-    // 🚀 1. SETTING TIMEZONE JAKARTA (WIB)
-    loc, _ := time.LoadLocation("Asia/Jakarta")
-    nowInJKT := time.Now().In(loc) 
-    today := nowInJKT.Format("2006-01-02")
+	// 🚀 1. SETTING TIMEZONE JAKARTA (WIB)
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	nowInJKT := time.Now().In(loc) 
+	today := nowInJKT.Format("2006-01-02")
 
-    // 2. VALIDASI: Apakah sudah absen masuk hari ini?
-    var attendance models.Attendance
-    if err := config.DB.Where("user_id = ? AND tanggal = ?", userID, today).First(&attendance).Error; err != nil {
-        // Kita beri tahu user tanggal server vs tanggal browser
-        c.JSON(http.StatusForbidden, gin.H{
-            "error": "Anda wajib Absen Wajah terlebih dahulu!",
-            "tanggal_hari_ini": today,
-        })
-        return
-    }
+	// 🚀 2. VALIDASI ABSENSI (JALUR TOL UNTUK OWNER)
+	// Jika role-nya "owner", skip pengecekan database attendance ini!
+	if userRole != "owner" {
+		var attendance models.Attendance
+		if err := config.DB.Where("user_id = ? AND tanggal = ?", userID, today).First(&attendance).Error; err != nil {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":            "Anda wajib Absen Wajah terlebih dahulu!",
+				"tanggal_hari_ini": today,
+			})
+			return
+		}
+	}
 
-    // 3. VALIDASI: Apakah ada session yang masih menggantung (Open)?
-    var existingSession models.CashierSession
-    if err := config.DB.Where("user_id = ? AND status = ?", userID, "open").First(&existingSession).Error; err == nil {
-        c.JSON(http.StatusBadRequest, gin.H{
-            "error": "Anda masih memiliki session yang terbuka!",
-            "session_id": existingSession.ID,
-        })
-        return
-    }
+	// 3. VALIDASI: Apakah ada session yang masih menggantung (Open)?
+	var existingSession models.CashierSession
+	if err := config.DB.Where("user_id = ? AND status = ?", userID, "open").First(&existingSession).Error; err == nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":      "Anda masih memiliki session yang terbuka!",
+			"session_id": existingSession.ID,
+		})
+		return
+	}
 
-    // 4. EKSEKUSI: Buat Session Baru
-    newSession := models.CashierSession{
-        StoreID:       storeID,
-        UserID:        userID,
-        StationNumber: input.StationNumber,
-        ModalAwal:     input.ModalAwal,
-        StartTime:     nowInJKT, // 👈 Pakai waktu JKT biar sinkron dengan absen
-        Status:        "open",
-    }
+	// 4. EKSEKUSI: Buat Session Baru
+	newSession := models.CashierSession{
+		StoreID:       storeID,
+		UserID:        userID,
+		StationNumber: input.StationNumber,
+		ModalAwal:     input.ModalAwal,
+		StartTime:     nowInJKT,
+		Status:        "open",
+	}
 
-    if err := config.DB.Create(&newSession).Error; err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuka session kasir"})
-        return
-    }
+	if err := config.DB.Create(&newSession).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuka session kasir"})
+		return
+	}
 
-    c.JSON(http.StatusOK, gin.H{
-        "message": "Kasir berhasil dibuka! Selamat bertugas.",
-        "session": newSession,
-    })
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Kasir berhasil dibuka! Selamat bertugas.",
+		"session": newSession,
+	})
 }
 
 // CHECK SESSION

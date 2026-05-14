@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import Swal from 'sweetalert2'; // 🚀 Import SweetAlert2
+import api from '../api.js';
 
 const router = useRouter();
 
@@ -16,31 +17,23 @@ const handleLogin = async () => {
   errorMessage.value = '';
 
   try {
-    const response = await fetch('http://localhost:8080/api/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        identifier: identifier.value,
-        password: password.value
-      })
+    // 🚀 1. Tembak API menggunakan instance Axios kita yang sudah nge-bind .env
+    const response = await api.post('/login', {
+      identifier: identifier.value,
+      password: password.value
     });
 
-    const data = await response.json();
+    // 🚀 2. Di Axios, datanya langsung nangkring di response.data tanpa .json()
+    const data = response.data; 
     console.log("Data dari API:", data);
 
-    if (!response.ok) {
-      throw new Error(data.error || 'Gagal login, silakan coba lagi.');
-    }
-
-    // 1. Simpan ke Local Storage
+    // 3. Simpan ke Local Storage
     localStorage.setItem('token', data.token);
     localStorage.setItem('role', data.role.toLowerCase()); // Simpan kecil semua biar aman dicek
     localStorage.setItem('name', data.name || '');
     localStorage.setItem('storeName', data.store_name || 'Toko Belum Di-Setup');
 
-    // 🚀 2. SWEETALERT LOGIN BERHASIL
+    // 🚀 4. SWEETALERT LOGIN BERHASIL
     const Toast = Swal.mixin({
       toast: true,
       position: 'top-end',
@@ -55,9 +48,8 @@ const handleLogin = async () => {
       text: 'Berhasil masuk ke sistem.'
     });
 
-    // 🚀 3. LOGIKA REDIRECT CERDAS BERDASARKAN ROLE
+    // 🚀 5. LOGIKA REDIRECT CERDAS BERDASARKAN ROLE
     if (data.has_setup_store === false) {
-      // Jika toko belum di-setup, owner wajib setup dulu
       Swal.fire({
         icon: 'info',
         title: 'Setup Toko',
@@ -66,23 +58,22 @@ const handleLogin = async () => {
       });
       router.push('/setup-toko');
     } else {
-      // 🟢 DISINI KITA FILTER ROLE-NYA
       if (data.role.toLowerCase() === 'owner') {
         router.push('/dashboard');
       } else {
-        // 🚀 Karyawan / Kasir langsung diarahkan ke Absensi atau Kasir
-        // Sesuai request Mas, kita arahkan ke Absensi
         router.push('/absensi'); 
       }
     }
 
   } catch (error) {
-    errorMessage.value = error.message;
-    // Tampilkan SweetAlert Error juga kalau mau
+    // 🚀 6. TANGKAP ERROR KASUS AXIOS (Membaca response error dari Go Backend Mas)
+    const msg = error.response?.data?.error || error.message || 'Gagal login, silakan coba lagi.';
+    errorMessage.value = msg;
+
     Swal.fire({
       icon: 'error',
       title: 'Login Gagal',
-      text: error.message,
+      text: msg,
       confirmButtonColor: '#ef4444'
     });
   } finally {

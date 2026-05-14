@@ -8,10 +8,10 @@ const route = useRoute();
 
 const sidebarOpen = ref(false);
 
-// State untuk buka-tutup grup menu
+// State untuk buka-tutup grup menu (Otomatis terbuka jika path aktif ada di dalamnya)
 const openGroups = ref({
-    stock: true, // Default terbuka
-    admin: false
+    stock: route.path === '/penerimaan-barang' || route.path === '/stock-opname',
+    admin: route.path.startsWith('/dashboard') || route.path === '/karyawan' || route.path === '/produk' || route.path === '/setup'
 });
 
 const toggleGroup = (group) => {
@@ -20,13 +20,13 @@ const toggleGroup = (group) => {
 
 const user = ref({
     name: localStorage.getItem('name') || 'User',
-    role: localStorage.getItem('role') || 'kasir',
+    role: localStorage.getItem('role') || 'staff', // 🚀 UPDATE DEFAULT ROLE JADI STAFF
     storeName: localStorage.getItem('storeName') || 'Indo UMKM'
 });
 
 onMounted(() => {
     user.value.name = localStorage.getItem('name') || 'User';
-    user.value.role = localStorage.getItem('role') || 'kasir';
+    user.value.role = localStorage.getItem('role') || 'staff';
 });
 
 const logout = () => {
@@ -70,7 +70,7 @@ const logout = () => {
                     </div>
                     <div class="flex flex-col pr-2 text-left">
                         <span class="text-xs font-black text-gray-800 leading-none uppercase">{{ user.name.split(' ')[0] }}</span>
-                        <span class="text-[10px] font-bold text-gray-500 uppercase">{{ user.role }}</span>
+                        <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{{ user.role }}</span>
                     </div>
                 </div>
             </div>
@@ -89,15 +89,22 @@ const logout = () => {
 
             <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
                 
-                <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-4 mb-2">Main Menu</div>
+                <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-4 mb-2">Menu Utama</div>
+                
                 <router-link to="/pos/kasir" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold transition-all" :class="route.path === '/pos/kasir' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50'">
                     <span class="text-lg">🛒</span> POS Kasir
                 </router-link>
+                
                 <router-link to="/riwayat" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold transition-all" :class="route.path.startsWith('/riwayat') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50'">
-                    <span class="text-lg">📜</span> Riwayat
+                    <span class="text-lg">📜</span> Riwayat Transaksi
                 </router-link>
+                
                 <router-link to="/absensi" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold transition-all" :class="route.path === '/absensi' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50'">
-                    <span class="text-lg">📸</span> Absensi
+                    <span class="text-lg">📸</span> Presensi
+                </router-link>
+                
+                <router-link to="/schedule" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold transition-all" :class="route.path === '/schedule' ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50'">
+                    <span class="text-lg">📅</span> Jadwal Kerja (TSM)
                 </router-link>
 
                 <div class="pt-4">
@@ -106,42 +113,47 @@ const logout = () => {
                         <svg :class="openGroups.stock ? 'rotate-180' : ''" class="w-3 h-3 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7" /></svg>
                     </button>
                     
-                    <div v-show="openGroups.stock" class="mt-1 space-y-1 ml-2 border-l-2 border-gray-50">
+                    <div v-show="openGroups.stock" class="mt-1 space-y-1 ml-2 border-l-2 border-gray-100 pl-2">
                         <router-link to="/penerimaan-barang" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-2.5 rounded-xl text-sm font-bold transition-all" :class="route.path === '/penerimaan-barang' ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-blue-600'">
                             <span class="text-base">🚚</span> Terima Barang
                         </router-link>
                         <router-link to="/stock-opname" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-2.5 rounded-xl text-sm font-bold transition-all" :class="route.path === '/stock-opname' ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-blue-600'">
                             <span class="text-base">🔍</span> Stock Opname
                         </router-link>
-                        
                     </div>
                 </div>
 
                 <div class="pt-4">
                     <button @click="toggleGroup('admin')" class="w-full flex items-center justify-between px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] hover:text-blue-600 transition-colors">
-                        <span>⚙️ Administrasi</span>
+                        <span>⚙️ Administrasi Toko</span>
                         <svg :class="openGroups.admin ? 'rotate-180' : ''" class="w-3 h-3 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7" /></svg>
                     </button>
 
-                    <div v-show="openGroups.admin" class="mt-1 space-y-1 ml-2 border-l-2 border-gray-50">
-                        <template v-if="user.role === 'owner'">
+                    <div v-show="openGroups.admin" class="mt-1 space-y-1 ml-2 border-l-2 border-gray-100 pl-2">
+                        <template v-if="user.role === 'owner' || user.role === 'manager' || user.role === 'supervisor'">
                             <router-link to="/dashboard" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-2.5 rounded-xl text-sm font-bold transition-all" :class="route.path.startsWith('/dashboard') ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-blue-600'">
-                                <span class="text-base">📊</span> Dashboard
+                                <span class="text-base">📊</span> Dashboard Analisis
                             </router-link>
                             <router-link to="/stock-opname/report" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-2.5 rounded-xl text-sm font-bold transition-all" :class="route.path === '/stock-opname/report' ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-blue-600'">
-                <span class="text-base">📉</span> Laporan Selisih SO
-            </router-link>
-                            <router-link to="/produk" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-2.5 rounded-xl text-sm font-bold transition-all" :class="route.path.startsWith('/produk') ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-blue-600'">
-                            <span class="text-base">📁</span> Master Produk
-                            </router-link>
-                            <router-link to="/karyawan" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-2.5 rounded-xl text-sm font-bold transition-all" :class="route.path.startsWith('/karyawan') ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-blue-600'">
-                                <span class="text-base">👥</span> Karyawan
-                            </router-link>
-                            <router-link to="/setup" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-2.5 rounded-xl text-sm font-bold transition-all" :class="route.path.startsWith('/setup') ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-blue-600'">
-                                <span class="text-base">⚙️</span> Toko
+                                <span class="text-base">📉</span> Laporan Selisih SO
                             </router-link>
                         </template>
-                        <div v-else class="px-4 py-2 text-[10px] font-bold text-gray-400 italic">Menu ini hanya untuk Owner 🔒</div>
+
+                        <template v-if="user.role === 'owner'">
+                            <router-link to="/produk" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-2.5 rounded-xl text-sm font-bold transition-all" :class="route.path.startsWith('/produk') ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-blue-600'">
+                                <span class="text-base">📁</span> Master Produk
+                            </router-link>
+                            <router-link to="/karyawan" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-2.5 rounded-xl text-sm font-bold transition-all" :class="route.path.startsWith('/karyawan') ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-blue-600'">
+                                <span class="text-base">👥</span> Kelola Karyawan
+                            </router-link>
+                            <router-link to="/setup" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-2.5 rounded-xl text-sm font-bold transition-all" :class="route.path.startsWith('/setup') ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-blue-600'">
+                                <span class="text-base">⚙️</span> Pengaturan Toko
+                            </router-link>
+                        </template>
+                        
+                        <div v-if="user.role === 'staff'" class="px-4 py-2.5 text-[10px] font-bold text-gray-400 italic">
+                            Menu Administrasi Terkunci 🔒
+                        </div>
                     </div>
                 </div>
 

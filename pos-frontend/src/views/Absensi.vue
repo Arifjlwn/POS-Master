@@ -18,7 +18,21 @@ const updateTime = () => {
 
 // --- STATE DATA ---
 const karyawan = ref([]);
+
 const riwayat = ref([]);
+const urutanTanggalTerbaru = ref(true); // true = terbaru ke tertua, false = tertua ke terbaru
+
+const toggleSortTanggal = () => {
+    urutanTanggalTerbaru.value = !urutanTanggalTerbaru.value;
+    
+    // Langsung urutkan ulang array riwayat yang sudah ada di memori Vue
+    if (urutanTanggalTerbaru.value) {
+        riwayat.value.sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+    } else {
+        riwayat.value.sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+    }
+};
+
 const isLoading = ref(true);
 const filterMode = ref('harian');
 const bulanDipilih = ref(new Date().toISOString().slice(0, 7)); // YYYY-MM
@@ -39,24 +53,29 @@ const getPayloadFromToken = () => {
 };
 const currentUser = ref(getPayloadFromToken());
 
-const today = new Date().toISOString().split('T')[0];
+const today = new Date().toLocaleDateString('en-CA');
 const tanggalDipilih = ref(today);
 
-// --- 🚀 LOGIC DETEKSI STATUS ABSEN REAKTIF (FIXED) ---
+// --- 🚀 FIX PERMANEN: SAMAKAN FORMAT STRING TANGGAL SECARA MURNI ---
 const hasAbsenMasuk = computed(() => {
     return riwayat.value.some(log => {
-        // Ambil 10 karakter pertama saja (YYYY-MM-DD) dari string tanggal API
-        const tglClean = log.tanggal ? log.tanggal.substring(0, 10) : "";
+        if (!log.tanggal) return false;
         
+        // Ambil 10 karakter pertama (YYYY-MM-DD), mau dari Supabase/Go formatnya pasti diawali ini
+        const tglClean = log.tanggal.substring(0, 10);
+        
+        // Pastikan variabel 'today' di Vue Mas formatnya juga "2026-05-14"
         return Number(log.user_id) === Number(currentUser.value.user_id) && 
-            tglClean === today && 
-            log.jam_masuk != null
+               tglClean === today && 
+               log.jam_masuk != null
     });
 });
 
 const hasAbsenPulang = computed(() => {
     return riwayat.value.some(log => {
-        const tglClean = log.tanggal ? log.tanggal.substring(0, 10) : "";
+        if (!log.tanggal) return false;
+        
+        const tglClean = log.tanggal.substring(0, 10);
         
         return Number(log.user_id) === Number(currentUser.value.user_id) && 
                tglClean === today && 
@@ -71,36 +90,124 @@ const stream = ref(null);
 const absenTarget = ref({ id: null, nama: '', jenis: '' });
 const isSubmitting = ref(false);
 
-// --- FUNGSI TARIK DATA ---
+// --- SINKRONISASI LOG RIWAYAT HARIAN & BULANAN PENUH ALA RETAIL ---
 const fetchData = async () => {
     isLoading.value = true;
     try {
+        // Ambil semua daftar karyawan murni dari backend Go (Diizinkan untuk semua role)
+        const resKaryawan = await api.get('/employees');
+        const allEmp = resKaryawan.data.data || [];
+        
+        // Pisahkan pasukan staff biasa (yang rolenya bukan owner)
+        const staffSaja = allEmp.filter(e => e.role !== 'owner');
+
+        // 🚀 LOGIKA DINAMIS SINKRONISASI PANEL ATAS
         if (currentUser.value.role === 'owner') {
-            const resKaryawan = await api.get('/employees');
-            karyawan.value = resKaryawan.data.data || [];
+            // Jika login Owner dan belum punya karyawan, tampilkan diri sendiri agar bisa absen solo
+            if (staffSaja.length === 0) {
+                karyawan.value = allEmp; 
+            } else {
+                karyawan.value = staffSaja; // Jika ada staff, owner ngalah keluar dari panel biar rapi
+            }
         } else {
-            karyawan.value = [{ 
-                id: currentUser.value.user_id, 
-                name: currentUser.value.name, 
-                role: currentUser.value.role, 
-                nik: 'KARYAWAN' 
-            }];
+            // Jika login sebagai Staff biasa, dia tetap melihat SEMUA staff rekan kerjanya agar transparan!
+            karyawan.value = staffSaja;
         }
+
+        // Tentukan range tanggal awal dan akhir bulan
+        const [tahun, bulan] = bulanDipilih.value.split('-');
+        const tanggalAwalBulan = `${bulanDipilih.value}-01`;
+        const tanggalAkhirBulan = `${bulanDipilih.value}-${new Date(tahun, bulan, 0).getDate()}`;
 
         const params = {};
         if (filterMode.value === 'harian') {
             params.tanggal = tanggalDipilih.value;
         } else {
-            const [tahun, bulan] = bulanDipilih.value.split('-');
             params.bulan = bulan;
             params.tahun = tahun;
         }
 
-        const resRiwayat = await api.get('/attendance', { params });
-        // 🚀 Gunakan spread operator agar Vue mendeteksi perubahan array secara total
-        riwayat.value = [...(resRiwayat.data.data || [])];
+        // Ambil data absensi aktual dan master jadwal dari backend
+        const [resRiwayat, resSched] = await Promise.all([
+            api.get('/attendance', { params }),
+            api.get('/schedules', { params: { 
+                start_date: filterMode.value === 'harian' ? tanggalDipilih.value : tanggalAwalBulan, 
+                end_date: filterMode.value === 'harian' ? tanggalDipilih.value : tanggalAkhirBulan 
+            } })
+        ]);
+
+        const dataAbsenReal = resRiwayat.data.data || [];
+        const dataJadwalReal = resSched.data.data || [];
+        const matriksGabungan = [];
+
+        // --- GENERATOR MATRIKS LOG RIWAYAT TABEL ---
+        if (filterMode.value === 'harian') {
+            karyawan.value.forEach(emp => {
+                const empKey = emp.id || emp.user_id;
+                const jadwalHariIni = dataJadwalReal.find(s => Number(s.user_id) === Number(empKey) && s.tanggal.substring(0, 10) === tanggalDipilih.value);
+                const absenHariIni = dataAbsenReal.find(a => Number(a.user_id) === Number(empKey) && a.tanggal.substring(0, 10) === tanggalDipilih.value);
+
+                if (jadwalHariIni && jadwalHariIni.shift_type === 'OFF') return;
+
+                matriksGabungan.push({
+                    id: absenHariIni?.id || `temp-harian-${empKey}`,
+                    user_id: empKey,
+                    tanggal: tanggalDipilih.value,
+                    User: emp,
+                    shift: jadwalHariIni ? jadwalHariIni.shift_type.replace(' (Approved)','').replace(' (Pending)','') : 'Belum Set',
+                    foto_masuk: absenHariIni?.foto_masuk || null,
+                    jam_masuk: absenHariIni?.jam_masuk || null,
+                    foto_pulang: absenHariIni?.foto_pulang || null,
+                    jam_pulang: absenHariIni?.jam_pulang || null,
+                    status: absenHariIni?.status || (tanggalDipilih.value < today ? 'Mangkir' : 'Belum Absen')
+                });
+            });
+        } else {
+            const jumlahHari = new Date(tahun, bulan, 0).getDate();
+
+            karyawan.value.forEach(emp => {
+                const empKey = emp.id || emp.user_id;
+
+                for (let hari = 1; hari <= jumlahHari; hari++) {
+                    const tglLoopStr = `${bulanDipilih.value}-${String(hari).padStart(2, '0')}`;
+                    
+                    const absenMatch = dataAbsenReal.find(a => Number(a.user_id) === Number(empKey) && a.tanggal.substring(0, 10) === tglLoopStr);
+                    const jadwalMatch = dataJadwalReal.find(s => Number(s.user_id) === Number(empKey) && s.tanggal.substring(0, 10) === tglLoopStr);
+
+                    const shiftClean = jadwalMatch ? jadwalMatch.shift_type.replace(' (Approved)','').replace(' (Pending)','') : 'Belum Set';
+
+                    let statusDinamis = 'Belum Absen';
+                    if (absenMatch) {
+                        statusDinamis = absenMatch.status;
+                    } else if (shiftClean === 'OFF') {
+                        statusDinamis = 'Libur (OFF)';
+                    } else if (emp.role === 'owner') {
+                        statusDinamis = 'Owner';
+                    } else if (tglLoopStr < today) {
+                        statusDinamis = 'Mangkir';
+                    }
+
+                    if (tglLoopStr <= today || absenMatch) {
+                        matriksGabungan.push({
+                            id: absenMatch?.id || `temp-bulan-${empKey}-${tglLoopStr}`,
+                            user_id: empKey,
+                            tanggal: tglLoopStr,
+                            User: emp,
+                            shift: shiftClean,
+                            foto_masuk: absenMatch?.foto_masuk || null,
+                            jam_masuk: absenMatch?.jam_masuk || null,
+                            foto_pulang: absenMatch?.foto_pulang || null,
+                            jam_pulang: absenMatch?.jam_pulang || null,
+                            status: statusDinamis
+                        });
+                    }
+                }
+            });
+        }
+
+        riwayat.value = [...matriksGabungan].sort((a, b) => b.tanggal.localeCompare(a.tanggal));
     } catch (error) {
-        console.error("Gagal tarik data:", error);
+        console.error("Gagal sinkronisasi data log:", error);
     } finally {
         isLoading.value = false;
     }
@@ -147,6 +254,27 @@ onUnmounted(() => {
 
 watch([tanggalDipilih, bulanDipilih, filterMode], () => fetchData());
 
+// Fungsi untuk membatasi tanggal pengisian jadwal di Vue Mas Arif
+const getJadwalRange = () => {
+    const sekarang = new Date();
+    const tahun = sekarang.getFullYear();
+    const bulan = sekarang.getMonth(); // Bulan saat ini (0-11)
+    
+    // Cari tanggal terakhir di bulan ini
+    const tanggalTerakhir = new Date(tahun, bulan + 1, 0).getDate(); 
+    const hariTanggalTerakhir = new Date(tahun, bulan, tanggalTerakhir).getDay(); // 0 = Minggu, 4 = Kamis, dll
+    
+    console.log(`Tanggal terakhir bulan ini: ${tanggalTerakhir}, Jatuh pada hari ke-${hariTanggalTerakhir}`);
+    
+    // Logika pembatasan ala TSM Indomaret Mas Arif:
+    // Jika akhir bulan bukan hari Minggu (0), berarti ada potongan minggu (Split-Week)
+    if (hariTanggalTerakhir !== 0) {
+        const sisaHari = 7 - hariTanggalTerakhir;
+        console.log(`Karyawan harus buat jadwal parsial sisa bulan sebanyak ${sisaHari} hari ke depan.`);
+        // Jalur ini yang mengunci form biar cuma bisa isi dari tanggal 1 sampai hari Minggu pertama di bulan baru
+    }
+}
+
 const mulaiAbsen = async (id, nama, jenis) => {
     absenTarget.value = { id, nama, jenis };
     showCameraModal.value = true;
@@ -173,17 +301,17 @@ const jepretDanKirim = async () => {
     isSubmitting.value = true;
     
     try {
-        // 🚀 1. Ambil data profil diri sendiri (Pasti diizinkan Backend)
+        // 1. Ambil data profil diri sendiri (Pasti diizinkan Backend)
         const resMe = await api.get('/me'); 
         const targetEmp = resMe.data; // Mengambil data user yang sedang login
 
-        // Pastikan field foto_url ada di response /api/me
         if (!targetEmp.foto_url) {
             throw new Error("Foto Master Anda belum ada di sistem. Minta Owner untuk upload foto Anda.");
         }
 
-        // 🚀 2. Load Foto Master dari Server (Gunakan URL Lengkap)
-        const masterUrl = 'http://localhost:8080' + targetEmp.foto_url;
+        // 🚀 FIX URL DINAMIS: Gunakan .env untuk menembak foto master
+        // Biar lancar di laptop dan HP, pastikan VITE_API_BASE_URL di .env sudah pakai IP (http://192.168.xx.xx:8080)
+        const masterUrl = `${import.meta.env.VITE_API_BASE_URL}${targetEmp.foto_url}`;
         const imgMaster = await faceapi.fetchImage(masterUrl);
         
         const masterDetections = await faceapi.detectSingleFace(imgMaster, new faceapi.TinyFaceDetectorOptions())
@@ -193,7 +321,7 @@ const jepretDanKirim = async () => {
 
         const faceMatcher = new faceapi.FaceMatcher(masterDetections);
 
-        // 🚀 3. Deteksi Wajah di Kamera (Video)
+        // 2. Deteksi Wajah di Kamera (Video)
         const queryDetections = await faceapi.detectSingleFace(videoRef.value, new faceapi.TinyFaceDetectorOptions())
             .withFaceLandmarks().withFaceDescriptor();
 
@@ -207,7 +335,7 @@ const jepretDanKirim = async () => {
             throw new Error("Wajah tidak cocok! Verifikasi gagal.");
         }
 
-        // 🚀 4. Lolos Verifikasi, Kecilkan Foto untuk dikirim ke Backend
+        // 3. Lolos Verifikasi, Kecilkan Foto untuk dikirim ke Backend
         const canvas = document.createElement('canvas');
         canvas.width = 320; 
         canvas.height = 400;
@@ -219,9 +347,9 @@ const jepretDanKirim = async () => {
         
         stopCamera(); // Matikan kamera setelah sukses
 
-        // Kirim ke database
+        // Kirim ke database lewat Axios instance kita
         await api.post('/attendance', {
-            user_id: targetEmp.user_id, // Sesuaikan dengan key di response /api/me
+            user_id: targetEmp.user_id, 
             jenis: absenTarget.value.jenis,
             foto: photoBase64
         });
@@ -243,12 +371,15 @@ const jepretDanKirim = async () => {
         isSubmitting.value = false;
     }
 };
+
 const downloadLaporan = async () => {
     let bulan, tahun;
     filterMode.value === 'harian' ? [tahun, bulan] = tanggalDipilih.value.split('-').slice(0, 2) : [tahun, bulan] = bulanDipilih.value.split('-');
     try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:8080/api/attendance/export?bulan=${bulan}&tahun=${tahun}`, {
+        
+        // 🚀 FIX URL DINAMIS: Ubah jalur localhost export CSV-nya ke .env variabel Mas Arif
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/attendance/export?bulan=${bulan}&tahun=${tahun}`, {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -266,8 +397,8 @@ const downloadLaporan = async () => {
             <div class="bg-blue-800 rounded-3xl p-6 md:p-8 mb-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between overflow-hidden relative border border-blue-900">
                 <div class="absolute -right-10 -top-20 opacity-10 text-[200px] font-black italic pointer-events-none">⏱️</div>
                 <div class="relative z-10 text-center md:text-left mb-6 md:mb-0">
-                    <h1 class="text-3xl font-black tracking-tight mb-2 uppercase">Presensi Wajah</h1>
-                    <p class="text-blue-200 font-medium text-sm italic">Capture Selfie + Timestamp Realtime</p>
+                    <h1 class="text-3xl font-black tracking-tight mb-2 uppercase">Presensi Karyawan</h1>
+                    <p class="text-blue-200 font-medium text-sm italic">Absen Tepat Waktu ya teman-teman !</p>
                 </div>
                 <div class="relative z-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 md:px-8 text-center shadow-inner">
                     <div class="text-[10px] font-black text-blue-200 uppercase tracking-[0.2em] mb-1">Status Shift</div>
@@ -277,7 +408,7 @@ const downloadLaporan = async () => {
                 </div>
             </div>
 
-            <h2 class="text-lg font-black text-gray-800 mb-4 flex items-center gap-2 uppercase tracking-tight">👤 Panel Absensi Anda</h2>
+            <h2 class="text-lg font-black text-gray-800 mb-4 flex items-center gap-2 uppercase tracking-tight">👤 Panel Absensi Karyawan</h2>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
                 <div v-for="user in karyawan" :key="user.id"
@@ -326,36 +457,105 @@ const downloadLaporan = async () => {
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left whitespace-nowrap">
-                        <thead class="bg-white border-b border-gray-100">
-                            <tr class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                                <th class="px-6 py-5">Karyawan</th>
-                                <th class="px-6 py-5 text-center">Foto Masuk</th>
-                                <th class="px-6 py-5 text-center">Jam Masuk</th>
-                                <th class="px-6 py-5 text-center">Foto Pulang</th>
-                                <th class="px-6 py-5 text-center">Jam Pulang</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-50">
-                            <tr v-if="isLoading"><td colspan="5" class="px-6 py-12 text-center text-gray-400 font-bold uppercase animate-pulse">Sinkronisasi...</td></tr>
-                            <tr v-else-if="riwayat.length === 0"><td colspan="5" class="px-6 py-12 text-center text-gray-400 font-bold italic">Data Kosong.</td></tr>
-                            <tr v-for="log in riwayat" :key="log.id" class="hover:bg-blue-50/30 transition-colors group">
-                                <td class="px-6 py-5">
-                                    <div class="font-black text-gray-800 uppercase text-sm">{{ log.User?.name }}</div>
-                                    <div class="text-[9px] text-gray-400 font-bold tracking-widest">{{ log.User?.nik || 'ID: '+log.user_id }}</div>
-                                </td>
-                                <td class="px-6 py-5 text-center">
-                                    <div v-if="log.foto_masuk" @click="lihatFoto(log.foto_masuk, log.User?.name, 'Masuk', log.jam_masuk)" class="w-14 h-14 rounded-xl mx-auto border-4 border-white shadow-sm overflow-hidden cursor-zoom-in"><img :src="log.foto_masuk" class="w-full h-full object-cover"></div>
-                                    <span v-else class="text-gray-200">❌</span>
-                                </td>
-                                <td class="px-6 py-5 text-center"><span v-if="log.jam_masuk" class="bg-green-100 text-green-700 font-black px-3 py-1.5 rounded-lg text-xs">{{ log.jam_masuk }}</span></td>
-                                <td class="px-6 py-5 text-center">
-                                    <div v-if="log.foto_pulang" @click="lihatFoto(log.foto_pulang, log.User?.name, 'Pulang', log.jam_pulang)" class="w-14 h-14 rounded-xl mx-auto border-4 border-white shadow-sm overflow-hidden cursor-zoom-in"><img :src="log.foto_pulang" class="w-full h-full object-cover"></div>
-                                    <span v-else class="text-gray-200">❌</span>
-                                </td>
-                                <td class="px-6 py-5 text-center"><span v-if="log.jam_pulang" class="bg-orange-100 text-orange-700 font-black px-3 py-1.5 rounded-lg text-xs">{{ log.jam_pulang }}</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
+    <thead class="bg-white border-b border-gray-100">
+        <tr class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+            <th class="px-6 py-5">Karyawan</th>
+            <th v-if="filterMode === 'bulanan'" 
+    @click="toggleSortTanggal" 
+    class="px-6 py-5 text-center cursor-pointer select-none hover:bg-slate-50 transition-colors group">
+    <div class="flex items-center justify-center gap-1">
+        <span>Tanggal</span>
+        <span class="text-[11px] text-blue-600 transition-transform">
+            {{ urutanTanggalTerbaru ? '🔽' : '🔼' }}
+        </span>
+    </div>
+</th>
+            <th class="px-6 py-5 text-center">Shift</th>
+            <th class="px-6 py-5 text-center">Foto Masuk</th>
+            <th class="px-6 py-5 text-center">Jam Masuk</th>
+            <th class="px-6 py-5 text-center">Foto Pulang</th>
+            <th class="px-6 py-5 text-center">Jam Pulang</th>
+            <th class="px-6 py-5 text-center">Status</th>
+        </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-50">
+        <tr v-if="isLoading">
+            <td :colspan="filterMode === 'bulanan' ? 8 : 7" class="px-6 py-12 text-center text-gray-400 font-bold uppercase animate-pulse">
+                Sinkronisasi...
+            </td>
+        </tr>
+        <tr v-else-if="riwayat.length === 0">
+            <td :colspan="filterMode === 'bulanan' ? 8 : 7" class="px-6 py-12 text-center text-gray-400 font-bold italic">
+                Data Kosong.
+            </td>
+        </tr>
+        <tr v-else v-for="log in riwayat" :key="log.id" class="hover:bg-blue-50/30 transition-colors group">
+            <td class="px-6 py-5">
+                <div class="font-black text-gray-800 uppercase text-sm">{{ log.User?.name }}</div>
+                <div class="text-[9px] text-gray-400 font-bold tracking-widest">
+                    {{ log.User?.nik || 'ID: '+log.user_id }}
+                </div>
+            </td>
+            
+            <td v-if="filterMode === 'bulanan'" class="px-6 py-5 text-center font-mono text-xs font-black text-slate-600">
+                {{ log.tanggal ? log.tanggal.substring(0, 10) : '-' }}
+            </td>
+
+            <td class="px-6 py-5 text-center font-black text-xs text-indigo-600 uppercase">
+                {{ log.shift }}
+            </td>
+
+            <td class="px-6 py-5 text-center">
+                <div v-if="log.foto_masuk" @click="lihatFoto(log.foto_masuk, log.User?.name, 'Masuk', log.jam_masuk)" class="w-14 h-14 rounded-xl mx-auto border-4 border-white shadow-sm overflow-hidden cursor-zoom-in">
+                    <img :src="log.foto_masuk" class="w-full h-full object-cover">
+                </div>
+                <span v-else class="text-gray-200">❌</span>
+            </td>
+
+            <td class="px-6 py-5 text-center">
+                <span v-if="log.jam_masuk" class="bg-green-100 text-green-700 font-black px-3 py-1.5 rounded-lg text-xs">
+                    {{ log.jam_masuk }}
+                </span>
+                <span v-else class="text-gray-300">-</span>
+            </td>
+
+            <td class="px-6 py-5 text-center">
+                <div v-if="log.foto_pulang" @click="lihatFoto(log.foto_pulang, log.User?.name, 'Pulang', log.jam_pulang)" class="w-14 h-14 rounded-xl mx-auto border-4 border-white shadow-sm overflow-hidden cursor-zoom-in">
+                    <img :src="log.foto_pulang" class="w-full h-full object-cover">
+                </div>
+                <span v-else class="text-gray-200">❌</span>
+            </td>
+
+            <td class="px-6 py-5 text-center">
+                <span v-if="log.jam_pulang" class="bg-orange-100 text-orange-700 font-black px-3 py-1.5 rounded-lg text-xs">
+                    {{ log.jam_pulang }}
+                </span>
+                <span v-else class="text-gray-300">-</span>
+            </td>
+            
+            <td class="px-6 py-5 text-center">
+    <span v-if="log.status === 'Hadir'" class="bg-green-100 text-green-800 font-black px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider shadow-sm">
+        🟢 HADIR
+    </span>
+    <span v-else-if="log.status === 'Lupa Absen Pulang'" class="bg-amber-100 text-amber-800 font-black px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider shadow-sm">
+        ⚠️ LUPA PULANG
+    </span>
+    <span v-else-if="log.status === 'Mangkir'" class="bg-red-100 text-red-800 font-black px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider shadow-sm">
+        🚨 MANGKIR
+    </span>
+    <span v-else-if="log.status === 'Libur (OFF)'" class="bg-slate-100 text-slate-500 font-black px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider shadow-sm border border-dashed border-slate-200">
+        ⚪ LIBUR (OFF)
+    </span>
+    <span v-else-if="log.status === 'Belum Absen'" class="bg-blue-100 text-blue-800 font-black px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider shadow-sm animate-pulse">
+        🔵 BELUM ABSEN
+    </span>
+    <span v-else class="bg-gray-100 text-gray-600 font-black px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider shadow-sm">
+        {{ log.status }}
+    </span>
+</td>
+        </tr>
+    </tbody>
+</table>
                 </div>
             </div>
         </div>
