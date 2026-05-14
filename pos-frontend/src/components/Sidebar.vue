@@ -131,9 +131,6 @@ const logout = () => {
 
                     <div v-show="openGroups.admin" class="mt-1 space-y-1 ml-2 border-l-2 border-gray-100 pl-2">
                         <template v-if="user.role === 'owner' || user.role === 'manager' || user.role === 'supervisor'">
-                            <router-link to="/dashboard" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-2.5 rounded-xl text-sm font-bold transition-all" :class="route.path.startsWith('/dashboard') ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-blue-600'">
-                                <span class="text-base">📊</span> Dashboard Analisis
-                            </router-link>
                             <router-link to="/stock-opname/report" @click="sidebarOpen = false" class="flex items-center gap-4 px-4 py-2.5 rounded-xl text-sm font-bold transition-all" :class="route.path === '/stock-opname/report' ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-blue-600'">
                                 <span class="text-base">📉</span> Laporan Selisih SO
                             </router-link>
