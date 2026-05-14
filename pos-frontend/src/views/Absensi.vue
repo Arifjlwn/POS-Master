@@ -377,8 +377,6 @@ const downloadLaporan = async () => {
     filterMode.value === 'harian' ? [tahun, bulan] = tanggalDipilih.value.split('-').slice(0, 2) : [tahun, bulan] = bulanDipilih.value.split('-');
     try {
         const token = localStorage.getItem('token');
-        
-        // 🚀 FIX URL DINAMIS: Ubah jalur localhost export CSV-nya ke .env variabel Mas Arif
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/attendance/export?bulan=${bulan}&tahun=${tahun}`, {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${token}` }
