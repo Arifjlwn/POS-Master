@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, nextTick, watch } from 'vue';
-import api from '../api';
-import Sidebar from '../components/Sidebar.vue';
+import api from '../../api.js';
+import Sidebar from '../../components/Sidebar.vue';
 import Chart from 'chart.js/auto';
 
 const reportData = ref(null);

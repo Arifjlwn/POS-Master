@@ -1,8 +1,27 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import Login from '../views/Login.vue';
+import Login from '../views/auth/Login.vue';
 
 const routes = [
-    { path: '/', redirect: '/login' },
+    { 
+        path: '/',
+        name: 'LandingPage',
+        component: () => import('../views/public/LandingPage.vue')
+},
+    { 
+        path: '/register',
+        name: 'Register',
+        component: () => import('../views/auth/Register.vue')
+    },
+    { 
+        path: '/select-verify',
+        name: 'SelectVerify',
+        component: () => import('../views/auth/SelectionVerify.vue')
+    },
+    { 
+        path: '/verify',
+        name: 'Verify',
+        component: () => import('../views/auth/VerifyEmail.vue')
+    },
     { 
         path: '/login',
         name: 'Login',
@@ -10,7 +29,7 @@ const routes = [
     },
     { 
         path: '/dashboard', 
-        component: () => import('../views/Dashboard.vue'),
+        component: () => import('../views/dashboard/Dashboard.vue'),
         meta: { requiresAuth: true } // Kunci pintu!
     },
     { 
@@ -25,50 +44,50 @@ const routes = [
     },
     { 
         path: '/absensi', 
-        component: () => import('../views/Absensi.vue'),
+        component: () => import('../views/sdm/Absensi.vue'),
         meta: { requiresAuth: true } // Kunci pintu!
     },
     { 
         path: '/schedule', 
-        component: () => import('../views/Schedule.vue'),
+        component: () => import('../views/sdm/Schedule.vue'),
         meta: { requiresAuth: true } // Kunci pintu!
     },
     { 
         path: '/stock-opname', 
-        component: () => import('../views/StockOpname.vue'),
+        component: () => import('../views/inventori/StockOpname.vue'),
         meta: { requiresAuth: true } // Kunci pintu!
     },
     { 
         path: '/stock-opname/report',
         name: 'SrockOpnameReport', 
-        component: () => import('../views/StockOpnameReport.vue'),
+        component: () => import('../views/inventori/StockOpnameReport.vue'),
         meta: { requiresAuth: true } // Kunci pintu!
     },
     { 
         path: '/riwayat', 
-        component: () => import('../views/Riwayat.vue'),
+        component: () => import('../views/pos/Riwayat.vue'),
         meta: { requiresAuth: true } // Kunci pintu!
     },
     { 
         path: '/produk', 
-        component: () => import('../views/MasterProduk.vue'),
+        component: () => import('../views/produk/MasterProduk.vue'),
         meta: { requiresAuth: true } 
     },
     { 
         path: '/penerimaan-barang', 
-        component: () => import('../views/PenerimaanBarang.vue'),
+        component: () => import('../views/produk/PenerimaanBarang.vue'),
         meta: { requiresAuth: true } 
     },
     { 
         path: '/karyawan', 
-        component: () => import('../views/ManageKaryawan.vue'),
+        component: () => import('../views/sdm/ManageKaryawan.vue'),
         meta: { requiresAuth: true } 
     },
     { 
         path: '/setup', 
-        component: () => import('../views/SetupToko.vue'),
+        component: () => import('../views/setting/SetupToko.vue'),
         meta: { requiresAuth: true } 
-    }
+    },
 ];
 
 const router = createRouter({

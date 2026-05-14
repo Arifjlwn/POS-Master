@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
-import Sidebar from '../components/Sidebar.vue';
-import api from '../api.js';
+import Sidebar from '../../components/Sidebar.vue';
+import api from '../../api.js';
 import Swal from 'sweetalert2';
 
 const notes = ref('Stock Opname Reguler');

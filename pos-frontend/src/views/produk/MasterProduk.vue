@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import api from '../api.js';
-import Sidebar from '../components/Sidebar.vue';
+import api from '../../api.js';
+import Sidebar from '../../components/Sidebar.vue';
 
 const router = useRouter();
 

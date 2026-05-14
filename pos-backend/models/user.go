@@ -23,4 +23,9 @@ type User struct {
 	UpdatedAt time.Time `json:"updated_at"`
 
 	Store     Store     `gorm:"foreignKey:StoreID" json:"store"`
+
+	// FIELD Verifikasi OTP Email
+	IsVerified bool `gorm:"default:false" json:"is_verified"`
+	OTPCode string `json:"-"`
+	OTPExpired time.Time `json:"-"`
 }

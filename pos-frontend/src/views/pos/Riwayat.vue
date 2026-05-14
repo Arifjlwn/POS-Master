@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
-import api from '../api';
-import Sidebar from '../components/Sidebar.vue';
+import api from '../../api';
+import Sidebar from '../../components/Sidebar.vue';
 
 // State Data
 const riwayat = ref([]);

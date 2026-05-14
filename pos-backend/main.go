@@ -65,6 +65,7 @@ func main() {
 
 	// -- Rute API SAAS --
 	r.POST("/api/register", controllers.Register)
+	r.POST("/api/verify-otp", controllers.VerifyOTP)
 	r.POST("/api/login", controllers.Login)
 
 	// -- Rute Terproteksi (Butuh Karcis JWT) --

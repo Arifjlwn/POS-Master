@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import api from '../api.js';
-import Sidebar from '../components/Sidebar.vue';
+import api from '../../api.js';
+import Sidebar from '../../components/Sidebar.vue';
 
 const reports = ref([]);
 const selectedDetail = ref(null);

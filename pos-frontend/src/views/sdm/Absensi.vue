@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue';
-import Sidebar from '../components/Sidebar.vue';
-import api from '../api.js';
+import Sidebar from '../../components/Sidebar.vue';
+import api from '../../api.js';
 import Swal from 'sweetalert2';
 import * as faceapi from 'face-api.js';
 
