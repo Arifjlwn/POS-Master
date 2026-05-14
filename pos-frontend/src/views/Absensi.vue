@@ -57,31 +57,25 @@ const today = new Date().toLocaleDateString('en-CA');
 const tanggalDipilih = ref(today);
 
 // --- 🚀 FIX PERMANEN: SAMAKAN FORMAT STRING TANGGAL SECARA MURNI ---
-const hasAbsenMasuk = computed(() => {
+const cekAbsenMasukKaryawan = (userId) => {
     return riwayat.value.some(log => {
         if (!log.tanggal) return false;
-        
-        // Ambil 10 karakter pertama (YYYY-MM-DD), mau dari Supabase/Go formatnya pasti diawali ini
         const tglClean = log.tanggal.substring(0, 10);
-        
-        // Pastikan variabel 'today' di Vue Mas formatnya juga "2026-05-14"
-        return Number(log.user_id) === Number(currentUser.value.user_id) && 
+        return Number(log.user_id) === Number(userId) && 
                tglClean === today && 
-               log.jam_masuk != null
+               log.jam_masuk != null;
     });
-});
+};
 
-const hasAbsenPulang = computed(() => {
+const cekAbsenPulangKaryawan = (userId) => {
     return riwayat.value.some(log => {
         if (!log.tanggal) return false;
-        
         const tglClean = log.tanggal.substring(0, 10);
-        
-        return Number(log.user_id) === Number(currentUser.value.user_id) && 
+        return Number(log.user_id) === Number(userId) && 
                tglClean === today && 
-               log.jam_pulang != null && log.jam_pulang !== ""
+               log.jam_pulang != null && log.jam_pulang !== "";
     });
-});
+};
 
 // --- STATE KAMERA ---
 const showCameraModal = ref(false);
@@ -399,11 +393,11 @@ const downloadLaporan = async () => {
                     <p class="text-blue-200 font-medium text-sm italic">Absen Tepat Waktu ya teman-teman !</p>
                 </div>
                 <div class="relative z-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 md:px-8 text-center shadow-inner">
-                    <div class="text-[10px] font-black text-blue-200 uppercase tracking-[0.2em] mb-1">Status Shift</div>
-                    <div class="font-mono text-2xl font-black text-yellow-300">
-                        {{ hasAbsenMasuk ? (hasAbsenPulang ? '🏁 SELESAI' : '🟢 AKTIF') : '⚪ BELUM' }}
-                    </div>
-                </div>
+    <div class="text-[10px] font-black text-blue-200 uppercase tracking-[0.2em] mb-1">Status Shift Anda</div>
+    <div class="font-mono text-2xl font-black text-yellow-300">
+        {{ cekAbsenMasukKaryawan(currentUser.user_id) ? (cekAbsenPulangKaryawan(currentUser.user_id) ? '🏁 SELESAI' : '🟢 AKTIF') : '⚪ BELUM' }}
+    </div>
+</div>
             </div>
 
             <h2 class="text-lg font-black text-gray-800 mb-4 flex items-center gap-2 uppercase tracking-tight">👤 Panel Absensi Karyawan</h2>
@@ -422,22 +416,22 @@ const downloadLaporan = async () => {
                     </div>
 
                     <div class="flex gap-3">
-                        <button v-if="!hasAbsenMasuk" @click="mulaiAbsen(user.id, user.name, 'Masuk')"
-                            :disabled="user.id != currentUser.user_id"
-                            class="flex-1 py-3.5 rounded-2xl font-black text-sm transition-all border-2 flex items-center justify-center gap-2 bg-green-50 text-green-700 border-green-200 hover:bg-green-600 hover:text-white disabled:opacity-30">
-                            📸 MASUK
-                        </button>
-                        
-                        <button v-if="hasAbsenMasuk && !hasAbsenPulang" @click="mulaiAbsen(user.id, user.name, 'Pulang')"
-                            :disabled="user.id != currentUser.user_id"
-                            class="flex-1 py-3.5 rounded-2xl font-black text-sm transition-all border-2 flex items-center justify-center gap-2 bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-600 hover:text-white disabled:opacity-30">
-                            🏁 PULANG
-                        </button>
+    <button v-if="!cekAbsenMasukKaryawan(user.id)" @click="mulaiAbsen(user.id, user.name, 'Masuk')"
+        :disabled="user.id != currentUser.user_id"
+        class="flex-1 py-3.5 rounded-2xl font-black text-sm transition-all border-2 flex items-center justify-center gap-2 bg-green-50 text-green-700 border-green-200 hover:bg-green-600 hover:text-white disabled:opacity-30">
+        📸 MASUK
+    </button>
+    
+    <button v-if="cekAbsenMasukKaryawan(user.id) && !cekAbsenPulangKaryawan(user.id)" @click="mulaiAbsen(user.id, user.name, 'Pulang')"
+        :disabled="user.id != currentUser.user_id"
+        class="flex-1 py-3.5 rounded-2xl font-black text-sm transition-all border-2 flex items-center justify-center gap-2 bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-600 hover:text-white disabled:opacity-30">
+        🏁 PULANG
+    </button>
 
-                        <div v-if="hasAbsenPulang" class="w-full py-3.5 text-center bg-gray-100 text-gray-400 font-black rounded-2xl text-xs uppercase tracking-widest border-2 border-dashed border-gray-200">
-                            TUGAS SELESAI HARI INI
-                        </div>
-                    </div>
+    <div v-if="cekAbsenPulangKaryawan(user.id)" class="w-full py-3.5 text-center bg-gray-100 text-gray-400 font-black rounded-2xl text-xs uppercase tracking-widest border-2 border-dashed border-gray-200">
+        TUGAS SELESAI HARI INI
+    </div>
+</div>
                 </div>
             </div>
 
