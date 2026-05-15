@@ -142,6 +142,7 @@ func CreateTransaction(c *gin.Context) {
 		"invoice": savedTransaction.NoInvoice,
 		"tagihan": savedTransaction.TotalHarga,
 		"kembali": savedTransaction.Kembalian,
+		"data":    savedTransaction,
 	})
 }
 
@@ -173,6 +174,7 @@ func GetTransactions(c *gin.Context) {
 	// 🚀 Tarik data sekaligus: Transaksi + Kasir (User) + Rincian Barang (Details) + Nama Barang (Product)
 	if err := config.DB.
 		Preload("User").
+		Preload("Store").
 		Preload("Details").
 		Preload("Details.Product").
 		Where("store_id = ? AND created_at BETWEEN ? AND ?", storeID, startOfDay, endOfDay).

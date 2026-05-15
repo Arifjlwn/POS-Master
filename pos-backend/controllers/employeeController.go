@@ -90,6 +90,7 @@ func CreateEmployee(c *gin.Context) {
 		TanggalLahir: tanggalLahir,
 		NoHP:         noHP,
 		FotoURL:      fotoURL,
+		
 	}
 
 	if err := config.DB.Create(&employee).Error; err != nil {
@@ -177,6 +178,29 @@ func UpdateEmployee(c *gin.Context) {
 			employee.FotoURL = "/uploads/" + newFileName
 		}
 	}
+
+	// 🚀 4. HANDLE UPDATE FOTO BIOMETRIK (ABSENSI)
+bioFile, errBio := c.FormFile("biometric_file")
+if errBio == nil {
+    // Amankan Pointer NIK lagi
+    nikClean := "karyawan"
+    if employee.NIK != nil {
+        nikClean = *employee.NIK
+    }
+
+    // Kasih nama beda (tambah _bio_) biar file-nya nggak nimpa foto profil
+    newBioName := fmt.Sprintf("%s_bio_%d%s", nikClean, time.Now().Unix(), filepath.Ext(bioFile.Filename))
+    uploadBioPath := filepath.Join("uploads", newBioName)
+
+    if err := c.SaveUploadedFile(bioFile, uploadBioPath); err == nil {
+        // Hapus foto biometrik lama jika ada
+        if employee.BiometricURL != "" {
+            os.Remove("." + employee.BiometricURL)
+        }
+        // Simpan path baru ke database
+        employee.BiometricURL = "/uploads/" + newBioName
+    }
+}
 
 	// 4. Eksekusi simpan perubahan aman ke Supabase
 	if err := config.DB.Save(&employee).Error; err != nil {

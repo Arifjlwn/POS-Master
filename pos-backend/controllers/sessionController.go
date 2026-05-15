@@ -89,8 +89,9 @@ func CheckSessionStatus(c *gin.Context) {
     userID := uint(userIDRaw.(float64))
 
     var session models.CashierSession
-    // Kita ambil session terakhir yang statusnya open
-    if err := config.DB.Where("user_id = ? AND status = ?", userID, "open").Order("id desc").First(&session).Error; err != nil {
+    
+    // 🚀 TAMBAHKAN Preload("Store") DI SINI BIAR ALAMAT & NAMA TOKO KEBAWA
+    if err := config.DB.Preload("Store").Where("user_id = ? AND status = ?", userID, "open").Order("id desc").First(&session).Error; err != nil {
         c.JSON(http.StatusOK, gin.H{"has_session": false})
         return
     }

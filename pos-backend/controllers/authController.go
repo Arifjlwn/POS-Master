@@ -204,6 +204,7 @@ func GetMe(c *gin.Context) {
 		"role":          user.Role,
 		"is_verified":   user.IsVerified,
 		"foto_url":      user.FotoURL,
+		"biometric_url": user.BiometricURL,
 		"tempat_lahir":  user.TempatLahir,
 		"tanggal_lahir": user.TanggalLahir,
 		"store_name":    user.Store.NamaToko,

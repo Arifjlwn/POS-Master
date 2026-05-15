@@ -17,6 +17,7 @@ type User struct {
 	TanggalLahir string    `gorm:"type:varchar(20)" json:"tanggal_lahir"`
 	NoHP         string    `gorm:"type:varchar(20)" json:"no_hp"`
 	FotoURL      string    `gorm:"type:text" json:"foto_url"` 
+	BiometricURL      string    `gorm:"type:text" json:"biometric_url"` 
 	// ----------------------------------------------------
 
 	CreatedAt time.Time `json:"created_at"`

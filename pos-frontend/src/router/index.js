@@ -116,7 +116,7 @@ router.beforeEach((to, from, next) => {
 
     // 3. Proteksi Dashboard (Hanya Owner)
     if (to.path === '/dashboard' && role !== 'owner') {
-        return next('/pos/buka-kasir');
+        return next('/absensi');
     }
 
     next();

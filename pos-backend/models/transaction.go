@@ -7,6 +7,7 @@ type Transaction struct {
     ID           uint      `gorm:"primaryKey" json:"id"`
     SessionID    uint      `gorm:"not null" json:"session_id"` // 🚀 KUNCI UTAMA UNTUK CLOSING
     StoreID      uint      `gorm:"not null" json:"store_id"`
+    Store        Store          `gorm:"foreignKey:StoreID" json:"Store"`
     UserID       uint      `gorm:"not null" json:"user_id"`
     NoInvoice    string    `gorm:"type:varchar(50);uniqueIndex;not null" json:"no_invoice"`
 

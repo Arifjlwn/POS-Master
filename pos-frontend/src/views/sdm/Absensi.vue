@@ -18,25 +18,21 @@ const updateTime = () => {
 
 // --- STATE DATA ---
 const karyawan = ref([]);
-
 const riwayat = ref([]);
-const urutanTanggalTerbaru = ref(true); // true = terbaru ke tertua, false = tertua ke terbaru
+const urutanTanggalTerbaru = ref(true);
+const isLoading = ref(true);
+const filterMode = ref('harian');
+const bulanDipilih = ref(new Date().toISOString().slice(0, 7));
+const isAiLoading = ref(true);
 
 const toggleSortTanggal = () => {
     urutanTanggalTerbaru.value = !urutanTanggalTerbaru.value;
-    
-    // Langsung urutkan ulang array riwayat yang sudah ada di memori Vue
     if (urutanTanggalTerbaru.value) {
         riwayat.value.sort((a, b) => b.tanggal.localeCompare(a.tanggal));
     } else {
         riwayat.value.sort((a, b) => a.tanggal.localeCompare(b.tanggal));
     }
 };
-
-const isLoading = ref(true);
-const filterMode = ref('harian');
-const bulanDipilih = ref(new Date().toISOString().slice(0, 7)); // YYYY-MM
-const isAiLoading = ref(true);
 
 const getPayloadFromToken = () => {
     const token = localStorage.getItem('token');
@@ -56,7 +52,6 @@ const currentUser = ref(getPayloadFromToken());
 const today = new Date().toLocaleDateString('en-CA');
 const tanggalDipilih = ref(today);
 
-// --- 🚀 FIX PERMANEN: SAMAKAN FORMAT STRING TANGGAL SECARA MURNI ---
 const cekAbsenMasukKaryawan = (userId) => {
     return riwayat.value.some(log => {
         if (!log.tanggal) return false;
@@ -84,31 +79,23 @@ const stream = ref(null);
 const absenTarget = ref({ id: null, nama: '', jenis: '' });
 const isSubmitting = ref(false);
 
-// --- SINKRONISASI LOG RIWAYAT HARIAN & BULANAN PENUH ALA RETAIL ---
 const fetchData = async () => {
     isLoading.value = true;
     try {
-        // Ambil semua daftar karyawan murni dari backend Go (Diizinkan untuk semua role)
         const resKaryawan = await api.get('/employees');
         const allEmp = resKaryawan.data.data || [];
-        
-        // Pisahkan pasukan staff biasa (yang rolenya bukan owner)
         const staffSaja = allEmp.filter(e => e.role !== 'owner');
 
-        // 🚀 LOGIKA DINAMIS SINKRONISASI PANEL ATAS
         if (currentUser.value.role === 'owner') {
-            // Jika login Owner dan belum punya karyawan, tampilkan diri sendiri agar bisa absen solo
             if (staffSaja.length === 0) {
                 karyawan.value = allEmp; 
             } else {
-                karyawan.value = staffSaja; // Jika ada staff, owner ngalah keluar dari panel biar rapi
+                karyawan.value = staffSaja; 
             }
         } else {
-            // Jika login sebagai Staff biasa, dia tetap melihat SEMUA staff rekan kerjanya agar transparan!
             karyawan.value = staffSaja;
         }
 
-        // Tentukan range tanggal awal dan akhir bulan
         const [tahun, bulan] = bulanDipilih.value.split('-');
         const tanggalAwalBulan = `${bulanDipilih.value}-01`;
         const tanggalAkhirBulan = `${bulanDipilih.value}-${new Date(tahun, bulan, 0).getDate()}`;
@@ -121,7 +108,6 @@ const fetchData = async () => {
             params.tahun = tahun;
         }
 
-        // Ambil data absensi aktual dan master jadwal dari backend
         const [resRiwayat, resSched] = await Promise.all([
             api.get('/attendance', { params }),
             api.get('/schedules', { params: { 
@@ -134,7 +120,6 @@ const fetchData = async () => {
         const dataJadwalReal = resSched.data.data || [];
         const matriksGabungan = [];
 
-        // --- GENERATOR MATRIKS LOG RIWAYAT TABEL ---
         if (filterMode.value === 'harian') {
             karyawan.value.forEach(emp => {
                 const empKey = emp.id || emp.user_id;
@@ -158,19 +143,17 @@ const fetchData = async () => {
             });
         } else {
             const jumlahHari = new Date(tahun, bulan, 0).getDate();
-
             karyawan.value.forEach(emp => {
                 const empKey = emp.id || emp.user_id;
 
                 for (let hari = 1; hari <= jumlahHari; hari++) {
                     const tglLoopStr = `${bulanDipilih.value}-${String(hari).padStart(2, '0')}`;
-                    
                     const absenMatch = dataAbsenReal.find(a => Number(a.user_id) === Number(empKey) && a.tanggal.substring(0, 10) === tglLoopStr);
                     const jadwalMatch = dataJadwalReal.find(s => Number(s.user_id) === Number(empKey) && s.tanggal.substring(0, 10) === tglLoopStr);
 
                     const shiftClean = jadwalMatch ? jadwalMatch.shift_type.replace(' (Approved)','').replace(' (Pending)','') : 'Belum Set';
-
                     let statusDinamis = 'Belum Absen';
+                    
                     if (absenMatch) {
                         statusDinamis = absenMatch.status;
                     } else if (shiftClean === 'OFF') {
@@ -220,12 +203,10 @@ const lihatFoto = (url, nama, tipe, jam) => {
     });
 };
 
-// LOGIC AI ABSENSI
 onMounted(async () => {
     updateTime();
     timer = setInterval(updateTime, 1000);
     
-    // 🚀 LOAD MODELS AI SAAT HALAMAN DIBUKA
     try {
         await Promise.all([
             faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
@@ -233,9 +214,9 @@ onMounted(async () => {
             faceapi.nets.faceRecognitionNet.loadFromUri('/models')
         ]);
         isAiLoading.value = false;
-        console.log("AI Models Loaded! 🤖");
+        console.log("AI Models Loaded!");
     } catch (e) {
-        console.error("Gagal load AI models", e);
+        console.error("Gagal load AI models. Pastikan folder /models ada di public folder Vue.", e);
     }
     
     fetchData();
@@ -247,27 +228,6 @@ onUnmounted(() => {
 });
 
 watch([tanggalDipilih, bulanDipilih, filterMode], () => fetchData());
-
-// Fungsi untuk membatasi tanggal pengisian jadwal di Vue Mas Arif
-const getJadwalRange = () => {
-    const sekarang = new Date();
-    const tahun = sekarang.getFullYear();
-    const bulan = sekarang.getMonth(); // Bulan saat ini (0-11)
-    
-    // Cari tanggal terakhir di bulan ini
-    const tanggalTerakhir = new Date(tahun, bulan + 1, 0).getDate(); 
-    const hariTanggalTerakhir = new Date(tahun, bulan, tanggalTerakhir).getDay(); // 0 = Minggu, 4 = Kamis, dll
-    
-    console.log(`Tanggal terakhir bulan ini: ${tanggalTerakhir}, Jatuh pada hari ke-${hariTanggalTerakhir}`);
-    
-    // Logika pembatasan ala TSM Indomaret Mas Arif:
-    // Jika akhir bulan bukan hari Minggu (0), berarti ada potongan minggu (Split-Week)
-    if (hariTanggalTerakhir !== 0) {
-        const sisaHari = 7 - hariTanggalTerakhir;
-        console.log(`Karyawan harus buat jadwal parsial sisa bulan sebanyak ${sisaHari} hari ke depan.`);
-        // Jalur ini yang mengunci form biar cuma bisa isi dari tanggal 1 sampai hari Minggu pertama di bulan baru
-    }
-}
 
 const mulaiAbsen = async (id, nama, jenis) => {
     absenTarget.value = { id, nama, jenis };
@@ -290,58 +250,51 @@ const stopCamera = () => {
 };
 
 const jepretDanKirim = async () => {
-    if (isAiLoading.value) return Swal.fire('Tunggu', 'AI sedang pemanasan...', 'warning');
-    
+    if (isAiLoading.value) return Swal.fire('Tunggu', 'Sistem AI sedang memuat model...', 'warning');
     isSubmitting.value = true;
     
     try {
-        // 1. Ambil data profil diri sendiri (Pasti diizinkan Backend)
         const resMe = await api.get('/me'); 
-        const targetEmp = resMe.data; // Mengambil data user yang sedang login
+        const targetEmp = resMe.data;
 
-        if (!targetEmp.foto_url) {
-            throw new Error("Foto Master Anda belum ada di sistem. Minta Owner untuk upload foto Anda.");
+        if (!targetEmp.biometric_url) {
+            throw new Error("Data Biometrik Wajah belum terdaftar. Minta HRD untuk mendaftarkan wajah Anda.");
         }
 
-        // 🚀 FIX URL DINAMIS: Gunakan .env untuk menembak foto master
-        // Biar lancar di laptop dan HP, pastikan VITE_API_BASE_URL di .env sudah pakai IP (http://192.168.xx.xx:8080)
-        const masterUrl = `${import.meta.env.VITE_API_BASE_URL}${targetEmp.foto_url}`;
+        // 🚀 FIX: Sanitasi URL Foto agar bebas error CORS / Path nyasar
+        const baseUrl = import.meta.env.VITE_API_BASE_URL.replace(/\/$/, ''); // Buang slash di akhir base url
+        const photoPath = targetEmp.biometric_url.startsWith('/') ? targetEmp.biometric_url : `/${targetEmp.biometric_url}`; // Pastikan ada slash di awal path
+        const masterUrl = `${baseUrl}${photoPath}`;
+        
+        console.log("Mencoba load foto master Biometrik dari:", masterUrl);
         const imgMaster = await faceapi.fetchImage(masterUrl);
         
         const masterDetections = await faceapi.detectSingleFace(imgMaster, new faceapi.TinyFaceDetectorOptions())
             .withFaceLandmarks().withFaceDescriptor();
 
-        if (!masterDetections) throw new Error("AI tidak menemukan wajah di Foto Master. Coba upload foto baru yang lebih jelas.");
+        if (!masterDetections) throw new Error("Wajah di foto sistem tidak terbaca oleh AI. Harap ganti foto profil.");
 
         const faceMatcher = new faceapi.FaceMatcher(masterDetections);
-
-        // 2. Deteksi Wajah di Kamera (Video)
         const queryDetections = await faceapi.detectSingleFace(videoRef.value, new faceapi.TinyFaceDetectorOptions())
             .withFaceLandmarks().withFaceDescriptor();
 
-        if (!queryDetections) throw new Error("Wajah tidak terdeteksi di kamera! Pastikan wajah terlihat jelas dan cukup cahaya.");
+        if (!queryDetections) throw new Error("Wajah tidak terdeteksi di kamera! Pastikan wajah di tengah dan terang.");
 
-        // Bandingkan wajah kamera dengan wajah master
         const bestMatch = faceMatcher.findBestMatch(queryDetections.descriptor);
         
-        // Tolerance: 0.5 (Makin kecil makin ketat)
         if (bestMatch.distance > 0.5) {
-            throw new Error("Wajah tidak cocok! Verifikasi gagal.");
+            throw new Error("Wajah tidak cocok dengan database! (Verifikasi Ditolak)");
         }
 
-        // 3. Lolos Verifikasi, Kecilkan Foto untuk dikirim ke Backend
         const canvas = document.createElement('canvas');
         canvas.width = 320; 
         canvas.height = 400;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(videoRef.value, 0, 0, canvas.width, canvas.height);
-
-        // Quality 0.4 biar gak kena 413 Payload Too Large lagi
         const photoBase64 = canvas.toDataURL('image/jpeg', 0.4); 
         
-        stopCamera(); // Matikan kamera setelah sukses
+        stopCamera();
 
-        // Kirim ke database lewat Axios instance kita
         await api.post('/attendance', {
             user_id: targetEmp.user_id, 
             jenis: absenTarget.value.jenis,
@@ -351,16 +304,21 @@ const jepretDanKirim = async () => {
         Swal.fire({
             icon: 'success',
             title: `Absen ${absenTarget.value.jenis} Berhasil!`,
-            text: 'Selamat bekerja!',
+            text: 'Data telah tercatat di server.',
             timer: 2000,
             showConfirmButton: false
         });
 
-        fetchData(); // Refresh tabel riwayat absen
+        fetchData(); 
 
     } catch (error) {
-        console.error("DEBUG ABSEN:", error);
-        Swal.fire('Gagal', error.message || "Terjadi kesalahan", 'error');
+        console.error("DEBUG ABSEN ERROR:", error);
+        // Error handling yang lebih spesifik
+        let errorMsg = error.message || "Terjadi kesalahan";
+        if (errorMsg.includes("Failed to fetch")) {
+            errorMsg = "Gagal memuat foto server. Cek koneksi atau setting CORS backend.";
+        }
+        Swal.fire('Gagal Verifikasi', errorMsg, 'error');
     } finally {
         isSubmitting.value = false;
     }
@@ -385,197 +343,249 @@ const downloadLaporan = async () => {
 
 <template>
     <Sidebar>
-        <div class="p-6 md:p-8 max-w-7xl mx-auto font-sans">
+        <div class="p-4 md:p-8 max-w-7xl mx-auto font-sans">
+            
             <div class="bg-blue-800 rounded-3xl p-6 md:p-8 mb-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between overflow-hidden relative border border-blue-900">
-                <div class="absolute -right-10 -top-20 opacity-10 text-[200px] font-black italic pointer-events-none">⏱️</div>
+                <div class="absolute -right-5 -top-10 opacity-10 text-blue-200 pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-64 h-64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                
                 <div class="relative z-10 text-center md:text-left mb-6 md:mb-0">
                     <h1 class="text-3xl font-black tracking-tight mb-2 uppercase">Presensi Karyawan</h1>
-                    <p class="text-blue-200 font-medium text-sm italic">Absen Tepat Waktu ya teman-teman !</p>
+                    <p class="text-blue-200 font-medium text-sm italic flex items-center justify-center md:justify-start gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4c0-1.1.9-2 2-2h8a2 2 0 0 1 2 2v5Z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg>
+                        Absen Tepat Waktu Ya Tim!
+                    </p>
                 </div>
+                
                 <div class="relative z-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 md:px-8 text-center shadow-inner">
-    <div class="text-[10px] font-black text-blue-200 uppercase tracking-[0.2em] mb-1">Status Shift Anda</div>
-    <div class="font-mono text-2xl font-black text-yellow-300">
-        {{ cekAbsenMasukKaryawan(currentUser.user_id) ? (cekAbsenPulangKaryawan(currentUser.user_id) ? '🏁 SELESAI' : '🟢 AKTIF') : '⚪ BELUM' }}
-    </div>
-</div>
+                    <div class="text-[10px] font-black text-blue-200 uppercase tracking-[0.2em] mb-1">Status Shift Anda</div>
+                    <div class="font-mono text-2xl font-black flex items-center justify-center gap-2"
+                         :class="cekAbsenMasukKaryawan(currentUser.user_id) ? (cekAbsenPulangKaryawan(currentUser.user_id) ? 'text-slate-300' : 'text-emerald-400') : 'text-amber-300'">
+                        <template v-if="cekAbsenMasukKaryawan(currentUser.user_id)">
+                            <template v-if="cekAbsenPulangKaryawan(currentUser.user_id)">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                                SELESAI
+                            </template>
+                            <template v-else>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                AKTIF
+                            </template>
+                        </template>
+                        <template v-else>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            BELUM
+                        </template>
+                    </div>
+                </div>
             </div>
 
-            <h2 class="text-lg font-black text-gray-800 mb-4 flex items-center gap-2 uppercase tracking-tight">👤 Panel Absensi Karyawan</h2>
+            <h2 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2 uppercase tracking-tight">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Panel Absensi
+            </h2>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-10">
                 <div v-for="user in karyawan" :key="user.id"
-                     class="bg-white rounded-3xl p-5 shadow-sm border-2 transition-all duration-300"
-                     :class="user.id == currentUser.user_id ? 'border-blue-500 shadow-blue-100 ring-4 ring-blue-50' : 'border-gray-100 opacity-60'">
-
-                    <div class="flex items-center gap-4 mb-5 pb-4 border-b border-gray-50">
-                        <div class="w-14 h-14 rounded-full flex items-center justify-center shrink-0 border-2 border-white shadow-md bg-blue-600 text-white font-black text-lg uppercase">{{ user.name.substring(0, 2) }}</div>
+                     class="bg-white rounded-3xl p-5 shadow-sm border-2 transition-all duration-300 relative overflow-hidden group"
+                     :class="user.id == currentUser.user_id ? 'border-blue-500 shadow-blue-100 ring-4 ring-blue-50' : 'border-slate-100 opacity-60'">
+                    
+                    <div class="flex items-center gap-4 mb-5 pb-4 border-b border-slate-50 relative z-10">
+                        <div class="w-14 h-14 rounded-[16px] flex items-center justify-center shrink-0 border-2 border-white shadow-md bg-slate-900 text-white font-black text-lg uppercase">{{ user.name.substring(0, 2) }}</div>
                         <div>
-                            <h3 class="font-black text-lg leading-tight text-gray-800 uppercase">{{ user.name }}</h3>
-                            <div class="text-[10px] font-black px-2 py-0.5 mt-1 rounded bg-blue-100 text-blue-700 uppercase tracking-widest">{{ user.role }} • {{ user.nik || 'ID:'+user.id }}</div>
+                            <h3 class="font-black text-lg leading-tight text-slate-800 uppercase">{{ user.name }}</h3>
+                            <div class="text-[9px] font-black px-2 py-1 mt-1 rounded bg-slate-100 text-slate-500 uppercase tracking-widest inline-block">{{ user.role }} • {{ user.nik || 'ID:'+user.id }}</div>
                         </div>
                     </div>
 
-                    <div class="flex gap-3">
-    <button v-if="!cekAbsenMasukKaryawan(user.id)" @click="mulaiAbsen(user.id, user.name, 'Masuk')"
-        :disabled="user.id != currentUser.user_id"
-        class="flex-1 py-3.5 rounded-2xl font-black text-sm transition-all border-2 flex items-center justify-center gap-2 bg-green-50 text-green-700 border-green-200 hover:bg-green-600 hover:text-white disabled:opacity-30">
-        📸 MASUK
-    </button>
-    
-    <button v-if="cekAbsenMasukKaryawan(user.id) && !cekAbsenPulangKaryawan(user.id)" @click="mulaiAbsen(user.id, user.name, 'Pulang')"
-        :disabled="user.id != currentUser.user_id"
-        class="flex-1 py-3.5 rounded-2xl font-black text-sm transition-all border-2 flex items-center justify-center gap-2 bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-600 hover:text-white disabled:opacity-30">
-        🏁 PULANG
-    </button>
+                    <div class="flex gap-3 relative z-10">
+                        <button v-if="!cekAbsenMasukKaryawan(user.id)" @click="mulaiAbsen(user.id, user.name, 'Masuk')"
+                            :disabled="user.id != currentUser.user_id"
+                            class="flex-1 py-3.5 rounded-[18px] font-black text-[11px] uppercase tracking-widest transition-all border-2 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-600 hover:text-white disabled:opacity-30">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                            Absen Masuk
+                        </button>
+                        
+                        <button v-if="cekAbsenMasukKaryawan(user.id) && !cekAbsenPulangKaryawan(user.id)" @click="mulaiAbsen(user.id, user.name, 'Pulang')"
+                            :disabled="user.id != currentUser.user_id"
+                            class="flex-1 py-3.5 rounded-[18px] font-black text-[11px] uppercase tracking-widest transition-all border-2 flex items-center justify-center gap-2 bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-500 hover:text-white disabled:opacity-30">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                            Absen Pulang
+                        </button>
 
-    <div v-if="cekAbsenPulangKaryawan(user.id)" class="w-full py-3.5 text-center bg-gray-100 text-gray-400 font-black rounded-2xl text-xs uppercase tracking-widest border-2 border-dashed border-gray-200">
-        TUGAS SELESAI HARI INI
-    </div>
-</div>
+                        <div v-if="cekAbsenPulangKaryawan(user.id)" class="w-full py-3.5 text-center bg-slate-50 text-slate-400 font-black rounded-[18px] text-[10px] uppercase tracking-widest border border-slate-200 flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            Selesai Hari Ini
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
-                <div class="p-5 md:p-6 border-b border-gray-100 flex flex-col md:flex-row md:justify-between md:items-center bg-gray-50 gap-4">
-                    <h3 class="font-black text-gray-800 text-lg flex items-center gap-2 uppercase tracking-tight">📋 Log Riwayat</h3>
+            <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+                <div class="p-5 md:p-6 border-b border-slate-100 flex flex-col md:flex-row md:justify-between md:items-center bg-slate-50/50 gap-4">
+                    <h3 class="font-black text-slate-800 text-lg flex items-center gap-2 uppercase tracking-tight">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        Log Riwayat
+                    </h3>
                     <div class="flex flex-wrap items-center gap-3">
-                        <select v-model="filterMode" class="px-4 py-2 bg-white border-2 border-gray-200 rounded-xl text-sm font-black text-gray-700 outline-none">
-                            <option value="harian">HARIAN</option><option value="bulanan">BULANAN</option>
+                        <select v-model="filterMode" class="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-700 outline-none uppercase tracking-widest shadow-sm">
+                            <option value="harian">Harian</option><option value="bulanan">Bulanan</option>
                         </select>
-                        <input v-if="filterMode === 'harian'" type="date" v-model="tanggalDipilih" class="px-4 py-2 border-2 border-gray-200 rounded-xl text-sm font-black text-gray-700">
-                        <input v-else type="month" v-model="bulanDipilih" class="px-4 py-2 border-2 border-gray-200 rounded-xl text-sm font-black text-gray-700">
-                        <button v-if="currentUser.role === 'owner'" @click="downloadLaporan" class="bg-emerald-600 text-white px-5 py-2 rounded-xl font-black text-xs uppercase shadow-md">Ekspor CSV</button>
+                        <input v-if="filterMode === 'harian'" type="date" v-model="tanggalDipilih" class="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-700 outline-none uppercase shadow-sm">
+                        <input v-else type="month" v-model="bulanDipilih" class="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-700 outline-none uppercase shadow-sm">
+                        <button v-if="currentUser.role === 'owner'" @click="downloadLaporan" class="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-md flex items-center gap-2 hover:bg-blue-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                            Ekspor CSV
+                        </button>
                     </div>
                 </div>
-                <div class="overflow-x-auto">
+                
+                <div class="overflow-x-auto custom-scrollbar">
                     <table class="w-full text-left whitespace-nowrap">
-    <thead class="bg-white border-b border-gray-100">
-        <tr class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-            <th class="px-6 py-5">Karyawan</th>
-            <th v-if="filterMode === 'bulanan'" 
-    @click="toggleSortTanggal" 
-    class="px-6 py-5 text-center cursor-pointer select-none hover:bg-slate-50 transition-colors group">
-    <div class="flex items-center justify-center gap-1">
-        <span>Tanggal</span>
-        <span class="text-[11px] text-blue-600 transition-transform">
-            {{ urutanTanggalTerbaru ? '🔽' : '🔼' }}
-        </span>
-    </div>
-</th>
-            <th class="px-6 py-5 text-center">Shift</th>
-            <th class="px-6 py-5 text-center">Foto Masuk</th>
-            <th class="px-6 py-5 text-center">Jam Masuk</th>
-            <th class="px-6 py-5 text-center">Foto Pulang</th>
-            <th class="px-6 py-5 text-center">Jam Pulang</th>
-            <th class="px-6 py-5 text-center">Status</th>
-        </tr>
-    </thead>
-    <tbody class="divide-y divide-gray-50">
-        <tr v-if="isLoading">
-            <td :colspan="filterMode === 'bulanan' ? 8 : 7" class="px-6 py-12 text-center text-gray-400 font-bold uppercase animate-pulse">
-                Sinkronisasi...
-            </td>
-        </tr>
-        <tr v-else-if="riwayat.length === 0">
-            <td :colspan="filterMode === 'bulanan' ? 8 : 7" class="px-6 py-12 text-center text-gray-400 font-bold italic">
-                Data Kosong.
-            </td>
-        </tr>
-        <tr v-else v-for="log in riwayat" :key="log.id" class="hover:bg-blue-50/30 transition-colors group">
-            <td class="px-6 py-5">
-                <div class="font-black text-gray-800 uppercase text-sm">{{ log.User?.name }}</div>
-                <div class="text-[9px] text-gray-400 font-bold tracking-widest">
-                    {{ log.User?.nik || 'ID: '+log.user_id }}
-                </div>
-            </td>
-            
-            <td v-if="filterMode === 'bulanan'" class="px-6 py-5 text-center font-mono text-xs font-black text-slate-600">
-                {{ log.tanggal ? log.tanggal.substring(0, 10) : '-' }}
-            </td>
+                        <thead class="bg-white border-b border-slate-100">
+                            <tr class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                                <th class="px-6 py-5">Karyawan</th>
+                                <th v-if="filterMode === 'bulanan'" @click="toggleSortTanggal" class="px-6 py-5 text-center cursor-pointer select-none hover:bg-slate-50 transition-colors group">
+                                    <div class="flex items-center justify-center gap-2">
+                                        Tanggal
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-blue-600 transition-transform" :class="!urutanTanggalTerbaru ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m6 9 6 6 6-6"/></svg>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-5 text-center">Shift</th>
+                                <th class="px-6 py-5 text-center">Foto Masuk</th>
+                                <th class="px-6 py-5 text-center">Jam Masuk</th>
+                                <th class="px-6 py-5 text-center">Foto Pulang</th>
+                                <th class="px-6 py-5 text-center">Jam Pulang</th>
+                                <th class="px-6 py-5 text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50">
+                            <tr v-if="isLoading">
+                                <td :colspan="filterMode === 'bulanan' ? 8 : 7" class="px-6 py-12 text-center text-slate-400 font-black text-xs uppercase tracking-widest animate-pulse">
+                                    Sinkronisasi Data...
+                                </td>
+                            </tr>
+                            <tr v-else-if="riwayat.length === 0">
+                                <td :colspan="filterMode === 'bulanan' ? 8 : 7" class="px-6 py-12 text-center text-slate-400 font-black text-xs uppercase tracking-widest opacity-50">
+                                    Data Riwayat Kosong
+                                </td>
+                            </tr>
+                            <tr v-else v-for="log in riwayat" :key="log.id" class="hover:bg-slate-50/50 transition-colors group">
+                                <td class="px-6 py-5">
+                                    <div class="font-black text-slate-800 uppercase text-xs">{{ log.User?.name }}</div>
+                                    <div class="text-[9px] text-slate-400 font-bold tracking-widest">{{ log.User?.nik || 'ID: '+log.user_id }}</div>
+                                </td>
+                                
+                                <td v-if="filterMode === 'bulanan'" class="px-6 py-5 text-center font-mono text-[11px] font-black text-slate-600">
+                                    {{ log.tanggal ? log.tanggal.substring(0, 10) : '-' }}
+                                </td>
 
-            <td class="px-6 py-5 text-center font-black text-xs text-indigo-600 uppercase">
-                {{ log.shift }}
-            </td>
+                                <td class="px-6 py-5 text-center font-black text-[10px] text-blue-600 uppercase tracking-widest">
+                                    <span class="bg-blue-50 border border-blue-100 px-3 py-1 rounded-lg">{{ log.shift }}</span>
+                                </td>
 
-            <td class="px-6 py-5 text-center">
-                <div v-if="log.foto_masuk" @click="lihatFoto(log.foto_masuk, log.User?.name, 'Masuk', log.jam_masuk)" class="w-14 h-14 rounded-xl mx-auto border-4 border-white shadow-sm overflow-hidden cursor-zoom-in">
-                    <img :src="log.foto_masuk" class="w-full h-full object-cover">
-                </div>
-                <span v-else class="text-gray-200">❌</span>
-            </td>
+                                <td class="px-6 py-5 text-center">
+                                    <div v-if="log.foto_masuk" @click="lihatFoto(log.foto_masuk, log.User?.name, 'Masuk', log.jam_masuk)" class="w-12 h-12 rounded-xl mx-auto border-2 border-slate-200 shadow-sm overflow-hidden cursor-zoom-in hover:border-blue-500 transition-colors">
+                                        <img :src="log.foto_masuk" class="w-full h-full object-cover">
+                                    </div>
+                                    <span v-else class="text-slate-300 font-black text-xs">-</span>
+                                </td>
 
-            <td class="px-6 py-5 text-center">
-                <span v-if="log.jam_masuk" class="bg-green-100 text-green-700 font-black px-3 py-1.5 rounded-lg text-xs">
-                    {{ log.jam_masuk }}
-                </span>
-                <span v-else class="text-gray-300">-</span>
-            </td>
+                                <td class="px-6 py-5 text-center">
+                                    <span v-if="log.jam_masuk" class="bg-emerald-50 text-emerald-700 border border-emerald-100 font-black px-3 py-1.5 rounded-lg text-[10px]">
+                                        {{ log.jam_masuk }}
+                                    </span>
+                                    <span v-else class="text-slate-300 font-black text-xs">-</span>
+                                </td>
 
-            <td class="px-6 py-5 text-center">
-                <div v-if="log.foto_pulang" @click="lihatFoto(log.foto_pulang, log.User?.name, 'Pulang', log.jam_pulang)" class="w-14 h-14 rounded-xl mx-auto border-4 border-white shadow-sm overflow-hidden cursor-zoom-in">
-                    <img :src="log.foto_pulang" class="w-full h-full object-cover">
-                </div>
-                <span v-else class="text-gray-200">❌</span>
-            </td>
+                                <td class="px-6 py-5 text-center">
+                                    <div v-if="log.foto_pulang" @click="lihatFoto(log.foto_pulang, log.User?.name, 'Pulang', log.jam_pulang)" class="w-12 h-12 rounded-xl mx-auto border-2 border-slate-200 shadow-sm overflow-hidden cursor-zoom-in hover:border-blue-500 transition-colors">
+                                        <img :src="log.foto_pulang" class="w-full h-full object-cover">
+                                    </div>
+                                    <span v-else class="text-slate-300 font-black text-xs">-</span>
+                                </td>
 
-            <td class="px-6 py-5 text-center">
-                <span v-if="log.jam_pulang" class="bg-orange-100 text-orange-700 font-black px-3 py-1.5 rounded-lg text-xs">
-                    {{ log.jam_pulang }}
-                </span>
-                <span v-else class="text-gray-300">-</span>
-            </td>
-            
-            <td class="px-6 py-5 text-center">
-    <span v-if="log.status === 'Hadir'" class="bg-green-100 text-green-800 font-black px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider shadow-sm">
-        🟢 HADIR
-    </span>
-    <span v-else-if="log.status === 'Lupa Absen Pulang'" class="bg-amber-100 text-amber-800 font-black px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider shadow-sm">
-        ⚠️ LUPA PULANG
-    </span>
-    <span v-else-if="log.status === 'Mangkir'" class="bg-red-100 text-red-800 font-black px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider shadow-sm">
-        🚨 MANGKIR
-    </span>
-    <span v-else-if="log.status === 'Libur (OFF)'" class="bg-slate-100 text-slate-500 font-black px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider shadow-sm border border-dashed border-slate-200">
-        ⚪ LIBUR (OFF)
-    </span>
-    <span v-else-if="log.status === 'Belum Absen'" class="bg-blue-100 text-blue-800 font-black px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider shadow-sm animate-pulse">
-        🔵 BELUM ABSEN
-    </span>
-    <span v-else class="bg-gray-100 text-gray-600 font-black px-3 py-1.5 rounded-full text-[10px] uppercase tracking-wider shadow-sm">
-        {{ log.status }}
-    </span>
-</td>
-        </tr>
-    </tbody>
-</table>
+                                <td class="px-6 py-5 text-center">
+                                    <span v-if="log.jam_pulang" class="bg-amber-50 text-amber-700 border border-amber-100 font-black px-3 py-1.5 rounded-lg text-[10px]">
+                                        {{ log.jam_pulang }}
+                                    </span>
+                                    <span v-else class="text-slate-300 font-black text-xs">-</span>
+                                </td>
+                                
+                                <td class="px-6 py-5 text-center">
+                                    <span v-if="log.status === 'Hadir'" class="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 font-black px-3 py-1.5 rounded-full text-[9px] uppercase tracking-widest shadow-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                        Hadir
+                                    </span>
+                                    <span v-else-if="log.status === 'Lupa Absen Pulang'" class="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 font-black px-3 py-1.5 rounded-full text-[9px] uppercase tracking-widest shadow-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                        Lupa Pulang
+                                    </span>
+                                    <span v-else-if="log.status === 'Mangkir'" class="inline-flex items-center gap-1.5 bg-red-50 text-red-700 border border-red-200 font-black px-3 py-1.5 rounded-full text-[9px] uppercase tracking-widest shadow-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                        Mangkir
+                                    </span>
+                                    <span v-else-if="log.status === 'Libur (OFF)'" class="inline-flex items-center gap-1.5 bg-slate-50 text-slate-500 border border-slate-200 font-black px-3 py-1.5 rounded-full text-[9px] uppercase tracking-widest shadow-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
+                                        OFF
+                                    </span>
+                                    <span v-else-if="log.status === 'Belum Absen'" class="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200 font-black px-3 py-1.5 rounded-full text-[9px] uppercase tracking-widest shadow-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                        Belum Absen
+                                    </span>
+                                    <span v-else class="bg-slate-100 text-slate-600 font-black px-3 py-1.5 rounded-full text-[9px] uppercase tracking-widest shadow-sm">
+                                        {{ log.status }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
-        <div v-if="showCameraModal" class="fixed inset-0 bg-gray-900/95 z-[100] flex items-center justify-center p-4 backdrop-blur-md">
-            <div class="bg-white rounded-[40px] overflow-hidden shadow-2xl w-full max-w-md border-8 border-white">
-                <div class="p-6 border-b border-gray-50 flex justify-between items-center bg-white">
+        <div v-if="showCameraModal" class="fixed inset-0 bg-slate-950/95 z-[100] flex items-center justify-center p-4 backdrop-blur-xl">
+            <div class="bg-white rounded-[40px] overflow-hidden shadow-2xl w-full max-w-sm border-[10px] border-slate-900/5">
+                <div class="p-6 border-b border-slate-50 flex justify-between items-center bg-white">
                     <div>
-                        <h3 class="font-black text-gray-800 uppercase tracking-tighter text-xl">Selfie Absen</h3>
-                        <p class="text-xs text-blue-600 font-black uppercase mt-1">{{ absenTarget.jenis }} • {{ absenTarget.nama }}</p>
+                        <h3 class="font-black text-slate-800 uppercase tracking-tighter text-xl italic">Verification</h3>
+                        <p class="text-[10px] text-blue-600 font-black uppercase tracking-widest mt-0.5">{{ absenTarget.jenis }} • {{ absenTarget.nama }}</p>
                     </div>
-                    <button @click="stopCamera" class="w-10 h-10 rounded-full bg-gray-100 text-gray-400 hover:text-red-600 transition-all font-black">✕</button>
+                    <button @click="stopCamera" class="w-10 h-10 rounded-[14px] bg-slate-100 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
                 </div>
-                <div class="relative bg-black w-full aspect-[3/4] flex items-center justify-center overflow-hidden">
-                    <div v-if="isAiLoading" class="absolute inset-0 bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center z-50 text-white">
-        <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p class="font-black text-[10px] uppercase tracking-[0.2em]">AI Engine Pemanasan...</p>
-    </div>
+                <div class="relative bg-slate-900 w-full aspect-[3/4] flex items-center justify-center overflow-hidden">
+                    <div v-if="isAiLoading" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center z-50 text-white">
+                        <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                        <p class="font-black text-[10px] uppercase tracking-[0.2em] animate-pulse">Initializing AI Engine...</p>
+                    </div>
                     <video ref="videoRef" autoplay playsinline class="w-full h-full object-cover transform scale-x-[-1]"></video>
-                    <div class="absolute bottom-6 left-6 text-yellow-400 font-mono text-xs drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
-                        <div class="font-black">{{ absenTarget.nama.toUpperCase() }}</div>
-                        <div class="text-lg font-black tracking-widest">{{ currentTime }}</div>
-                        <div class="font-bold opacity-80">{{ new Date().toLocaleDateString('id-ID') }}</div>
+                    
+                    <div class="absolute inset-0 border-[16px] border-black/20 pointer-events-none"></div>
+                    <div class="absolute inset-x-12 inset-y-16 border-2 border-white/30 rounded-[40px] pointer-events-none">
+                        <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-white/80 rounded-tl-[38px]"></div>
+                        <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-white/80 rounded-tr-[38px]"></div>
+                        <div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-white/80 rounded-bl-[38px]"></div>
+                        <div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-white/80 rounded-br-[38px]"></div>
+                    </div>
+
+                    <div class="absolute bottom-6 left-6 text-yellow-400 font-mono text-xs drop-shadow-md">
+                        <div class="font-black tracking-widest">{{ absenTarget.nama.toUpperCase() }}</div>
+                        <div class="text-xl font-black tracking-widest mt-1">{{ currentTime }}</div>
+                        <div class="font-bold opacity-80 mt-0.5">{{ new Date().toLocaleDateString('id-ID') }}</div>
                     </div>
                 </div>
                 <div class="p-6 bg-white">
-                    <button @click="jepretDanKirim" :disabled="isSubmitting" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-[24px] font-black text-xl shadow-2xl transition-all disabled:opacity-50">
-                        {{ isSubmitting ? 'MENGIRIM...' : '◎ JEPRET & ABSEN' }}
+                    <button @click="jepretDanKirim" :disabled="isSubmitting" class="w-full bg-blue-600 hover:bg-slate-900 text-white py-5 rounded-[24px] font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-blue-200 transition-all disabled:opacity-50 flex items-center justify-center gap-3 active:scale-95">
+                        <template v-if="isSubmitting">
+                            <div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            Verifying...
+                        </template>
+                        <template v-else>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                            Capture & Verify
+                        </template>
                     </button>
                 </div>
             </div>
@@ -584,8 +594,8 @@ const downloadLaporan = async () => {
 </template>
 
 <style scoped>
-.custom-scrollbar::-webkit-scrollbar { width: 5px; }
+.custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 </style>

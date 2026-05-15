@@ -183,8 +183,15 @@ const decreaseQty = (product) => {
     }
 };
 
-const validateQty = (item) => {
-    if (!item.qty || item.qty < 1) item.qty = 1;
+const validateQty = (product) => {
+    const existingItem = cart.value.find(item => item.id === product.id);
+    if (existingItem) {
+        if (existingItem.qty < 1) {
+            existingItem.qty++;
+        } else {
+            cart.value = cart.value.filter(item => item.id !== product.id);
+        }
+    }
 };
 
 const clearCart = () => {
@@ -548,9 +555,13 @@ const logout = () => {
                         <div class="flex justify-between items-center">
                             <p class="text-xs font-bold text-gray-500">@ Rp {{ item.price.toLocaleString('id-ID') }}</p>
                             <div class="flex items-center bg-white rounded-lg p-0.5 border border-gray-200 shadow-sm">
-                                <button @click="decreaseQty(item)" class="w-7 h-7 flex items-center justify-center rounded text-gray-600 hover:bg-red-50 hover:text-red-600 font-black transition-colors">-</button>
+                                <button @click="decreaseQty(item)" class="w-7 h-7 flex items-center justify-center rounded text-gray-600 hover:bg-red-50 hover:text-red-600 font-black transition-colors">
+                                    -
+                                </button>
                                 <input type="number" v-model.number="item.qty" @change="validateQty(item)" class="w-10 text-center text-xs font-black text-gray-800 bg-transparent border-none focus:ring-0 p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
-                                <button @click="addToCart(item)" class="w-7 h-7 flex items-center justify-center rounded text-gray-600 hover:bg-blue-50 hover:text-blue-600 font-black transition-colors">+</button>
+                                <button @click="addToCart(item)" class="w-7 h-7 flex items-center justify-center rounded text-gray-600 hover:bg-blue-50 hover:text-blue-600 font-black transition-colors">
+                                    +
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -630,89 +641,75 @@ const logout = () => {
         </div>
 
         <!-- Struk Belanja -->
-        <div 
-            v-if="showReceipt"
-            class="fixed inset-0 bg-gray-900/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
-        >
-            <div 
-                class="bg-gray-200 p-4 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border-t-8 border-gray-800"
-            >
-                <div 
-                    id="print-area" 
-                    class="text-left font-mono text-[11px] leading-tight uppercase text-black bg-white p-4 mx-auto" 
-                    style="width: 58mm;"
-                >
-                    <div class="text-center mb-3">
-                        <h2 class="font-black text-sm mb-1">
-                            {{ currentSession?.store?.nama_toko || 'ARZU STORE' }}
-                        </h2>
-                        <p class="font-medium text-[9px]">
-                            {{ currentSession?.store?.alamat || 'JL. KEBON KOSONG NO 56 F' }}
-                        </p>
-                    </div>
-                    <div 
-                        class="text-center my-2 font-bold tracking-widest border-y border-black py-1"
-                    >
-                        <p>S T R U K   B E L A N J A</p>
-                    </div>
-                    <div class="mb-2 text-[10px] font-bold flex justify-between">
-                        <span>{{ lastTransaction?.date }}</span>
-                        <span>{{ currentUser.name.split(' ')[0] }} / {{ currentSession?.station_number }}</span>
-                    </div>
-                    <p class="border-b border-dashed border-black mb-2"></p>
+        <div v-if="showReceipt" class="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-[100] p-4 backdrop-blur-sm no-print">
+    <div class="bg-white p-8 rounded-[48px] shadow-2xl w-full max-w-sm flex flex-col max-h-[90vh] border-[12px] border-slate-900/5">
+        
+        <div class="overflow-y-auto custom-scrollbar bg-white p-2 mx-auto" id="print-area" style="width: 58mm;">
+            <div class="text-center mb-4 font-mono leading-none">
+                <h2 class="font-black text-base uppercase tracking-tighter mb-1 italic">
+                    {{ currentSession?.store?.nama_toko || 'ARZU STORE' }}
+                </h2>
+                <p class="text-[8px] font-bold uppercase tracking-widest opacity-60">
+                    {{ currentSession?.store?.alamat || 'ALAMAT TOKO BELUM DISET' }}
+                </p>
+            </div>
             
-                    <div 
-                        v-for="item in lastTransaction?.cart" 
-                        :key="item.id" 
-                        class="mb-1.5 font-bold"
-                    >
-                        <div class="truncate w-full pr-2">
-                            {{ item.name }}
-                        </div>
-                        <div class="flex justify-between pl-4 text-[10px]">
-                            <span>
-                                {{ item.qty }} x {{ item.price.toLocaleString('id-ID') }}
-                            </span>
-                            <span>
-                                {{ (item.price * item.qty).toLocaleString('id-ID') }}
-                            </span>
-                        </div>
-                    </div>
+            <div class="border-y border-black py-2 text-center font-black mb-3 font-mono text-[10px] tracking-[0.2em] uppercase bg-slate-50">
+                Struk Belanja
+            </div>
             
-                    <p class="border-t border-dashed border-black mt-2 pt-2"></p>
-                    <div class="flex justify-between font-black text-xs mb-2">
-                        <span>TOTAL BELANJA :</span>
-                        <span>{{ lastTransaction?.total.toLocaleString('id-ID') }}</span>
-                    </div>
-                    <p class="border-b border-dashed border-black mb-2"></p>
+            <div class="mb-3 text-[9px] font-bold font-mono uppercase space-y-0.5">
+                <div class="flex justify-between"><span>WAKTU:</span><span>{{ lastTransaction?.date }}</span></div>
+                <div class="flex justify-between"><span>KASIR:</span><span>{{ currentUser.name.split(' ')[0] }} / ST-{{ currentSession?.station_number }}</span></div>
+            </div>
             
-                    <div class="flex justify-between mb-1 font-bold">
-                        <span>{{ lastTransaction?.method }} :</span>
-                        <span>{{ lastTransaction?.pay.toLocaleString('id-ID') }}</span>
-                    </div>
-                    <div 
-                        v-if="lastTransaction?.method === 'Cash'" 
-                        class="flex justify-between mb-2 font-bold">
-                        <span>KEMBALIAN :</span>
-                        <span>{{ lastTransaction?.return.toLocaleString('id-ID') }}</span>
-                    </div>
+            <div class="border-b border-black border-dashed mb-3"></div>
             
-                    <div class="mt-4 text-[9px] font-medium text-center border-t border-dashed border-black pt-2">
-                        <p>SUBTOTAL: {{ lastTransaction?.subtotal.toLocaleString('id-ID') }} | PAJAK: {{ lastTransaction?.pajak.toLocaleString('id-ID') }}</p>
-                        <p class="mt-1 font-black">TRX-ID: {{ lastTransaction?.invoice }}</p>
-                    </div>
-            
-                    <div class="text-center mt-4 font-bold">
-                        <p>=== TERIMA KASIH ===</p>
-                        <p class="text-[9px]">BARANG SUDAH DIBELI TIDAK DAPAT DITUKAR</p>
-                    </div>
-                </div>
-                <div class="mt-4 flex gap-3 no-print">
-                    <button @click="printReceipt" class="flex-1 bg-gray-800 text-white py-3 rounded-xl font-black hover:bg-gray-900 transition-colors shadow-md">🖨️ CETAK</button>
-                    <button @click="showReceipt = false" class="flex-1 bg-white border border-gray-300 py-3 rounded-xl font-black text-gray-800 hover:bg-gray-50 transition-colors">TUTUP</button>
+            <div v-for="item in lastTransaction?.cart" :key="item.id" class="mb-3 font-bold font-mono text-[10px] leading-tight uppercase">
+                <div class="truncate w-full pr-2">{{ item.name }}</div>
+                <div class="flex justify-between pl-4 text-[9px] mt-0.5">
+                    <span>{{ item.qty }} x {{ item.price.toLocaleString('id-ID') }}</span>
+                    <span class="font-black text-[10px]">{{ (item.price * item.qty).toLocaleString('id-ID') }}</span>
                 </div>
             </div>
+            
+            <div class="border-t border-black border-dashed mt-3 pt-3"></div>
+            
+            <div class="flex justify-between font-black text-xs mb-3 font-mono uppercase italic">
+                <span>TOTAL BELANJA :</span>
+                <span>Rp{{ lastTransaction?.total.toLocaleString('id-ID') }}</span>
+            </div>
+            
+            <div class="border-b border-black border-dashed mb-3"></div>
+            
+            <div class="flex justify-between mb-1 font-bold font-mono text-[9px] uppercase">
+                <span>BAYAR ({{ lastTransaction?.method }}):</span>
+                <span>Rp{{ lastTransaction?.pay.toLocaleString('id-ID') }}</span>
+            </div>
+            <div v-if="lastTransaction?.method === 'Cash'" class="flex justify-between font-black font-mono text-[10px] uppercase italic text-emerald-600">
+                <span>KEMBALI:</span>
+                <span>Rp{{ lastTransaction?.return?.toLocaleString('id-ID') }}</span>
+            </div>
+            
+            <div class="mt-6 text-[8px] font-bold text-center border-t border-black border-dashed pt-3 font-mono uppercase space-y-1">
+                <p>SUBTOTAL: Rp{{ lastTransaction?.subtotal.toLocaleString('id-ID') }} | PAJAK: Rp{{ lastTransaction?.pajak.toLocaleString('id-ID') }}</p>
+                <p class="font-black">INV: {{ lastTransaction?.invoice }}</p>
+            </div>
+            
+            <div class="text-center mt-6 font-black font-mono text-[9px] border-2 border-black p-2 rotate-1 uppercase">
+                Terima Kasih!<br>Barang tidak dapat ditukar.
+            </div>
         </div>
+        
+        <div class="mt-8 flex flex-col gap-3 shrink-0 no-print">
+            <button @click="printReceipt" class="w-full bg-blue-600 text-white py-5 rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-blue-200 flex items-center justify-center gap-3 active:scale-95 transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                Cetak Struk
+            </button>
+            <button @click="showReceipt = false" class="w-full bg-slate-100 text-slate-400 py-4 rounded-3xl font-black text-[10px] uppercase tracking-widest hover:text-slate-600 transition-all">Tutup</button>
+        </div>
+    </div>
+</div>
         
         <!-- Struk Tutup Shift -->
         <div 
