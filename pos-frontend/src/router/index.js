@@ -59,7 +59,7 @@ const routes = [
     },
     { 
         path: '/stock-opname/report',
-        name: 'SrockOpnameReport', 
+        name: 'StockOpnameReport', 
         component: () => import('../views/inventori/StockOpnameReport.vue'),
         meta: { requiresAuth: true } // Kunci pintu!
     },
@@ -76,6 +76,16 @@ const routes = [
     { 
         path: '/penerimaan-barang', 
         component: () => import('../views/produk/PenerimaanBarang.vue'),
+        meta: { requiresAuth: true } 
+    },
+    { 
+        path: '/retur-barang', 
+        component: () => import('../views/produk/ReturBarang.vue'),
+        meta: { requiresAuth: true } 
+    },
+    { 
+        path: '/retur-barang/report', 
+        component: () => import('../views/produk/ReturReport.vue'),
         meta: { requiresAuth: true } 
     },
     { 

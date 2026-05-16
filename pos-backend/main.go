@@ -96,6 +96,10 @@ func main() {
 		api.GET("/attendance", controllers.GetAttendance)
 		api.GET("/attendance/export", controllers.ExportAttendance)
 
+		//--- RUTE RETUR & BARANG RUSAK ---
+		api.POST("/returns", controllers.CreateReturn)
+		api.GET("/returns", controllers.GetReturns)
+
 		// Rute LPB
 		api.POST("/purchases", controllers.CreateLPB)
 
