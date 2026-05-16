@@ -1,9 +1,11 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"pos-backend/config"
 	"pos-backend/models"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -44,6 +46,7 @@ func CreateLPB(c *gin.Context) {
 
 		// 2. Loop Items: Update Stok & Simpan Detail
 		for _, item := range input.Items {
+			fmt.Println("NGECEK DATA DARI VUE -> Product ID:", item.ProductID, "| Modal Baru:", item.HargaModal)
 			// Update Stok di tabel Product
 			var product models.Product
 			if err := tx.First(&product, item.ProductID).Error; err != nil {
@@ -52,7 +55,7 @@ func CreateLPB(c *gin.Context) {
 
 			product.Stok += item.QtyMasuk
 			// Optional: Mas Arif bisa update harga beli master barang di sini
-			// product.HargaBeli = item.HargaBeli 
+			product.HargaModal = item.HargaModal 
 
 			if err := tx.Save(&product).Error; err != nil {
 				return err

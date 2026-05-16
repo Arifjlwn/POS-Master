@@ -72,26 +72,13 @@ func main() {
 	api := r.Group("/api")
 	api.Use(middlewares.RequireAuth)
 	{
-		// Rute untuk melihat profil sendiri
-		// api.GET("/me", func(c *gin.Context) {
-		// 	userID, _ := c.Get("user_id")
-		// 	storeID, _ := c.Get("store_id")
-		// 	role, _ := c.Get("role")
-
-		// 	c.JSON(http.StatusOK, gin.H{
-		// 		"message":  "Ini adalah area rahasia",
-		// 		"user_id":  userID,
-		// 		"store_id": storeID,
-		// 		"role":     role,
-		// 	})
-		// })
-
 		// -- Rute Produk (CRUD) --
 		api.POST("/products", controllers.CreateProduct)
 		api.GET("/products", controllers.GetProducts)
 		api.PUT("/products/:id", controllers.UpdateProduct)
 		api.DELETE("/products/:id", controllers.DeleteProduct)
 		api.GET("/products/export", controllers.ExportProducts)
+		api.POST("/products/import", controllers.ImportProducts)
 		api.GET("/categories", controllers.GetCategories)
 
 		// -- Rute Karyawan --

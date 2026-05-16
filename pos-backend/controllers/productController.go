@@ -14,6 +14,7 @@ import (
     "pos-backend/models"
 
     "github.com/gin-gonic/gin"
+    "gorm.io/gorm"
 )
 
 // Struct untuk menangkap data dari Frontend
@@ -106,47 +107,68 @@ func CreateProduct(c *gin.Context) {
 
 // Fungsi Lihat Daftar Produk
 func GetProducts(c *gin.Context) {
-    // 1. Ambil ID Toko dari Satpam JWT
-    storeIDRaw, exists := c.Get("store_id")
-    if !exists {
-        c.JSON(http.StatusUnauthorized, gin.H{"error": "Akses Ditolak!"})
-        return
-    }
-    storeID := uint(storeIDRaw.(float64))
+	// 1. Ambil ID Toko dari Satpam JWT
+	storeIDRaw, exists := c.Get("store_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Akses Ditolak!"})
+		return
+	}
+	storeID := uint(storeIDRaw.(float64))
 
-    // 2. Tangkap parameter dari URL Vue (query string)
-    search := c.Query("search")     // Untuk cari nama/sku
-    category := c.Query("category") // Untuk filter kategori
+	// 2. Tangkap parameter dari URL Vue
+	search := c.Query("search")     
+	category := c.Query("category") 
+	pageStr := c.Query("page")      // 🚀 Pakai c.Query biasa (bukan DefaultQuery)
+	limitStr := c.Query("limit")    // 🚀 Biar nilainya kosong "" kalau dari Kasir
 
-    var products []models.Product
-    
-    // 3. Bangun Query Dasar (Wajib milik toko yang login)
-    query := config.DB.Where("store_id = ?", storeID)
+	var products []models.Product
+	var totalItems int64
+	
+	// 3. Bangun Query Dasar
+	query := config.DB.Model(&models.Product{}).Where("store_id = ?", storeID)
 
-    // 🚀 LOGIKA PENCARIAN (Berdasarkan Nama atau SKU)
-    if search != "" {
-        // Kita pakai ILIKE biar "aqua" atau "AQUA" tetep ketemu (Case Insensitive)
-        searchTerm := "%" + search + "%"
-        query = query.Where("(nama_produk ILIKE ? OR sku ILIKE ?)", searchTerm, searchTerm)
-    }
+	if search != "" {
+		searchTerm := "%" + search + "%"
+		query = query.Where("(nama_produk ILIKE ? OR sku ILIKE ?)", searchTerm, searchTerm)
+	}
+	if category != "" {
+		query = query.Where("kategori = ?", category)
+	}
 
-    // 🚀 LOGIKA FILTER KATEGORI (Exact Match)
-    if category != "" {
-        query = query.Where("kategori = ?", category)
-    }
+	// Hitung total semua data dulu
+	query.Count(&totalItems)
 
-    // 4. Eksekusi ke database (Urutkan dari yang terbaru ditambah)
-    if err := query.Order("id DESC").Find(&products).Error; err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data produk"})
-        return
-    }
+	// 🚀 4. LOGIKA PERFORMA GANDA (KASIR VS MASTER)
+	// Jika parameter page ATAU limit diisi (Request dari Master Produk)
+	if pageStr != "" || limitStr != "" {
+		// Set default nilai jika salah satu kosong
+		if pageStr == "" { pageStr = "1" }
+		if limitStr == "" { limitStr = "10" }
 
-    // 5. Kirim balik ke Vue
-    c.JSON(http.StatusOK, gin.H{
-        "message": "Katalog produk berhasil dimuat!",
-        "total":   len(products),
-        "data":    products, // Ini yang dibaca oleh products.value di Vue
-    })
+		page, _ := strconv.Atoi(pageStr)
+		limit, _ := strconv.Atoi(limitStr)
+		offset := (page - 1) * limit
+
+		// Jalankan Query pakai Pagination
+		if err := query.Limit(limit).Offset(offset).Order("id DESC").Find(&products).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data produk"})
+			return
+		}
+	} else {
+		// 🌟 JIKA KOSONG (Request dari Halaman Kasir Vue)
+		// Gelontorkan SEMUA PRODUK tanpa batas LIMIT & OFFSET biar Kasir bisa scan bebas!
+		if err := query.Order("id DESC").Find(&products).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data produk"})
+			return
+		}
+	}
+
+	// 5. Kirim balik ke Vue
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Katalog produk berhasil dimuat!",
+		"total_items": totalItems, 
+		"data":        products, 
+	})
 }
 
 // Fungsi Ubah Produk (Update)
@@ -312,6 +334,7 @@ func ExportProducts(c *gin.Context) {
     // Siapkan CSV
     b := &bytes.Buffer{}
     w := csv.NewWriter(b)
+    w.Comma = '|'
 
     // Tulis Header Kolom
     w.Write([]string{"SKU", "Nama Produk", "Kategori", "Harga Modal", "Harga Jual", "Stok", "Satuan Dasar", "Satuan Besar", "Isi Per Besar"})
@@ -341,4 +364,104 @@ func ExportProducts(c *gin.Context) {
     c.Header("Content-Description", "File Transfer")
     c.Header("Content-Disposition", "attachment; filename = katalog_produk_pos.csv")
     c.Data(http.StatusOK, "text/csv", b.Bytes())
+}
+
+// Fungsi Impor CSV
+func ImportProducts(c *gin.Context) {
+	// 1. Ambil ID Toko dari Context (Middleware)
+	storeIDRaw, exists := c.Get("store_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Akses Ditolak!"})
+		return
+	}
+	storeID := uint(storeIDRaw.(float64))
+
+	// 2. Ambil File dari Request
+	file, _, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File tidak ditemukan"})
+		return
+	}
+	defer file.Close()
+
+	// 3. Baca CSV
+	reader := csv.NewReader(file)
+    reader.Comma = '|'
+	// Lewati header (baris pertama)
+	_, err = reader.Read()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File CSV kosong atau rusak"})
+		return
+	}
+
+	records, err := reader.ReadAll()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membaca isi CSV"})
+		return
+	}
+
+	// 4. Proses Looping Data (Gunakan Transaksi DB agar aman)
+	err = config.DB.Transaction(func(tx *gorm.DB) error {
+		for _, row := range records {
+			// Mapping kolom (Sesuaikan dengan urutan di Export)
+			// Index: 0:SKU, 1:Nama, 2:Kategori, 3:Modal, 4:Jual, 5:Stok, 6:Dasar, 7:Besar, 8:Isi
+			sku := row[0]
+			nama := row[1]
+			kategori := row[2]
+			modal, _ := strconv.ParseFloat(row[3], 64)
+			jual, _ := strconv.ParseFloat(row[4], 64)
+			stok, _ := strconv.Atoi(row[5])
+			dasar := row[6]
+			besar := row[7]
+			isi, _ := strconv.Atoi(row[8])
+
+			if nama == "" {
+				continue // Skip kalau nama kosong
+			}
+
+			var product models.Product
+			// Cari apakah SKU sudah ada di toko ini?
+			result := tx.Where("sku = ? AND store_id = ?", sku, storeID).First(&product)
+
+			if result.Error == nil {
+				// A. JIKA ADA: UPDATE DATA
+				product.NamaProduk = nama
+				product.Kategori = kategori
+				product.HargaModal = modal
+				product.HargaJual = jual
+				product.Stok = stok
+				product.SatuanDasar = dasar
+				product.SatuanBesar = besar
+				product.IsiPerBesar = isi
+				if err := tx.Save(&product).Error; err != nil {
+					return err
+				}
+			} else {
+				// B. JIKA TIDAK ADA: BUAT BARU
+				newProduct := models.Product{
+					StoreID:     storeID,
+					SKU:         &sku,
+					NamaProduk:  nama,
+					Kategori:    kategori,
+					HargaModal:  modal,
+					HargaJual:   jual,
+					Stok:        stok,
+					SatuanDasar: dasar,
+					SatuanBesar: besar,
+					IsiPerBesar: isi,
+				}
+				if err := tx.Create(&newProduct).Error; err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal impor: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Berhasil mengimpor " + strconv.Itoa(len(records)) + " produk"})
 }
