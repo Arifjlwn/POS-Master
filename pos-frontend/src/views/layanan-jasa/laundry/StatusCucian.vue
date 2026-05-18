@@ -30,6 +30,7 @@ const fetchData = async (isBackground = false) => {
     try {
         const response = await api.get('/laundry/report?period=tahun_ini'); 
         // Ambil transaksi yang status pesanannya BELUM DIAMBIL
+        const semuaTransaksi = response.data.transaksi || [];
         riwayat.value = response.data.transaksi.filter(t => t.status_pesanan !== 'DIAMBIL');
     } catch (error) {
         console.error("Gagal sinkronisasi data cucian");
@@ -92,27 +93,160 @@ const updateStatusKanban = async (trx, statusBaru) => {
     }
 };
 
-// 🚀 LOGIKA LUNASI & AMBIL BARENGAN
-const prosesPengambilan = (trx) => {
+// 🚀 LOGIKA LUNASI & AMBIL BARENGAN (DENGAN LIVE KAMERA BUKTI QRIS)
+const prosesPengambilan = async (trx) => {
     if (trx.status_bayar === 'BELUM_LUNAS') {
-        Swal.fire({
+        
+        // 1. TANYA METODE BAYAR DULU
+        const { value: metode_bayar } = await Swal.fire({
             title: `Pelunasan Piutang`,
-            html: `<p class="text-sm">Tagihan <b>${trx.pelanggan}</b>: <span class="text-rose-500 font-black text-xl">${formatRupiah(trx.total_harga)}</span></p>`,
+            html: `<p class="text-sm text-slate-500 mb-2">Tagihan <b>${trx.pelanggan}</b></p>
+                   <p class="text-rose-500 font-black text-3xl mb-6 tracking-tighter">${formatRupiah(trx.total_harga)}</p>`,
             input: 'select',
-            inputOptions: { 'TUNAI': 'Uang Tunai', 'QRIS': 'Scan QRIS', 'DEBIT': 'Debit' },
-            showCancelButton: true, confirmButtonText: 'Lunasi & Serahkan', confirmButtonColor: '#10b981',
+            inputOptions: { 'TUNAI': 'Uang Tunai (Cash)', 'QRIS': 'Scan QRIS / Transfer', 'DEBIT': 'Mesin EDC / Debit' },
+            showCancelButton: true, 
+            confirmButtonText: 'Lanjut ➔', 
+            confirmButtonColor: '#4f46e5',
             inputValidator: (value) => !value ? 'Pilih metode bayar!' : undefined
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                // 1. Lunasi tagihan
-                await api.put(`/laundry/transactions/${trx.id}/lunas`, { metode_bayar: result.value });
-                // 2. Ubah status jadi DIAMBIL (hilang dari papan kanban)
-                await updateStatusKanban(trx, 'DIAMBIL');
-                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Lunas & Diambil!', showConfirmButton: false, timer: 1500 });
-            }
         });
+
+        if (!metode_bayar) return;
+
+        let buktiBase64 = "";
+
+        // 2. KALAU MILIH QRIS, BUKA KAMERA LIVE DI DALAM POP-UP! 📸
+        if (metode_bayar === 'QRIS') {
+            
+            // 🚀 GANTI INI: Tarik URL QRIS dari state/localStorage setting toko kamu
+            // Contoh: const urlQrisToko = localStorage.getItem('qris_image_url') || 'url-default.jpg';
+            const urlQrisToko = 'https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg'; // 👈 Ganti sama variabel setting tokomu!
+
+            const { value: fileData } = await Swal.fire({
+                title: 'Pembayaran QRIS',
+                html: `
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 mb-3 inline-block">
+                        <img src="${urlQrisToko}" alt="QRIS Toko" class="w-40 h-40 mx-auto rounded-xl">
+                    </div>
+                    <p class="text-[10px] font-bold text-slate-500 mb-4 uppercase tracking-widest">Arahkan Pelanggan Scan QRIS</p>
+
+                    <div id="kamera-box" class="hidden flex-col items-center gap-3 mb-2">
+                        <div class="relative w-full h-48 bg-black rounded-2xl overflow-hidden shadow-inner">
+                            <video id="live-video" autoplay playsinline class="w-full h-full object-cover"></video>
+                        </div>
+                        <button id="btn-jepret" type="button" class="bg-indigo-600 text-white px-6 py-2.5 rounded-full font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-2 active:scale-95 transition-all">
+                            📸 Jepret Bukti
+                        </button>
+                    </div>
+
+                    <div id="preview-box" class="hidden flex-col items-center gap-3 mb-2">
+                        <img id="hasil-foto" class="w-full h-48 object-cover rounded-2xl border-4 border-emerald-100 shadow-md">
+                        <button id="btn-ulangi" type="button" class="text-rose-500 font-bold text-[10px] uppercase underline active:scale-95">Ulangi Foto</button>
+                    </div>
+
+                    <button id="btn-buka-kamera" type="button" class="w-full bg-slate-800 hover:bg-slate-900 text-white py-3.5 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2 shadow-md transition-all active:scale-95">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        Buka Kamera HP
+                    </button>
+                    
+                    <canvas id="hidden-canvas" class="hidden"></canvas>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Sahkan Pembayaran',
+                confirmButtonColor: '#10b981',
+                cancelButtonColor: '#94a3b8',
+                didOpen: () => {
+                    // LOGIKA NGENDALIIN KAMERA HP
+                    const btnBuka = document.getElementById('btn-buka-kamera');
+                    const btnJepret = document.getElementById('btn-jepret');
+                    const btnUlangi = document.getElementById('btn-ulangi');
+                    const kameraBox = document.getElementById('kamera-box');
+                    const previewBox = document.getElementById('preview-box');
+                    const video = document.getElementById('live-video');
+                    const canvas = document.getElementById('hidden-canvas');
+                    const hasilFoto = document.getElementById('hasil-foto');
+
+                    let stream = null;
+
+                    const matikanKamera = () => {
+                        if (stream) stream.getTracks().forEach(track => track.stop());
+                    };
+
+                    btnBuka.addEventListener('click', async () => {
+                        try {
+                            // Minta akses kamera belakang HP
+                            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                            video.srcObject = stream;
+                            btnBuka.classList.add('hidden');
+                            kameraBox.classList.remove('hidden');
+                            kameraBox.classList.add('flex');
+                        } catch (err) {
+                            Swal.showValidationMessage('Akses kamera ditolak / tidak ada kamera!');
+                        }
+                    });
+
+                    btnJepret.addEventListener('click', () => {
+                        // Tangkap frame dari video ke canvas
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        canvas.getContext('2d').drawImage(video, 0, 0);
+                        const base64Data = canvas.toDataURL('image/jpeg', 0.8); // Kualitas 80% biar enteng
+
+                        hasilFoto.src = base64Data;
+                        hasilFoto.dataset.base64 = base64Data;
+
+                        kameraBox.classList.add('hidden');
+                        kameraBox.classList.remove('flex');
+                        previewBox.classList.remove('hidden');
+                        previewBox.classList.add('flex');
+
+                        matikanKamera(); // Hemat baterai HP kasir!
+                    });
+
+                    btnUlangi.addEventListener('click', async () => {
+                        previewBox.classList.add('hidden');
+                        previewBox.classList.remove('flex');
+                        hasilFoto.dataset.base64 = '';
+                        try {
+                            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                            video.srcObject = stream;
+                            kameraBox.classList.remove('hidden');
+                            kameraBox.classList.add('flex');
+                        } catch(e){}
+                    });
+                },
+                willClose: () => {
+                    // Pastikan lampu kamera beneran mati kalau pop-up disilang (X)
+                    const video = document.getElementById('live-video');
+                    if(video && video.srcObject) video.srcObject.getTracks().forEach(track => track.stop());
+                },
+                preConfirm: () => {
+                    const hasilFoto = document.getElementById('hasil-foto');
+                    if (!hasilFoto || !hasilFoto.dataset.base64) {
+                        Swal.showValidationMessage('Harap jepret bukti transfer dulu!');
+                        return false;
+                    }
+                    return hasilFoto.dataset.base64; // Lempar base64-nya ke variabel luar
+                }
+            });
+
+            if (!fileData) return; 
+            buktiBase64 = fileData;
+        }
+
+        // 3. TEMBAK API GOLANG BUAT LUNASIN
+        try {
+            await api.put(`/laundry/transactions/${trx.id}/lunas`, { 
+                metode_bayar: metode_bayar,
+                bukti_transfer_base64: buktiBase64 
+            });
+            
+            await updateStatusKanban(trx, 'DIAMBIL');
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Lunas & Diambil!', showConfirmButton: false, timer: 1500 });
+        } catch (error) {
+            Swal.fire('Error!', 'Gagal menyimpan pelunasan.', 'error');
+        }
+
     } else {
-        // Kalau udah lunas, langsung sikat status DIAMBIL aja
         Swal.fire({
             title: 'Serahkan Cucian?', text: 'Cucian ini sudah LUNAS.', icon: 'info', showCancelButton: true, confirmButtonText: 'Tandai Diambil'
         }).then((result) => {

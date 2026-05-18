@@ -1,8 +1,9 @@
 <script setup>
-import { ref, onMounted, computed, onUnmounted } from 'vue';
+import { ref, onMounted, computed, onUnmounted, nextTick, watch } from 'vue';
 import SidebarLaundry from './SidebarLaundry.vue';
 import api from '../../../api.js'; 
 import Swal from 'sweetalert2';
+import Chart from 'chart.js/auto'; // 🚀 IMPORT GRAFIKNYA BEB!
 
 const activeTab = ref('ringkasan'); 
 const selectedPeriod = ref('bulan_ini');
@@ -15,12 +16,80 @@ const riwayat = ref([]);
 const showBuktiModal = ref(false);
 const selectedBuktiUrl = ref('');
 
+// 🚀 STATE UNTUK GRAFIK
+const chartCanvas = ref(null);
+let omsetChart = null;
+
 const formatRupiah = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(angka || 0);
 const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return '-';
-    return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(d);
+    return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(d);
+};
+
+// 🚀 FUNGSI SAKTI: RENDER GRAFIK CHART.JS
+const renderGrafik = () => {
+    if (!chartCanvas.value) return;
+
+    // Kalo grafiknya udah ada sebelumnya, hancurkan dulu biar ga numpuk
+    if (omsetChart) omsetChart.destroy();
+
+    // Olah data riwayat jadi grup per hari (Murni omset lunas)
+    const dataOmsetPerHari = {};
+    riwayat.value.forEach(trx => {
+        if (trx.status_bayar === 'LUNAS') {
+            const tgl = formatDate(trx.created_at);
+            dataOmsetPerHari[tgl] = (dataOmsetPerHari[tgl] || 0) + trx.total_harga;
+        }
+    });
+
+    let labels = Object.keys(dataOmsetPerHari).reverse();
+    let dataValues = Object.values(dataOmsetPerHari).reverse();
+
+    // Kalau datanya kosong (misal toko baru buka), kasih data bayangan biar grafiknya ga jelek
+    if (labels.length === 0) {
+        labels = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+        dataValues = [0, 0, 0, 0, 0, 0, 0];
+    }
+
+    // Bikin grafiknya!
+    omsetChart = new Chart(chartCanvas.value, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Pendapatan (Rp)',
+                data: dataValues,
+                backgroundColor: '#4f46e5', // Warna Indigo mewah
+                borderRadius: 8, // Ujung batangnya melengkung
+                barThickness: 30, // Ketebalan batang
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => formatRupiah(context.raw)
+                    }
+                }
+            },
+            scales: {
+                y: { 
+                    beginAtZero: true, 
+                    grid: { color: '#f1f5f9', drawBorder: false }, // Garis tipis estetik
+                    ticks: { display: false } // Sembunyiin angka ribet di pinggir
+                },
+                x: { 
+                    grid: { display: false, drawBorder: false },
+                    ticks: { font: { weight: 'bold', family: 'sans-serif' }, color: '#94a3b8' }
+                }
+            }
+        }
+    });
 };
 
 const fetchReportData = async (isBackground = false) => {
@@ -37,12 +106,27 @@ const fetchReportData = async (isBackground = false) => {
             piutang: response.data.ringkasan.piutang || 0
         };
         riwayat.value = response.data.transaksi || [];
+        
+        // Render grafik setelah data masuk
+        if (activeTab.value === 'ringkasan') {
+            await nextTick();
+            renderGrafik();
+        }
+
     } catch (error) {
         console.error("Gagal sinkronisasi data");
     } finally {
         if (!isBackground) isLoading.value = false;
     }
 };
+
+// 🚀 JAGA-JAGA: Kalau bos klik Tab Ringkasan, render ulang grafiknya
+watch(activeTab, async (newTab) => {
+    if (newTab === 'ringkasan') {
+        await nextTick(); // Tunggu HTML-nya keload sempurna
+        renderGrafik();
+    }
+});
 
 onMounted(() => {
     fetchReportData();
@@ -118,7 +202,8 @@ const bukaBuktiTransfer = (url) => { selectedBuktiUrl.value = url; showBuktiModa
                 <template v-else>
                     <div v-if="activeTab === 'ringkasan'" class="space-y-6 lg:space-y-8 animate-[fadeIn_0.3s_ease-out]">
                         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 lg:gap-6">
-                            <div class="bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-900 p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] text-white shadow-xl shadow-indigo-200/50">
+                            <div class="bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-900 p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] text-white shadow-xl shadow-indigo-200/50 relative overflow-hidden group">
+                                <div class="absolute -right-8 -bottom-8 opacity-10 group-hover:scale-110 transition-transform duration-700"><svg xmlns="http://www.w3.org/2000/svg" class="w-48 h-48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a4.5 4.5 0 0 0 0 9H15a4.5 4.5 0 0 1 0 9H6.5"/></svg></div>
                                 <h3 class="text-[10px] lg:text-[11px] font-black uppercase tracking-[0.2em] text-indigo-200 mb-2">Total Estimasi Omset</h3>
                                 <p class="text-3xl lg:text-4xl font-black tracking-tighter">{{ formatRupiah(stats.omset) }}</p>
                             </div>
@@ -131,14 +216,25 @@ const bukaBuktiTransfer = (url) => { selectedBuktiUrl.value = url; showBuktiModa
                                 <p class="text-3xl lg:text-4xl font-black text-slate-800 tracking-tighter">{{ formatRupiah(stats.avg_transaction) }}</p>
                             </div>
                         </div>
+
+                        <div class="bg-white p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border border-slate-200 shadow-sm flex flex-col">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-xs lg:text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-3">
+                                    <div class="w-2 h-6 bg-indigo-600 rounded-full"></div> Tren Pendapatan Omset
+                                </h3>
+                            </div>
+                            <div class="relative w-full h-64 lg:h-72">
+                                <canvas ref="chartCanvas"></canvas>
+                            </div>
+                        </div>
                     </div>
 
                     <div v-if="activeTab === 'keuangan'" class="animate-[fadeIn_0.3s_ease-out] space-y-6 lg:space-y-8">
                         <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
-                            <div class="bg-white p-5 rounded-[24px] border border-slate-200 shadow-sm"><h3 class="text-[10px] font-black text-slate-400 uppercase mb-2">Tunai</h3><p class="text-2xl font-black">{{ formatRupiah(stats.tunai) }}</p></div>
-                            <div class="bg-white p-5 rounded-[24px] border border-emerald-100 shadow-sm"><h3 class="text-[10px] font-black text-emerald-500 uppercase mb-2">Transfer / QRIS</h3><p class="text-2xl font-black text-emerald-600">{{ formatRupiah(stats.qris) }}</p></div>
-                            <div class="bg-white p-5 rounded-[24px] border border-slate-200 shadow-sm"><h3 class="text-[10px] font-black text-slate-400 uppercase mb-2">Mesin EDC</h3><p class="text-2xl font-black">{{ formatRupiah(stats.debit) }}</p></div>
-                            <div class="bg-rose-50 p-5 rounded-[24px] border border-rose-200 shadow-sm"><h3 class="text-[10px] font-black text-rose-500 uppercase mb-2 flex items-center gap-2"><div class="w-2 h-2 bg-rose-500 rounded-full animate-pulse"></div> Piutang Berjalan</h3><p class="text-2xl font-black text-rose-600">{{ formatRupiah(stats.piutang) }}</p></div>
+                            <div class="bg-white p-5 rounded-[24px] border border-slate-200 shadow-sm"><h3 class="text-[10px] font-black text-slate-400 uppercase mb-2">Tunai</h3><p class="text-xl lg:text-2xl font-black">{{ formatRupiah(stats.tunai) }}</p></div>
+                            <div class="bg-white p-5 rounded-[24px] border border-emerald-100 shadow-sm"><h3 class="text-[10px] font-black text-emerald-500 uppercase mb-2">Transfer / QRIS</h3><p class="text-xl lg:text-2xl font-black text-emerald-600">{{ formatRupiah(stats.qris) }}</p></div>
+                            <div class="bg-white p-5 rounded-[24px] border border-slate-200 shadow-sm"><h3 class="text-[10px] font-black text-slate-400 uppercase mb-2">Mesin EDC</h3><p class="text-xl lg:text-2xl font-black">{{ formatRupiah(stats.debit) }}</p></div>
+                            <div class="bg-rose-50 p-5 rounded-[24px] border border-rose-200 shadow-sm"><h3 class="text-[10px] font-black text-rose-500 uppercase mb-2 flex items-center gap-2"><div class="w-2 h-2 bg-rose-500 rounded-full animate-pulse"></div> Piutang Berjalan</h3><p class="text-xl lg:text-2xl font-black text-rose-600">{{ formatRupiah(stats.piutang) }}</p></div>
                         </div>
 
                         <div class="bg-white border border-slate-200 rounded-[32px] shadow-sm overflow-hidden flex flex-col">

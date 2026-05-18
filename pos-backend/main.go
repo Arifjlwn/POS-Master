@@ -233,6 +233,7 @@ func main() {
 			// === LAPORAN & PELUNASAN PIUTANG ===
 			laundryAPI.GET("/report", middlewares.RequireAuth, laundry.GetLaporan)
 			laundryAPI.PUT("/transactions/:id/lunas", middlewares.RequireAuth, laundry.LunasiTransaksi)
+			laundryAPI.PUT("/transactions/:id/status", middlewares.RequireAuth, laundry.UpdateStatusCucian)
 		}
 	}
 

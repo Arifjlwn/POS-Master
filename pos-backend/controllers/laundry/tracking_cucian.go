@@ -42,22 +42,24 @@ func AmbilDataTracking(c *gin.Context) {
 	c.JSON(http.StatusOK, results)
 }
 
-// 🚀 FUNGSI UPDATE STATUS (ANTRI -> DICUCI -> SELESAI -> DIAMBIL)
+// 🚀 FUNGSI UPDATE STATUS (ANTRI -> PROSES -> SELESAI -> DIAMBIL)
 func UpdateStatusCucian(c *gin.Context) {
-	detailID := c.Param("id")
+	trxID := c.Param("id")
 
 	var input struct {
-		StatusBaru string `json:"status_baru" binding:"required"`
+		StatusPesanan string `json:"status_pesanan" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Status baru tidak valid"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format status tidak valid"})
 		return
 	}
 
-	// Update langsung ke tabel detail
-	if err := config.DB.Table("transaction_laundry_details").Where("id = ?", detailID).Update("status_cucian", input.StatusBaru).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal update status"})
+	// 2. Cek update ke database
+	if err := config.DB.Table("transactions").Where("id = ?", trxID).Update("status_pesanan", input.StatusPesanan).Error; err != nil {
+		
+		// 🚀 UBAH BARIS INI BIAR ERROR ASLINYA MUNCUL DI CONSOLE VUE KAMU!
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "DB Error: " + err.Error()})
 		return
 	}
 

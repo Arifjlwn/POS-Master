@@ -218,6 +218,7 @@ func CariPelanggan(c *gin.Context) {
 
 type PelunasanInput struct {
 	MetodeBayar string `json:"metode_bayar" binding:"required"`
+	BuktiTransferBase64 string `json:"bukti_transfer_base64"`
 }
 
 func LunasiTransaksi(c *gin.Context) {
@@ -242,7 +243,15 @@ func LunasiTransaksi(c *gin.Context) {
 		return
 	}
 
-	// Ubah status dan catat dia lunas pakai apa
+	// 🚀 SIMPAN GAMBAR BUKTI TRANSFER JIKA QRIS DAN ADA FOTONYA!
+	if input.MetodeBayar == "QRIS" && input.BuktiTransferBase64 != "" {
+		// Panggil fungsi sakti SimpanGambarBase64 yang udah ada di kasir_laundry.go
+		// Format nama: INV_LD_2026..._lunas.jpg
+		buktiPath, _ := SimpanGambarBase64(input.BuktiTransferBase64, "public/uploads/qris", strings.ReplaceAll(trx.NoInvoice, "/", "")+"_lunas.jpg")
+		trx.BuktiTransfer = buktiPath // Masukin path fotonya ke database
+	}
+
+	// Ubah status duitnya
 	trx.StatusBayar = "LUNAS"
 	trx.MetodeBayar = input.MetodeBayar
 

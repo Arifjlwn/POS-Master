@@ -18,6 +18,7 @@ type Transaction struct {
     
     MetodeBayar  string    `gorm:"type:varchar(20);not null;default:'Cash'" json:"metode_bayar"`
 	StatusBayar  string    `gorm:"type:varchar(20);not null;default:'LUNAS'" json:"status_bayar"`
+    StatusPesanan string `gorm:"type:varchar(50);default:'ANTRI'" json:"status_pesanan"`
     BuktiTransfer string `gorm:"type:varchar(255)" json:"bukti_transfer"`
     
     NominalBayar float64   `gorm:"type:decimal(10,2);not null" json:"nominal_bayar"`
