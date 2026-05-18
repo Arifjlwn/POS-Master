@@ -7,18 +7,18 @@ import Swal from 'sweetalert2';
 const isLoading = ref(false);
 const isSaving = ref(false);
 
+// 🚀 FORM BERSIH TANPA EMAIL/PASSWORD KASIR
 const form = ref({
     nama_toko: '',
     telepon: '',
     alamat: '',
-    payment_type: 'PRIBADI', // 'PRIBADI' atau 'GATEWAY'
+    payment_type: 'PRIBADI',
     receipt_footer: '',
     qris_base64: ''
 });
 
 const qrisPreviewUrl = ref('');
 
-// 🚀 LOGIKA AUTO-FORMAT NOMOR HP (+62)
 const formatNoHpToko = () => {
     let val = String(form.value.telepon);
     if (val.startsWith('0')) val = val.substring(1);
@@ -35,7 +35,6 @@ const fetchSetting = async () => {
         form.value.payment_type = response.data.payment_type || 'PRIBADI';
         form.value.receipt_footer = response.data.receipt_footer || 'Cucian tidak diambil dalam 30 hari bukan tanggung jawab kami.';
         
-        // 🚀 Bersihin angka 62 pas ditarik dari database biar rapi di UI
         let phone = String(response.data.telepon || '');
         if (phone.startsWith('62')) phone = phone.substring(2);
         else if (phone.startsWith('0')) phone = phone.substring(1);
@@ -53,14 +52,10 @@ const fetchSetting = async () => {
 
 onMounted(() => fetchSetting());
 
-// LOGIKA PILIH FILE BARCODE QRIS JADI BASE64
 const handleQrisUpload = (event) => {
     const file = event.target.files[0];
     if (!file) return;
-
-    if (file.size > 2 * 1024 * 1024) {
-        return Swal.fire('Oops!', 'Ukuran gambar maksimal 2 MB beb!', 'warning');
-    }
+    if (file.size > 2 * 1024 * 1024) return Swal.fire('Oops!', 'Ukuran gambar maksimal 2 MB beb!', 'warning');
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -73,7 +68,6 @@ const handleQrisUpload = (event) => {
 const saveSetting = async () => {
     isSaving.value = true;
     try {
-        // 🚀 Bikin payload khusus biar pas disimpen ke DB, depannya otomatis ketempel 62
         const payload = {
             ...form.value,
             telepon: form.value.telepon ? `62${form.value.telepon}` : ''
@@ -82,7 +76,6 @@ const saveSetting = async () => {
         await api.put('/laundry/setting', payload);
         Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Pengaturan Berhasil Disimpan!', showConfirmButton: false, timer: 1500 });
         
-        // UPDATE LOCALSTORAGE BIAR NAMA TOKO DI SIDEBAR LANGSUNG BERUBAH TANPA REFRESH
         localStorage.setItem('store_name', form.value.nama_toko);
         
     } catch (error) {
@@ -100,11 +93,11 @@ const saveSetting = async () => {
             <div class="p-5 md:p-8 shrink-0 bg-white border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 z-10 shadow-sm">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-center justify-center shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V3a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                     </div>
                     <div>
                         <h1 class="text-xl md:text-2xl font-black tracking-tighter uppercase text-slate-800 leading-tight">Pengaturan Toko</h1>
-                        <p class="text-[9px] md:text-[10px] font-black text-slate-400 mt-1 uppercase tracking-widest">Konfigurasi Profil & Sistem Pembayaran</p>
+                        <p class="text-[9px] md:text-[10px] font-black text-slate-400 mt-1 uppercase tracking-widest">Konfigurasi Profil Bisnis & Sistem Pembayaran</p>
                     </div>
                 </div>
             </div>
@@ -118,33 +111,36 @@ const saveSetting = async () => {
 
                 <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 items-start">
                     
-                    <div class="lg:col-span-2 bg-white border border-slate-200 p-6 md:p-8 rounded-[24px] shadow-sm space-y-6">
-                        <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-3">Identitas Bisnis / Nota</h3>
+                    <div class="lg:col-span-2 space-y-6 md:space-y-8">
                         
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div>
-                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Nama Toko Laundry</label>
-                                <input v-model="form.nama_toko" type="text" class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 font-bold text-sm text-slate-800 transition-all">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Nomor Telepon Toko</label>
-                                <div class="flex items-center bg-slate-50 border-2 border-slate-200 rounded-xl focus-within:bg-white focus-within:border-indigo-500 transition-all overflow-hidden">
-                                    <div class="pl-3 pr-2 py-3 bg-slate-100 border-r border-slate-200 flex items-center justify-center select-none"><span class="text-slate-500 font-black text-xs">+62</span></div>
-                                    <input v-model="form.telepon" @input="formatNoHpToko" type="number" class="w-full px-3 py-3 bg-transparent outline-none font-bold text-slate-800 text-sm" placeholder="8123...">
+                        <div class="bg-white border border-slate-200 p-6 md:p-8 rounded-[24px] shadow-sm space-y-6">
+                            <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-3">Identitas Bisnis & Cetakan Struk</h3>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div>
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Nama Toko Laundry</label>
+                                    <input v-model="form.nama_toko" type="text" class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 font-bold text-sm text-slate-800 transition-all">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Nomor Telepon WhatsApp</label>
+                                    <div class="flex items-center bg-slate-50 border-2 border-slate-200 rounded-xl focus-within:bg-white focus-within:border-indigo-500 transition-all overflow-hidden">
+                                        <div class="pl-3 pr-2 py-3 bg-slate-100 border-r border-slate-200 flex items-center justify-center select-none"><span class="text-slate-500 font-black text-xs">+62</span></div>
+                                        <input v-model="form.telepon" @input="formatNoHpToko" type="number" class="w-full px-3 py-3 bg-transparent outline-none font-bold text-slate-800 text-sm" placeholder="8123...">
+                                    </div>
                                 </div>
                             </div>
+
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Alamat Lengkap (Tampil di Nota)</label>
+                                <textarea v-model="form.alamat" rows="2" class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 font-bold text-sm text-slate-800 transition-all resize-none"></textarea>
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Pesan Footer Struk (Syarat & Ketentuan)</label>
+                                <textarea v-model="form.receipt_footer" rows="2" class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 font-bold text-sm text-slate-800 transition-all resize-none"></textarea>
+                            </div>
                         </div>
 
-                        <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Alamat Lengkap Toko</label>
-                            <textarea v-model="form.alamat" rows="3" class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 font-bold text-sm text-slate-800 transition-all resize-none"></textarea>
-                        </div>
-
-                        <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Syarat & Ketentuan Ketentuan Struk (Footer)</label>
-                            <textarea v-model="form.receipt_footer" rows="2" class="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 font-bold text-sm text-slate-800 transition-all resize-none"></textarea>
-                            <span class="text-[9px] font-bold text-slate-400 block mt-1">Kalimat ini bakal otomatis terbit di bagian paling bawah struk thermal kasir.</span>
-                        </div>
                     </div>
 
                     <div class="bg-white border border-slate-200 p-6 rounded-[24px] shadow-sm space-y-6 flex flex-col justify-between">
@@ -171,7 +167,7 @@ const saveSetting = async () => {
                                         </div>
                                         <div>
                                             <span class="block text-xs font-black text-slate-800 uppercase tracking-wide">Payment Gateway</span>
-                                            <span class="text-[10px] font-bold text-slate-400">Otomatis Terintegrasi Midtrans</span>
+                                            <span class="text-[10px] font-bold text-slate-400">Otomatis Terintegrasi (Coming Soon)</span>
                                         </div>
                                     </div>
                                 </label>
@@ -188,7 +184,6 @@ const saveSetting = async () => {
                                     </div>
                                     <input type="file" @change="handleQrisUpload" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" />
                                 </div>
-                                <span class="text-[9px] font-bold text-slate-400 text-center mt-2">Gambar ini otomatis tampil segede gaban saat kasir memilih bayar QRIS di POS.</span>
                             </div>
                         </div>
                     </div>
@@ -210,16 +205,7 @@ const saveSetting = async () => {
 .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-
-/* Ngilangin panah atas bawah di input number */
-input[type=number]::-webkit-inner-spin-button, 
-input[type=number]::-webkit-outer-spin-button { 
-    -webkit-appearance: none; 
-    margin: 0; 
-}
-input[type=number] {
-    -moz-appearance: textfield;
-}
-
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 </style>

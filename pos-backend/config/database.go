@@ -59,6 +59,7 @@ func ConnectDatabase() {
 		// Khusus transaksi menggunakan berat (Kg) & Status
 		// ==========================================
 		&models.TransactionLaundryDetail{},
+		&models.Perfume{},
 		
 
 	)

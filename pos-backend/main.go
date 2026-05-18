@@ -224,6 +224,12 @@ func main() {
 			laundryAPI.GET("/report", laundry.AmbilLaporan)
 			laundryAPI.GET("/setting", laundry.GetSettingToko)
 			laundryAPI.PUT("/setting", laundry.UpdateSettingToko)
+			laundryAPI.GET("/kasir", middlewares.RequireAuth, middlewares.RequireOwner, laundry.GetKasirList)
+			laundryAPI.POST("/kasir", middlewares.RequireAuth, middlewares.RequireOwner, laundry.CreateKasir)
+			laundryAPI.DELETE("/kasir/:id", middlewares.RequireAuth, middlewares.RequireOwner, laundry.DeleteKasir)
+			laundryAPI.GET("/perfumes", middlewares.RequireAuth, laundry.GetPerfumes)
+			laundryAPI.POST("/perfumes", middlewares.RequireAuth, middlewares.RequireOwner, laundry.CreatePerfume)
+			laundryAPI.DELETE("/perfumes/:id", middlewares.RequireAuth, middlewares.RequireOwner, laundry.DeletePerfume)
 		}
 	}
 

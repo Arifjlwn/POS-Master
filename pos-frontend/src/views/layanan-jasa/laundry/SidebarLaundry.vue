@@ -11,14 +11,24 @@ const isSidebarOpen = ref(false);
 const storeName = ref(localStorage.getItem('store_name') || 'ARZU');
 const shortName = computed(() => storeName.value.split(' ')[0].substring(0, 10));
 
-const menuItems = [
-    { name: 'Kasir Laundry', path: '/laundry/pos', icon: 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M4 8h16 M8 12h4 M8 16h8' },
-    { name: 'Status Cucian', path: '/laundry/status', icon: 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 6v6l4 2' },
-    { name: 'Master Layanan', path: '/laundry/master-layanan', icon: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.27 6.96L12 12.01l8.73-5.05 M12 22.08V12' },
-    { name: 'Laporan', path: '/laundry/laporan', icon: 'M18 20V10 M12 20V4 M6 20v-6 M3 20h18' },
-    // 🚀 MENU BARU: PENGATURAN TOKO
-    { name: 'Setting Toko', path: '/laundry/setting-toko', icon: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z' }
-];
+const userRole = localStorage.getItem('role') || 'kasir';
+
+const menuItems = computed(() => {
+    const semuaMenu = [
+        // Menu untuk SEMUA (Owner & Kasir)
+        { name: 'Kasir Laundry', path: '/laundry/pos', icon: 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M4 8h16 M8 12h4 M8 16h8', roles: ['owner', 'kasir'] },
+        { name: 'Status Cucian', path: '/laundry/status', icon: 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 6v6l4 2', roles: ['owner', 'kasir'] },
+        
+        // Menu SAKRAL (Hanya untuk Owner)
+        { name: 'Master Layanan', path: '/laundry/master-layanan', icon: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.27 6.96L12 12.01l8.73-5.05 M12 22.08V12', roles: ['owner'] },
+        { name: 'Laporan', path: '/laundry/laporan', icon: 'M18 20V10 M12 20V4 M6 20v-6 M3 20h18', roles: ['owner'] },
+        { name: 'Karyawan', path: '/laundry/karyawan', icon: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75', roles: ['owner'] },
+        { name: 'Setting Toko', path: '/laundry/setting', icon: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z', roles: ['owner'] }
+    ];
+
+    // Filter otomatis: Cuma tampilin menu yang roles-nya cocok sama role user saat ini!
+    return semuaMenu.filter(menu => menu.roles.includes(userRole));
+});
 
 const handleLogout = () => {
     Swal.fire({

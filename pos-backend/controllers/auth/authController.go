@@ -140,8 +140,8 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// 🚀 Proteksi OTP: Hanya untuk login via Email
-	if strings.Contains(input.Identifier, "@") && !user.IsVerified {
+	// 🚀 Proteksi OTP: Hanya untuk login via Email (Kecuali Akun KASIR!)
+	if strings.Contains(input.Identifier, "@") && !user.IsVerified && user.Role != "kasir" {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error":      "Email Anda belum diverifikasi!",
 			"unverified": true,
@@ -208,5 +208,6 @@ func GetMe(c *gin.Context) {
 		"tempat_lahir":  user.TempatLahir,
 		"tanggal_lahir": user.TanggalLahir,
 		"store_name":    user.Store.NamaToko,
+		"tipe_bisnis": user.Store.BusinessType,
 	})
 }

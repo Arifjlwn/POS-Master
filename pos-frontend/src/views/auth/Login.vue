@@ -57,28 +57,35 @@ const handleLogin = async () => {
       const roleUser = data.role.toLowerCase();
 
       // Ambil tipe bisnis dari response backend, ubah ke huruf kecil biar aman di-cek
-      const tipeBisnis = (data.tipe_bisnis || '').toLowerCase(); // Contoh: "jasa - laundry"
+      let tipeBisnis = (data.tipe_bisnis || '').toLowerCase();
 
-      // 1. CEK CONFIG LOGIC UNTUK KATEGORI JASA
-      if (tipeBisnis.includes('jasa')) {
-          if (tipeBisnis.includes('laundry')) {
-              router.push('/laundry/pos');
-          } else if (tipeBisnis.includes('bengkel')) {
-              router.push('/bengkel/pos');
-          } else if (tipeBisnis.includes('salon') || tipeBisnis.includes('barbershop')) {
-              router.push('/salon/pos');
-          } else if (tipeBisnis.includes('cuci')) {
-              router.push('/cuci-kendaraan/pos');
+      // 🚀 HACK SAKTI (Jaga-jaga kalau backend kosong, tapi emailnya ada kata laundry)
+      if (!tipeBisnis || tipeBisnis === '') {
+        if (identifier.value.toLowerCase().includes('laundry')) {
+              tipeBisnis = 'laundry';
           } else {
-              router.push('/retail/dashboard'); // Fallback kalau jasanya umum
+              tipeBisnis = 'retail'; // Default aman
           }
       }
-      // 2. CEK CONFIG LOGIC UNTUK F&B
+
+      // 🚀 LOGIKA ROUTING CLEAN & LANGSUNG TEMBAK!
+      if (tipeBisnis.includes('laundry')) {
+          router.push(roleUser === 'owner' ? '/laundry/laporan' : '/laundry/pos');
+      } 
+      else if (tipeBisnis.includes('bengkel')) {
+          router.push(roleUser === 'owner' ? '/bengkel/dashboard' : '/bengkel/pos');
+      } 
+      else if (tipeBisnis.includes('salon') || tipeBisnis.includes('barbershop')) {
+          router.push(roleUser === 'owner' ? '/salon/dashboard' : '/salon/pos');
+      } 
+      else if (tipeBisnis.includes('cuci')) {
+          router.push(roleUser === 'owner' ? '/cuci-kendaraan/dashboard' : '/cuci-kendaraan/pos');
+      } 
       else if (tipeBisnis.includes('f&b') || tipeBisnis.includes('food')) {
-          router.push('/fnb/dashboard');
-      }
-      // 3. FALLBACK UTAMA (RETAIL & LAINNYA)
+          router.push(roleUser === 'owner' ? '/fnb/dashboard' : '/fnb/pos'); 
+      } 
       else {
+          // 🚀 JALUR KHUSUS RETAIL / MINIMARKET
           if (roleUser === 'owner') {
               router.push('/retail/dashboard');
           } else {

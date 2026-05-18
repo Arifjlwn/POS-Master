@@ -89,7 +89,7 @@ const form = ref({
     detail_bisnis: '',
     telepon: '',
     fitur_opsional: ['kasir', 'whatsapp', 'absensi'], // Default fitur premium yang langsung aktif
-    alamat_jalan: '',
+    alamat: '',
     provinsi: '',
     kota: '',
     kecamatan: '',
@@ -123,11 +123,11 @@ const submit = async () => {
     isLoading.value = true;
     try {
         const finalTipeBisnis = `${form.value.kategori_bisnis} - ${form.value.detail_bisnis}`;
-        const alamatLengkap = `${form.value.alamat_jalan}, Kel. ${form.value.kelurahan}, Kec. ${form.value.kecamatan}, ${form.value.kota}, Prov. ${form.value.provinsi}, ${form.value.kode_pos}`;
+        const alamatLengkap = `${form.value.alamat}, Kel. ${form.value.kelurahan}, Kec. ${form.value.kecamatan}, ${form.value.kota}, Prov. ${form.value.provinsi}, ${form.value.kode_pos}`;
 
         const payload = {
             nama_toko: form.value.nama_toko,
-            tipe_bisnis: finalTipeBisnis,
+            business_type: finalTipeBisnis,
             alamat_toko: alamatLengkap,
             telepon: `62${form.value.telepon}`,
             fitur_aktif: form.value.fitur_opsional // Dikirim dalam bentuk array string ke Golang
@@ -158,10 +158,10 @@ const submit = async () => {
         if (kat === 'Retail' || kat === 'Lainnya') {
             router.push('/retail/dashboard');
         } else if (kat === 'F&B') {
-            router.push('/fnb/dashboard'); // Besok tinggal bikin folder fnb, gausah sentuh setup lagi!
+            router.push('/fnb/dashboard');
         } else if (kat === 'Jasa') {
             if (det === 'Laundry') {
-                router.push('/laundry/pos');
+                router.push('/laundry/laporan');
             } else if (det === 'Bengkel Otomotif') {
                 router.push('/bengkel/pos');
             } else if (det === 'Barbershop / Salon') {
@@ -274,7 +274,7 @@ const submit = async () => {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
                             <div class="md:col-span-2">
                                 <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Detail Alamat (Jalan, No, RT/RW)</label>
-                                <textarea v-model="form.alamat_jalan" rows="2" required class="input-modern resize-none" placeholder="Contoh: Jl. Jendral Sudirman Kav 21, RT 01 / RW 02..."></textarea>
+                                <textarea v-model="form.alamat" rows="2" required class="input-modern resize-none" placeholder="Contoh: Jl. Jendral Sudirman Kav 21, RT 01 / RW 02..."></textarea>
                             </div>
 
                             <div class="relative">

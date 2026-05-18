@@ -46,7 +46,7 @@ const logout = () => {
     }).then((result) => {
         if (result.isConfirmed) {
             localStorage.clear();
-            router.push('/');
+            router.push('/login');
         }
     });
 };

@@ -134,9 +134,15 @@ const routes = [
         meta: { requiresAuth: true }
     },
     {
-        path: '/laundry/setting-toko',
-        name: 'SettingToko',
+        path: '/laundry/setting',
+        name: 'Setting',
         component: () => import('../views/layanan-jasa/laundry/SettingToko.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/laundry/karyawan',
+        name: 'ManajemenKasirLaundry',
+        component: () => import('../views/layanan-jasa/laundry/ManajemenKasir.vue'),
         meta: { requiresAuth: true }
     },
 

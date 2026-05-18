@@ -49,3 +49,19 @@ func RequireAuth(c *gin.Context) {
 		return
 	}
 }
+
+// --- SATPAM RUANG VIP (KHUSUS OWNER) ---
+func RequireOwner(c *gin.Context) {
+	// Ambil data role yang udah ditaruh di kantong (Context) sama satpam RequireAuth
+	roleRaw, exists := c.Get("role")
+	
+	// Kalau datanya ga ada, atau rolenya BUKAN owner, langsung tendang!
+	if !exists || roleRaw.(string) != "owner" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Akses Ditolak! Fitur ini khusus untuk Bos (Owner) 😎"})
+		c.Abort() // Usir! Jangan kasih lanjut ke controller
+		return
+	}
+
+	// Kalau dia beneran owner, silakan lewat Bosku!
+	c.Next()
+}

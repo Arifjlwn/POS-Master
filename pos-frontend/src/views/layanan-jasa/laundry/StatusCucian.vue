@@ -149,8 +149,13 @@ Terima kasih sudah mempercayakan cuciannya di Arzu Laundry ! 💙`;
                             <h4 class="text-[11px] font-black text-indigo-600 uppercase tracking-wider truncate mb-2">{{ item.layanan }}</h4>
                             <div class="flex justify-between items-end border-t border-slate-200/60 pt-2">
                                 <div>
-                                    <span class="block text-[9px] font-bold text-slate-400 uppercase">Berat</span>
-                                    <span class="text-sm font-black text-slate-700">{{ item.berat_kg }} Kg</span>
+                                    <span class="block text-[9px] font-bold text-slate-400 uppercase">Kuantitas / Qty</span>
+                                    <span class="text-sm font-black text-slate-700 flex items-baseline gap-1">
+                                        {{ item.berat_kg }} 
+                                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                            {{ item.satuan ? item.satuan : (item.berat_kg % 1 !== 0 ? 'KG' : 'Item') }}
+                                        </span>
+                                    </span>
                                 </div>
                                 <div class="text-right">
                                     <span class="block text-[9px] font-bold text-slate-400 uppercase">Sub Total</span>

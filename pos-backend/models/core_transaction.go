@@ -35,6 +35,11 @@ type TransactionDetail struct {
 	ProductID     uint    `gorm:"not null" json:"product_id"`
 	HargaSatuan   float64 `gorm:"type:decimal(10,2);not null" json:"harga_satuan"`
 	Kuantitas     int     `gorm:"not null" json:"kuantitas"`
+
+    // 🚀 TAMBAHAN FITUR ADD-ON PARFUM PREMIUM
+	NamaParfum    string  `gorm:"type:varchar(50);default:'Parfum Standar'" json:"nama_parfum"`
+	HargaParfum   float64 `gorm:"type:decimal(10,2);default:0" json:"harga_parfum"` // Biaya tambahan parfum
+
 	SubTotal      float64 `gorm:"type:decimal(10,2);not null" json:"sub_total"`
 
 	// Relasi untuk narik nama produk (opsional, buat nampilin di nota)
