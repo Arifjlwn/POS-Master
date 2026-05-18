@@ -2,11 +2,14 @@ import { createRouter, createWebHistory } from 'vue-router';
 import Login from '../views/auth/Login.vue';
 
 const routes = [
+    // ==========================================
+    // MENU UTAMA WEBSITE (GLOBAL)
+    // ==========================================
     { 
         path: '/',
         name: 'LandingPage',
         component: () => import('../views/public/LandingPage.vue')
-},
+    },
     { 
         path: '/register',
         name: 'Register',
@@ -28,76 +31,115 @@ const routes = [
         component: Login
     },
     { 
-        path: '/dashboard', 
-        component: () => import('../views/dashboard/Dashboard.vue'),
-        meta: { requiresAuth: true } // Kunci pintu!
-    },
-    { 
-        path: '/pos/kasir', 
-        component: () => import('../views/pos/Kasir.vue'),
-        meta: { requiresAuth: true } // Kunci pintu!
-    },
-    { 
-        path: '/pos/buka-kasir', 
-        component: () => import('../views/pos/BukaKasir.vue'),
-        meta: { requiresAuth: true } // Kunci pintu!
-    },
-    { 
-        path: '/absensi', 
-        component: () => import('../views/sdm/Absensi.vue'),
-        meta: { requiresAuth: true } // Kunci pintu!
-    },
-    { 
-        path: '/schedule', 
-        component: () => import('../views/sdm/Schedule.vue'),
-        meta: { requiresAuth: true } // Kunci pintu!
-    },
-    { 
-        path: '/stock-opname', 
-        component: () => import('../views/inventori/StockOpname.vue'),
-        meta: { requiresAuth: true } // Kunci pintu!
-    },
-    { 
-        path: '/stock-opname/report',
-        name: 'StockOpnameReport', 
-        component: () => import('../views/inventori/StockOpnameReport.vue'),
-        meta: { requiresAuth: true } // Kunci pintu!
-    },
-    { 
-        path: '/riwayat', 
-        component: () => import('../views/pos/Riwayat.vue'),
-        meta: { requiresAuth: true } // Kunci pintu!
-    },
-    { 
-        path: '/produk', 
-        component: () => import('../views/produk/MasterProduk.vue'),
-        meta: { requiresAuth: true } 
-    },
-    { 
-        path: '/penerimaan-barang', 
-        component: () => import('../views/produk/PenerimaanBarang.vue'),
-        meta: { requiresAuth: true } 
-    },
-    { 
-        path: '/retur-barang', 
-        component: () => import('../views/produk/ReturBarang.vue'),
-        meta: { requiresAuth: true } 
-    },
-    { 
-        path: '/retur-barang/report', 
-        component: () => import('../views/produk/ReturReport.vue'),
-        meta: { requiresAuth: true } 
-    },
-    { 
-        path: '/karyawan', 
-        component: () => import('../views/sdm/ManageKaryawan.vue'),
-        meta: { requiresAuth: true } 
-    },
-    { 
         path: '/setup', 
         component: () => import('../views/setting/SetupToko.vue'),
         meta: { requiresAuth: true } 
     },
+
+    // ==========================================
+    // --- TIPE BISNIS: RETAIL ---
+    // ==========================================
+    { 
+        path: '/retail/dashboard', 
+        component: () => import('../views/retail/dashboard/Dashboard.vue'),
+        meta: { requiresAuth: true } 
+    },
+    { 
+        path: '/retail/pos', 
+        component: () => import('../views/retail/pos/Kasir.vue'),
+        meta: { requiresAuth: true } 
+    },
+    { 
+        path: '/retail/pos/buka-kasir', 
+        component: () => import('../views/retail/pos/BukaKasir.vue'),
+        meta: { requiresAuth: true } 
+    },
+    { 
+        path: '/retail/absensi', 
+        component: () => import('../views/retail/sdm/Absensi.vue'),
+        meta: { requiresAuth: true } 
+    },
+    { 
+        path: '/retail/schedule', 
+        component: () => import('../views/retail/sdm/Schedule.vue'),
+        meta: { requiresAuth: true } 
+    },
+    { 
+        path: '/retail/stock-opname', 
+        component: () => import('../views/retail/inventori/StockOpname.vue'),
+        meta: { requiresAuth: true } 
+    },
+    { 
+        path: '/retail/stock-opname/report',
+        name: 'StockOpnameReport', 
+        component: () => import('../views/retail/inventori/StockOpnameReport.vue'),
+        meta: { requiresAuth: true } 
+    },
+    { 
+        path: '/retail/riwayat', 
+        component: () => import('../views/retail/pos/Riwayat.vue'),
+        meta: { requiresAuth: true } 
+    },
+    { 
+        path: '/retail/master-produk', 
+        component: () => import('../views/retail/produk/MasterProduk.vue'),
+        meta: { requiresAuth: true } 
+    },
+    { 
+        path: '/retail/penerimaan-barang', 
+        component: () => import('../views/retail/produk/PenerimaanBarang.vue'),
+        meta: { requiresAuth: true } 
+    },
+    { 
+        path: '/retail/retur-barang', 
+        component: () => import('../views/retail/produk/ReturBarang.vue'),
+        meta: { requiresAuth: true } 
+    },
+    { 
+        path: '/retail/retur-barang/report', 
+        component: () => import('../views/retail/produk/ReturReport.vue'),
+        meta: { requiresAuth: true } 
+    },
+    { 
+        path: '/retail/karyawan', 
+        component: () => import('../views/retail/sdm/ManageKaryawan.vue'),
+        meta: { requiresAuth: true } 
+    },
+
+    // ==========================================
+    // --- TIPE BISNIS: LAYANAN & JASA (LAUNDRY) ---
+    // ==========================================
+    {
+        path: '/laundry/pos',
+        name: 'PosLaundry',
+        component: () => import('../views/layanan-jasa/laundry/PosLaundry.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/laundry/master-layanan',
+        name: 'MasterLayanan',
+        component: () => import('../views/layanan-jasa/laundry/MasterLayanan.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/laundry/status',
+        name: 'StatusCucian',
+        component: () => import('../views/layanan-jasa/laundry/StatusCucian.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/laundry/laporan',
+        name: 'Laporan',
+        component: () => import('../views/layanan-jasa/laundry/LaporanLaundry.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/laundry/setting-toko',
+        name: 'SettingToko',
+        component: () => import('../views/layanan-jasa/laundry/SettingToko.vue'),
+        meta: { requiresAuth: true }
+    },
+
 ];
 
 const router = createRouter({
@@ -105,28 +147,33 @@ const router = createRouter({
     routes,
 });
 
+// ==========================================
 // SATPAM FRONTEND (Route Guard)
+// ==========================================
 router.beforeEach((to, from, next) => {
     const role = localStorage.getItem('role');
     const token = localStorage.getItem('token');
     
-    // 1. Cek Login (Wajib ada token untuk semua rute kecuali login)
+    // 1. Cek Login (Wajib ada token untuk semua rute kecuali public)
     if (to.meta.requiresAuth && !token) {
         return next('/login');
     }
 
-    // 2. Logic khusus area POS
-    if (to.path.startsWith('/pos')) {
-        // Jika tujuannya ke mesin kasir (/pos/kasir), 
-        // tapi dia belum inisialisasi modal, kita jangan kasih lewat!
-        // Tapi pengecekan inisial modal ini paling akurat dilakukan di onMounted Kasir.vue
-        // Untuk di router, kita kasih lewat dulu aja
+    // 2. Logic khusus area POS (Pake .includes biar bisa baca /retail/pos atau /laundry/pos)
+    if (to.path.includes('/pos')) {
         return next();
     }
 
-    // 3. Proteksi Dashboard (Hanya Owner)
-    if (to.path === '/dashboard' && role !== 'owner') {
-        return next('/absensi');
+    // 3. Proteksi Dashboard (Hanya Owner) - Pake .includes biar jalan di semua tipe bisnis
+    if (to.path.includes('/dashboard') && role !== 'owner') {
+        // Kalau karyawan nyasar ke dashboard, lempar sesuai tipe bisnisnya!
+        if (to.path.includes('/retail')) {
+            return next('/retail/absensi');
+        } else if (to.path.includes('/laundry')) {
+            return next('/laundry/pos'); // Contoh lemparan kalau karyawan laundry
+        } else {
+            return next('/setup'); // Fallback
+        }
     }
 
     next();

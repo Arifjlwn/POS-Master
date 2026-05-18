@@ -29,7 +29,6 @@ const listKota = ref([]);
 const listKecamatan = ref([]);
 const listKelurahan = ref([]);
 
-// State sementara buat nangkep ID wilayah
 const regIds = ref({
     provinsi: '',
     kota: '',
@@ -37,7 +36,6 @@ const regIds = ref({
     kelurahan: ''
 });
 
-// Load daftar Provinsi pas halaman pertama dibuka
 const loadProvinsi = async () => {
     try {
         const res = await fetch(`${BASE_WILAYAH_API}/provinces.json`);
@@ -47,9 +45,7 @@ const loadProvinsi = async () => {
 
 onMounted(() => loadProvinsi());
 
-// 🚀 Rantai Watcher Wilayah (Auto-Cascading)
 watch(() => regIds.value.provinsi, async (newId) => {
-    // Reset bawahan
     regIds.value.kota = ''; listKota.value = [];
     regIds.value.kecamatan = ''; listKecamatan.value = [];
     regIds.value.kelurahan = ''; listKelurahan.value = [];
@@ -92,8 +88,7 @@ const form = ref({
     kategori_bisnis: 'Retail', 
     detail_bisnis: '',
     telepon: '',
-    fitur_opsional: ['kasir', 'inventory'], 
-    // Pecahan Alamat
+    fitur_opsional: ['kasir', 'whatsapp', 'absensi'], // Default fitur premium yang langsung aktif
     alamat_jalan: '',
     provinsi: '',
     kota: '',
@@ -110,11 +105,16 @@ watch(() => form.value.kategori_bisnis, (newVal) => {
 
 const formatNoHp = () => {
     let val = String(form.value.telepon);
-    if (val.startsWith('0')) val = val.substring(1);
-    if (val.startsWith('62')) val = val.substring(2);
+    if (val.startsWith('0')) {
+        val = val.substring(1);
+    }
+    if (val.startsWith('62')) {
+        val = val.substring(2);
+    }
     form.value.telepon = val;
 };
 
+// --- FUNGSI SUBMIT AMAN JANGKA PANJANG ---
 const submit = async () => {
     if (!regIds.value.kelurahan) {
         return Swal.fire('Data Kurang!', 'Harap lengkapi pilihan Kelurahan / Desa!', 'warning');
@@ -123,16 +123,14 @@ const submit = async () => {
     isLoading.value = true;
     try {
         const finalTipeBisnis = `${form.value.kategori_bisnis} - ${form.value.detail_bisnis}`;
-        
-        // 🚀 JAHIT SEMUA ALAMAT JADI 1 KALIMAT RAPI
         const alamatLengkap = `${form.value.alamat_jalan}, Kel. ${form.value.kelurahan}, Kec. ${form.value.kecamatan}, ${form.value.kota}, Prov. ${form.value.provinsi}, ${form.value.kode_pos}`;
 
         const payload = {
             nama_toko: form.value.nama_toko,
             tipe_bisnis: finalTipeBisnis,
-            alamat_toko: alamatLengkap, // Dikirim full
+            alamat_toko: alamatLengkap,
             telepon: `62${form.value.telepon}`,
-            fitur_aktif: form.value.fitur_opsional 
+            fitur_aktif: form.value.fitur_opsional // Dikirim dalam bentuk array string ke Golang
         };
 
         const response = await api.post('/setup', payload);
@@ -140,7 +138,9 @@ const submit = async () => {
         if (response.data && response.data.token) {
             localStorage.setItem('token', response.data.token);
             localStorage.setItem('storeName', form.value.nama_toko);
-            localStorage.setItem('storeType', form.value.kategori_bisnis); 
+            localStorage.setItem('businessType', finalTipeBisnis); 
+            localStorage.setItem('storeCategory', form.value.kategori_bisnis); 
+            localStorage.setItem('storeDetail', form.value.detail_bisnis); 
         }
         
         await Swal.fire({
@@ -151,7 +151,28 @@ const submit = async () => {
             customClass: { popup: 'rounded-[32px]' }
         });
         
-        router.push('/dashboard'); 
+        // --- ROUTING CERDAS TANPA BONGKAR SETUP LAGI ---
+        const kat = form.value.kategori_bisnis;
+        const det = form.value.detail_bisnis;
+
+        if (kat === 'Retail' || kat === 'Lainnya') {
+            router.push('/retail/dashboard');
+        } else if (kat === 'F&B') {
+            router.push('/fnb/dashboard'); // Besok tinggal bikin folder fnb, gausah sentuh setup lagi!
+        } else if (kat === 'Jasa') {
+            if (det === 'Laundry') {
+                router.push('/laundry/pos');
+            } else if (det === 'Bengkel Otomotif') {
+                router.push('/bengkel/pos');
+            } else if (det === 'Barbershop / Salon') {
+                router.push('/salon/pos');
+            } else if (det === 'Cuci Mobil / Motor') {
+                router.push('/cuci-kendaraan/pos');
+            } else {
+                router.push('/retail/dashboard');
+            }
+        }
+
     } catch (error) {
         Swal.fire({
             icon: 'error',
@@ -226,21 +247,21 @@ const submit = async () => {
                             </div>
 
                             <div class="md:col-span-2">
-                                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">No. WhatsApp Bisnis</label>
-                                <div class="flex items-center bg-white border-2 border-slate-200 rounded-2xl focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 transition-all shadow-sm overflow-hidden">
-                                    <div class="pl-5 pr-4 py-4 bg-slate-50 border-r border-slate-200 flex items-center justify-center">
-                                        <span class="text-slate-500 font-black text-sm">+62</span>
-                                    </div>
-                                    <input 
-                                        v-model="form.telepon" 
-                                        @input="formatNoHp" 
-                                        type="number" 
-                                        required 
-                                        class="w-full px-4 py-4 bg-transparent outline-none font-black text-slate-800 placeholder:text-slate-300 placeholder:font-bold" 
-                                        placeholder="81234567890"
-                                    >
-                                </div>
-                            </div>
+    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">No. WhatsApp Bisnis</label>
+    <div class="flex items-center bg-white border-2 border-slate-200 rounded-2xl focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 transition-all shadow-sm overflow-hidden">
+        <div class="pl-5 pr-4 py-4 bg-slate-50 border-r border-slate-200 flex items-center justify-center select-none">
+            <span class="text-slate-500 font-black text-sm">+62</span>
+        </div>
+        <input 
+            v-model="form.telepon" 
+            @input="formatNoHp" 
+            type="number" 
+            required 
+            class="w-full px-4 py-4 bg-transparent outline-none font-black text-slate-800 placeholder:text-slate-300 placeholder:font-bold" 
+            placeholder="81234567890"
+        >
+    </div>
+</div>
                         </div>
                     </div>
 
@@ -251,10 +272,9 @@ const submit = async () => {
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-                            
                             <div class="md:col-span-2">
                                 <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Detail Alamat (Jalan, No, RT/RW)</label>
-                                <textarea v-model="form.alamat_jalan" rows="2" required class="input-modern resize-none" placeholder="Contoh: Jl. Jendral Sudirman Kav 21, Gedung X Lantai 3, RT 01 / RW 02..."></textarea>
+                                <textarea v-model="form.alamat_jalan" rows="2" required class="input-modern resize-none" placeholder="Contoh: Jl. Jendral Sudirman Kav 21, RT 01 / RW 02..."></textarea>
                             </div>
 
                             <div class="relative">
@@ -303,15 +323,13 @@ const submit = async () => {
                                 </div>
                                 
                                 <div>
-                                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block flex items-center gap-1">
-                                        Kode Pos
-                                    </label>
+                                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block flex items-center gap-1">Kode Pos</label>
                                     <input 
                                         v-model="form.kode_pos" 
                                         :disabled="!regIds.kelurahan"
                                         type="number" 
                                         required 
-                                        class="w-full px-4 py-4 bg-white border-2 border-slate-200 rounded-2xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none font-black text-slate-800 transition-all text-sm placeholder:text-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:placeholder:text-slate-400" 
+                                        class="w-full px-4 py-4 bg-white border-2 border-slate-200 rounded-2xl focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 outline-none font-black text-slate-800 transition-all text-sm placeholder:text-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60" 
                                         :placeholder="regIds.kelurahan ? 'Ketik Kode Pos...' : 'Ketik Kode Pos'"
                                     >
                                 </div>
@@ -322,7 +340,7 @@ const submit = async () => {
                     <div class="flex flex-col gap-6 pt-4 border-t border-slate-100">
                         <div class="flex items-center gap-3 border-b border-slate-100 pb-3">
                             <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-black text-xs border border-blue-100 shadow-sm">3</div>
-                            <h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">Modul SaaS & Ekosistem</h3>
+                            <h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">Modul SaaS & Ekosistem Premium</h3>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -330,36 +348,36 @@ const submit = async () => {
                                 <input type="checkbox" value="kasir" v-model="form.fitur_opsional" disabled class="w-5 h-5 text-indigo-600 rounded-lg border-gray-300">
                                 <div class="ml-4 flex-1">
                                     <span class="font-black text-indigo-900 block text-sm uppercase">Cloud POS Kasir</span>
-                                    <span class="text-indigo-600 text-[9px] font-bold uppercase tracking-widest italic block mt-0.5">Modul Inti (Wajib)</span>
+                                    <span class="text-indigo-600 text-[9px] font-bold uppercase tracking-widest italic block mt-0.5">Modul Inti (Selalu Aktif)</span>
                                 </div>
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
                             </label>
 
-                            <label class="feature-card border-slate-200 hover:bg-slate-50 cursor-pointer transition-all" :class="form.fitur_opsional.includes('inventory') ? 'border-blue-400 bg-blue-50/30' : ''">
-                                <input type="checkbox" value="inventory" v-model="form.fitur_opsional" class="w-5 h-5 text-blue-600 rounded flex-shrink-0 cursor-pointer">
+                            <label class="feature-card border-slate-200 hover:bg-slate-50 cursor-pointer transition-all" :class="form.fitur_opsional.includes('whatsapp') ? 'border-emerald-400 bg-emerald-50/30' : ''">
+                                <input type="checkbox" value="whatsapp" v-model="form.fitur_opsional" class="w-5 h-5 text-emerald-600 rounded flex-shrink-0 cursor-pointer">
                                 <div class="ml-4 flex-1">
-                                    <span class="font-black text-slate-800 block text-sm uppercase">Master Inventory</span>
-                                    <span class="text-slate-400 text-[9px] font-bold uppercase tracking-widest block mt-0.5">Katalog & Stok Gudang</span>
+                                    <span class="font-black text-slate-800 block text-sm uppercase">WhatsApp Notifier</span>
+                                    <span class="text-emerald-600 text-[9px] font-bold uppercase tracking-widest block mt-0.5">Kirim Nota Otomatis ke Pelanggan</span>
                                 </div>
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-slate-300" :class="form.fitur_opsional.includes('inventory') ? 'text-blue-500' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-slate-300" :class="form.fitur_opsional.includes('whatsapp') ? 'text-emerald-500' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
                             </label>
 
-                            <label class="feature-card border-slate-200 hover:bg-slate-50 cursor-pointer transition-all" :class="form.fitur_opsional.includes('absensi') ? 'border-emerald-400 bg-emerald-50/30' : ''">
-                                <input type="checkbox" value="absensi" v-model="form.fitur_opsional" class="w-5 h-5 text-emerald-600 rounded flex-shrink-0 cursor-pointer">
+                            <label class="feature-card border-slate-200 hover:bg-slate-50 cursor-pointer transition-all" :class="form.fitur_opsional.includes('absensi') ? 'border-blue-400 bg-blue-50/30' : ''">
+                                <input type="checkbox" value="absensi" v-model="form.fitur_opsional" class="w-5 h-5 text-blue-600 rounded flex-shrink-0 cursor-pointer">
                                 <div class="ml-4 flex-1">
-                                    <span class="font-black text-slate-800 block text-sm uppercase">Biometric Attendance</span>
-                                    <span class="text-slate-400 text-[9px] font-bold uppercase tracking-widest block mt-0.5">Presensi Face AI</span>
+                                    <span class="font-black text-slate-800 block text-sm uppercase">Smart Attendance</span>
+                                    <span class="text-slate-400 text-[9px] font-bold uppercase tracking-widest block mt-0.5">Absensi Karyawan & Deteksi Lokasi</span>
                                 </div>
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-slate-300" :class="form.fitur_opsional.includes('absensi') ? 'text-emerald-500' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-slate-300" :class="form.fitur_opsional.includes('absensi') ? 'text-blue-500' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
                             </label>
 
-                            <label class="feature-card border-slate-200 hover:bg-slate-50 cursor-pointer transition-all" :class="form.fitur_opsional.includes('jadwal') ? 'border-amber-400 bg-amber-50/30' : ''">
-                                <input type="checkbox" value="jadwal" v-model="form.fitur_opsional" class="w-5 h-5 text-amber-600 rounded flex-shrink-0 cursor-pointer">
+                            <label class="feature-card border-slate-200 hover:bg-slate-50 cursor-pointer transition-all" :class="form.fitur_opsional.includes('ai_analyst') ? 'border-amber-400 bg-amber-50/30' : ''">
+                                <input type="checkbox" value="ai_analyst" v-model="form.fitur_opsional" class="w-5 h-5 text-amber-600 rounded flex-shrink-0 cursor-pointer">
                                 <div class="ml-4 flex-1">
-                                    <span class="font-black text-slate-800 block text-sm uppercase">Shift & Schedule</span>
-                                    <span class="text-slate-400 text-[9px] font-bold uppercase tracking-widest block mt-0.5">Manajemen Jadwal Tim</span>
+                                    <span class="font-black text-slate-800 block text-sm uppercase">AI Business Analyst</span>
+                                    <span class="text-amber-600 text-[9px] font-bold uppercase tracking-widest block mt-0.5">Prediksi Omset & Evaluasi Bisnis</span>
                                 </div>
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-slate-300" :class="form.fitur_opsional.includes('jadwal') ? 'text-amber-500' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-slate-300" :class="form.fitur_opsional.includes('ai_analyst') ? 'text-amber-500' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                             </label>
                         </div>
                     </div>
@@ -388,32 +406,23 @@ const submit = async () => {
 .input-modern {
     @apply block w-full px-5 py-4 bg-white border-2 border-slate-200 rounded-2xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none font-black text-slate-800 transition-all placeholder:text-slate-300 placeholder:font-bold shadow-sm;
 }
-
 .feature-card {
     @apply flex items-center p-4 md:p-5 border-2 rounded-[20px] transition-all;
 }
-
 .btn-submit {
     @apply w-full flex items-center justify-center py-5 md:py-6 px-6 rounded-[24px] shadow-2xl shadow-indigo-200/50 text-xs md:text-sm font-black text-white bg-indigo-600 hover:bg-slate-900 transition-all active:scale-95 disabled:opacity-50 uppercase tracking-[0.2em];
 }
-
-/* Custom Scrollbar */
 textarea::-webkit-scrollbar { width: 6px; }
 textarea::-webkit-scrollbar-track { background: transparent; }
 textarea::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-5px); }
     to { opacity: 1; transform: translateY(0); }
 }
-
-/* Hilangkan arrow up/down di input type number */
 input[type=number]::-webkit-inner-spin-button, 
 input[type=number]::-webkit-outer-spin-button { 
     -webkit-appearance: none; 
     margin: 0; 
 }
-input[type=number] {
-    -moz-appearance: textfield;
-}
+input[type=number] { -moz-appearance: textfield; }
 </style>

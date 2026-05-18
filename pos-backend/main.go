@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"os"
 	"pos-backend/config"
-	"pos-backend/controllers"
+	"pos-backend/controllers/auth"   // 🚀 IMPORT FOLDER AUTH
+	"pos-backend/controllers/retail" // 🚀 IMPORT FOLDER RETAIL
+	"pos-backend/controllers/laundry" // 🚀 IMPORT FOLDER RETAIL
 	"pos-backend/middlewares"
 	"pos-backend/models"
 	"time"
@@ -19,9 +21,9 @@ import (
 func main() {
 	// GO Baca file .env difolder ini
 	err := godotenv.Load()
-		if err != nil {
-			log.Println("Peringatan: File .env tidak ditemukan, menggunakan config default system")
-		}
+	if err != nil {
+		log.Println("Peringatan: File .env tidak ditemukan, menggunakan config default system")
+	}
 
 	// Inisialisasi Database
 	config.ConnectDatabase()
@@ -31,31 +33,27 @@ func main() {
 	
 	// --- PERBAIKAN CORS ---
 	r.Use(cors.New(cors.Config{
-        // 🚀 Mengizinkan localhost DAN semua IP Local Network (192.168.x.x) secara dinamis
-        AllowOriginFunc: func(origin string) bool {
-            // Tetap izinkan localhost untuk development di PC
-            if origin == "http://localhost:5173" || origin == "http://localhost:5174" {
-                return true
-            }
-            // Izinkan otomatis semua perangkat HP yang terhubung satu WiFi/Hotspot (192.168.xx.xx)
-            return true 
-        },
-        AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-        AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Requested-With", "Accept"},
-        ExposeHeaders:    []string{"Content-Length"},
-        AllowCredentials: true,
-        MaxAge:           12 * time.Hour,
-    }))
+		AllowOriginFunc: func(origin string) bool {
+			if origin == "http://localhost:5173" || origin == "http://localhost:5174" {
+				return true
+			}
+			return true 
+		},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Requested-With", "Accept"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
-    r.Static("/uploads", "./uploads")
+	r.Static("/uploads", "./uploads")
+	r.Static("/public", "./public")
 
 	r.Use(func(c *gin.Context) {
-    // Batasi 5MB secara manual
-    c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 5*1024*1024)
-    c.Next()
-})
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 5*1024*1024)
+		c.Next()
+	})
 
-	// Membuat endpoint API sederhana (Route GET)
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "sukses",
@@ -63,69 +61,22 @@ func main() {
 		})
 	})
 
-	// -- Rute API SAAS --
-	r.POST("/api/register", controllers.Register)
-	r.POST("/api/verify-otp", controllers.VerifyOTP)
-	r.POST("/api/login", controllers.Login)
+	// ==========================================
+	// -- RUTE API SAAS (GLOBAL & AUTH) --
+	// ==========================================
+	r.POST("/api/register", auth.Register)
+	r.POST("/api/verify-otp", auth.VerifyOTP)
+	r.POST("/api/login", auth.Login)
 
 	// -- Rute Terproteksi (Butuh Karcis JWT) --
 	api := r.Group("/api")
 	api.Use(middlewares.RequireAuth)
 	{
-		// -- Rute Produk (CRUD) --
-		api.POST("/products", controllers.CreateProduct)
-		api.GET("/products", controllers.GetProducts)
-		api.PUT("/products/:id", controllers.UpdateProduct)
-		api.DELETE("/products/:id", controllers.DeleteProduct)
-		api.GET("/products/export", controllers.ExportProducts)
-		api.POST("/products/import", controllers.ImportProducts)
-		api.GET("/categories", controllers.GetCategories)
-
-		// -- Rute Karyawan --
-		api.POST("/employees", controllers.CreateEmployee)
-		api.GET("/employees", controllers.GetEmployees)
-		api.PUT("/employees/:id", controllers.UpdateEmployee)
-		api.GET("/me", controllers.GetMe)
-
-		// -- RUTE TOKO SHIFT MANAGEMENT (TSM)
-		api.POST("/schedules/bulk", controllers.SaveSchedules)
-		api.GET("/schedules", controllers.GetSchedules)
-
-		// --RUTE ABSENSI--
-		api.POST("/attendance", controllers.StoreAttendance)
-		api.GET("/attendance", controllers.GetAttendance)
-		api.GET("/attendance/export", controllers.ExportAttendance)
-
-		//--- RUTE RETUR & BARANG RUSAK ---
-		api.POST("/returns", controllers.CreateReturn)
-		api.GET("/returns", controllers.GetReturns)
-
-		// Rute LPB
-		api.POST("/purchases", controllers.CreateLPB)
-
-		// Rute Stock Opname
-		api.POST("/stock-opname", controllers.CreateStockOpname)
-		api.GET("/stock-opname/history", controllers.GetStockOpnameHistory)
-
-		// Rute Session
-		// 🚀 --- RUTE SESSION KASIR (BUKA/CEK KASIR) ---
-        api.POST("/pos/open-session", controllers.OpenSession)
-        api.GET("/pos/check-session", controllers.CheckSessionStatus)
-
-		// --- RUTE CLOSING ---
-		api.POST("/pos/close-session/:id", controllers.CloseSession)
+		// --- RUTE SETUP TOKO (Global - Masih inline) ---
+		api.GET("/me", auth.GetMe)
 		
-		// Rute Transaksi (Mesin Kasir)
-		api.POST("/checkout", controllers.CreateTransaction)
-		api.GET("/transactions", controllers.GetTransactions)
-		
-
-		// Rute Laporan (Dashboard)
-		api.GET("/report/dashboard", controllers.GetDashboardReport)
-
-		// --- RUTE SETUP TOKO ---
-		api.POST("/setup-toko", func(c *gin.Context) {
-			// 1. Ambil User ID dari Satpam JWT (Ingat, dari JWT itu bentuknya float64, harus diconvert)
+		// --- UPDATE INTEGRASI RUTE SETUP TOKO (Di dalam main.go) ---
+		api.POST("/setup", func(c *gin.Context) {
 			userIDRaw, exists := c.Get("user_id")
 			if !exists {
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "User tidak valid"})
@@ -133,67 +84,154 @@ func main() {
 			}
 			userID := uint(userIDRaw.(float64))
 
-			// 2. Tangkap JSON dari Frontend Vue
+			// Struct penangkap disesuaikan 100% dengan state Vue kamu
 			var input struct {
-				NamaToko   string `json:"nama_toko" binding:"required"`
-				TipeBisnis string `json:"tipe_bisnis" binding:"required"`
-				AlamatToko string `json:"alamat_toko"`
-				Telepon    string `json:"telepon"`
+				NamaToko     string   `json:"nama_toko" binding:"required"`
+				TipeBisnis   string   `json:"tipe_bisnis" binding:"required"` // Gabungan kategori & spesifikasi
+				AlamatJalan  string   `json:"alamat_toko"`                    // Menerima form.alamat_jalan
+				Provinsi     string   `json:"provinsi"`
+				Kota         string   `json:"kota"`
+				Kecamatan    string   `json:"kecamatan"`
+				Kelurahan    string   `json:"kelurahan"`
+				KodePos      string   `json:"kode_pos"`
+				Telepon      string   `json:"telepon"`
+				FiturOpsional []string `json:"fitur_aktif"`                    // Menerima array form.fitur_opsional
 			}
 			
 			if err := c.ShouldBindJSON(&input); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Format data salah, pastikan kirim JSON"})
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Format data salah, pastikan form terisi lengkap"})
 				return
 			}
 
-			// 3. Masukkan ke tabel Stores di Supabase
+			// Merangkai array modul premium menjadi string teks dipisah koma
+			var fiturString string
+			for i, fitur := range input.FiturOpsional {
+				if i > 0 {
+					fiturString += ","
+				}
+				fiturString += fitur
+			}
+
+			// Menjahit teks alamat lengkap sekali jadi untuk kebutuhan invoice cetak nota cepat
+			alamatLengkap := input.AlamatJalan + ", Kel. " + input.Kelurahan + ", Kec. " + input.Kecamatan + ", " + input.Kota + ", " + input.Provinsi + " " + input.KodePos
+
 			newStore := models.Store{
 				NamaToko:     input.NamaToko,
 				BusinessType: input.TipeBisnis,
-				Alamat:       input.AlamatToko,
 				Telepon:      input.Telepon,
+				FiturAktif:   fiturString,
+				Alamat:       alamatLengkap, // Masuk alamat gabungan
+				Provinsi:     input.Provinsi, // Masuk pecahan data area operasional
+				Kota:         input.Kota,
+				Kecamatan:    input.Kecamatan,
+				Kelurahan:    input.Kelurahan,
+				KodePos:      input.KodePos,
 			}
 			
 			if err := config.DB.Create(&newStore).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat toko"})
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan infrastruktur toko baru"})
 				return
 			}
 
-			// 4. Update Akun Bos! (Kaitkan ID User dengan ID Toko yang baru dibuat)
 			if err := config.DB.Model(&models.User{}).Where("id = ?", userID).Update("store_id", newStore.ID).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengaitkan toko ke akun Anda"})
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengaitkan otoritas toko ke akun owner"})
 				return
 			}
 
-			// 🚀 OPERASI SENYAP DIMULAI DI SINI: Cetak ulang tiket VIP!
+			// Generate ulang JWT token bawaan kamu
 			newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 				"user_id":  userID,
-				"store_id": newStore.ID, // 👈 Sekarang udah terisi ID Toko yang baru dibuat!
+				"store_id": newStore.ID,
 				"role":     "owner",
 				"exp":      time.Now().Add(time.Hour * 72).Unix(),
 			})
 
 			tokenString, err := newToken.SignedString([]byte("KUNCI_RAHASIA_SUPER_KUAT_123"))
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Toko dibuat, tapi gagal cetak tiket baru"})
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Toko sukses dibuat, namun gagal memperbarui token akses"})
 				return
 			}
 
-			// 5. Berhasil!
 			c.JSON(http.StatusOK, gin.H{
-				"message": "Toko berhasil dibuat! Selamat berbisnis.",
+				"message":  "Konfigurasi sistem siap! Selamat datang di platform POS SaaS.",
 				"store_id": newStore.ID,
-				"token": tokenString,
+				"token":    tokenString,
+				"data": gin.H{
+					"nama_toko":   newStore.NamaToko,
+					"tipe_bisnis": newStore.BusinessType, 
+				},
 			})
 		})
+
+		// ==========================================
+		// 🛒 RUTE KHUSUS RETAIL (URL nambah /retail)
+		// ==========================================
+		retailAPI := api.Group("/retail")
+		{
+			// -- Rute Produk (CRUD) --
+			retailAPI.POST("/products", retail.CreateProduct)
+			retailAPI.GET("/products", retail.GetProducts)
+			retailAPI.PUT("/products/:id", retail.UpdateProduct)
+			retailAPI.DELETE("/products/:id", retail.DeleteProduct)
+			retailAPI.GET("/products/export", retail.ExportProducts)
+			retailAPI.POST("/products/import", retail.ImportProducts)
+			retailAPI.GET("/categories", retail.GetCategories)
+
+			// -- Rute Karyawan --
+			retailAPI.POST("/employees", retail.CreateEmployee)
+			retailAPI.GET("/employees", retail.GetEmployees)
+			retailAPI.PUT("/employees/:id", retail.UpdateEmployee)
+
+			retailAPI.POST("/schedules/bulk", retail.SaveSchedules)
+			retailAPI.GET("/schedules", retail.GetSchedules)
+
+			// -- Rute Absensi --
+			retailAPI.POST("/attendance", retail.StoreAttendance)
+			retailAPI.GET("/attendance", retail.GetAttendance)
+			retailAPI.GET("/attendance/export", retail.ExportAttendance)
+
+			// --- RUTE RETUR, LPB, STOK OPNAME ---
+			retailAPI.POST("/returns", retail.CreateReturn)
+			retailAPI.GET("/returns", retail.GetReturns)
+			retailAPI.POST("/purchases", retail.CreateLPB)
+			retailAPI.POST("/stock-opname", retail.CreateStockOpname)
+			retailAPI.GET("/stock-opname/history", retail.GetStockOpnameHistory)
+
+			// --- RUTE KASIR (POS) ---
+			retailAPI.POST("/pos/open-session", retail.OpenSession)
+			retailAPI.GET("/pos/check-session", retail.CheckSessionStatus)
+			retailAPI.POST("/pos/close-session/:id", retail.CloseSession)
+			retailAPI.POST("/checkout", retail.CreateTransaction)
+			retailAPI.GET("/transactions", retail.GetTransactions)
+
+			// Rute Laporan
+			retailAPI.GET("/report/dashboard", retail.GetDashboardReport)
+		}
+
+		// ==========================================
+		// 🧺 RUTE KHUSUS LAUNDRY 
+		// ==========================================
+		laundryAPI := api.Group("/laundry")
+		{
+			laundryAPI.GET("/services", laundry.AmbilDaftarLayananLaundry) 
+			laundryAPI.POST("/services", laundry.TambahLayananLaundry)
+			laundryAPI.PUT("/services/:id", laundry.EditLayananLaundry)
+			laundryAPI.DELETE("/services/:id", laundry.HapusLayananLaundry)
+			laundryAPI.POST("/checkout", laundry.ProsesCheckoutLaundry)
+			laundryAPI.GET("/tracking", laundry.AmbilDataTracking) 
+			laundryAPI.PUT("/tracking/:id/status", laundry.UpdateStatusCucian)
+			laundryAPI.GET("/customers/search", laundry.CariPelanggan)
+			laundryAPI.GET("/report", laundry.AmbilLaporan)
+			laundryAPI.GET("/setting", laundry.GetSettingToko)
+			laundryAPI.PUT("/setting", laundry.UpdateSettingToko)
+		}
 	}
 
-	// Menyalakan server dari port .env
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	log.Println("Server berjalan dan terbuka untuk lokal network di port: " + port)
+	log.Println("Server berjalan di port: " + port)
 	r.Run("0.0.0.0:" + port)
 }

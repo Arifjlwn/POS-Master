@@ -3,9 +3,9 @@ package config
 import (
 	"log"
 	"os"
-	"pos-backend/models" // Pastikan path ini benar sesuai struktur folder Mas
+	"pos-backend/models" // Pastikan path ini benar sesuai struktur folder kamu
 
-	"gorm.io/driver/postgres" // Ganti dari mysql ke postgres
+	"gorm.io/driver/postgres" 
 	"gorm.io/gorm"
 )
 
@@ -13,13 +13,11 @@ import (
 var DB *gorm.DB
 
 func ConnectDatabase() {
-	// MASUKKAN URI DARI SUPABASE DI SINI
-	// Pastikan [PASSWORD] sudah diganti dengan password asli Mas tanpa kurung siku
+	// Membaca string koneksi URI dari file .env
 	dsn := os.Getenv("DB_URL")
 	
-	// Gunakan postgres.Open bukan mysql.Open
 	database, err := gorm.Open(postgres.New(postgres.Config{
-		DSN: dsn,
+		DSN:                  dsn,
 		PreferSimpleProtocol: true,
 	}), &gorm.Config{})
 
@@ -29,21 +27,40 @@ func ConnectDatabase() {
 
 	log.Println("✅ Berhasil terhubung ke Database Supabase (Postgres)!")
 
-	// Auto Migrate (GORM bakal otomatis ngebangun tabel di Supabase)
+	// Auto Migrate (GORM bakal otomatis ngebangun/update tabel di Cloud Supabase)
 	err = database.AutoMigrate(
+		
+		// ==========================================
+		// 🌐 CORE GLOBAL (Pondasi Utama & SDM)
+		// Dipakai oleh semua tipe bisnis
+		// ==========================================
 		&models.Store{},
 		&models.User{},
-		&models.Product{},
-		&models.Transaction{},
-		&models.TransactionDetail{},
-		&models.Attendance{},
-		&models.CashierSession{},
-		&models.Purchase{},
+		&models.Product{},        // Master Katalog (Barang Fisik / Layanan Jasa)
+		&models.Transaction{},    // Induk Transaksi
+		&models.CashierSession{}, // Sesi Buka/Tutup Kasir
+		&models.Attendance{},     // Absensi Pegawai
+		&models.Schedule{},       // Jadwal Shift
+		&models.Customer{},		  // CRM (Customer Relationship Management)
+		
+		// ==========================================
+		// 🛍️ RETAIL & INVENTORY
+		// Khusus manajemen barang fisik berskala gudang
+		// ==========================================
+		&models.TransactionDetail{}, // Anak transaksi khusus Retail
+		&models.Purchase{},          // Pembelian (LPB)
 		&models.PurchaseDetail{},
-		&models.StockOpname{},
+		&models.StockOpname{},       // Cek Fisik Gudang
 		&models.StockOpnameDetail{},
-		&models.Schedule{},
-		&models.ProductReturn{},
+		&models.ProductReturn{},     // Retur Barang
+		
+		// ==========================================
+		// 🧺 LAYANAN & JASA (LAUNDRY)
+		// Khusus transaksi menggunakan berat (Kg) & Status
+		// ==========================================
+		&models.TransactionLaundryDetail{},
+		
+
 	)
 	
 	if err != nil {

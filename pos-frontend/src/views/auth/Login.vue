@@ -24,11 +24,16 @@ const handleLogin = async () => {
 
     const data = response.data; 
 
-    // Simpan ke Local Storage
+    // Simpan data Auth ke Local Storage
     localStorage.setItem('token', data.token);
     localStorage.setItem('role', data.role.toLowerCase());
     localStorage.setItem('name', data.name || '');
     localStorage.setItem('storeName', data.store_name || 'Toko Belum Di-Setup');
+    
+    // 🚀 Simpan tipe bisnis kalau ada (buat acuan komponen lain)
+    if (data.tipe_bisnis) {
+        localStorage.setItem('businessType', data.tipe_bisnis);
+    }
 
     const Toast = Swal.mixin({
       toast: true,
@@ -45,15 +50,40 @@ const handleLogin = async () => {
       text: 'Selamat datang di sistem manajemen.'
     });
 
-    // REDIRECT CERDAS
+    // 🚀 REDIRECT CERDAS BERDASARKAN TIPE BISNIS
     if (data.has_setup_store === false) {
       router.push('/setup');
     } else {
       const roleUser = data.role.toLowerCase();
-      if (roleUser === 'owner' || roleUser === 'manager') {
-        router.push('/dashboard');
-      } else {
-        router.push('/absensi'); 
+
+      // Ambil tipe bisnis dari response backend, ubah ke huruf kecil biar aman di-cek
+      const tipeBisnis = (data.tipe_bisnis || '').toLowerCase(); // Contoh: "jasa - laundry"
+
+      // 1. CEK CONFIG LOGIC UNTUK KATEGORI JASA
+      if (tipeBisnis.includes('jasa')) {
+          if (tipeBisnis.includes('laundry')) {
+              router.push('/laundry/pos');
+          } else if (tipeBisnis.includes('bengkel')) {
+              router.push('/bengkel/pos');
+          } else if (tipeBisnis.includes('salon') || tipeBisnis.includes('barbershop')) {
+              router.push('/salon/pos');
+          } else if (tipeBisnis.includes('cuci')) {
+              router.push('/cuci-kendaraan/pos');
+          } else {
+              router.push('/retail/dashboard'); // Fallback kalau jasanya umum
+          }
+      }
+      // 2. CEK CONFIG LOGIC UNTUK F&B
+      else if (tipeBisnis.includes('f&b') || tipeBisnis.includes('food')) {
+          router.push('/fnb/dashboard');
+      }
+      // 3. FALLBACK UTAMA (RETAIL & LAINNYA)
+      else {
+          if (roleUser === 'owner') {
+              router.push('/retail/dashboard');
+          } else {
+              router.push('/retail/absensi'); 
+          }
       }
     }
 

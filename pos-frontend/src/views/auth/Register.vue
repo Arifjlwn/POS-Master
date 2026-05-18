@@ -20,6 +20,23 @@ const form = ref({
 const showPassword = ref(false);
 const isLoading = ref(false);
 
+// --- VALIDASI NO HP ---
+const formatNoHpRegister = () => {
+    let val = String(form.value.no_hp);
+
+    // Kalau user nekat ngetik angka '0' di depan, hapus otomatis!
+    if (val.startsWith('0')) {
+        val = val.substring(1);
+    }
+
+    // Kalau user iseng ngetik '62' di depan, potong juga!
+    if (val.startsWith('62')) {
+        val = val.substring(2);
+    }
+    
+    form.value.no_hp = val;
+};
+
 // --- 🚀 VALIDASI PASSWORD ---
 const hasUppercase = computed(() => /[A-Z]/.test(form.value.password));
 const hasNumber = computed(() => /[0-9]/.test(form.value.password));
@@ -44,7 +61,7 @@ const handleRegister = async () => {
             password: form.value.password,
             tempat_lahir: form.value.tempat_lahir,
             tanggal_lahir: form.value.tanggal_lahir,
-            no_hp: form.value.no_hp,
+            no_hp: `62${form.value.no_hp}`,
             role: 'owner'
         });
 
@@ -125,12 +142,21 @@ const handleRegister = async () => {
                         </div>
 
                         <div class="space-y-1 md:col-span-2">
-                            <label class="label-style">Nomor WhatsApp / HP</label>
-                            <div class="relative group">
-                                <div class="icon-container"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
-                                <input v-model="form.no_hp" type="text" required class="input-field" placeholder="08xxxxxxxxxx">
-                            </div>
-                        </div>
+    <label class="label-style">Nomor WhatsApp / HP</label>
+    <div class="flex items-center bg-white border-2 border-slate-200 rounded-2xl focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 transition-all shadow-sm overflow-hidden group">
+        <div class="pl-4 pr-3 py-4 bg-slate-50 border-r border-slate-200 flex items-center justify-center gap-2 select-none shrink-0">
+            <span class="text-slate-500 font-black text-sm leading-none">+62</span>
+        </div>
+        <input 
+            v-model="form.no_hp" 
+            @input="formatNoHpRegister" 
+            type="number" 
+            required 
+            class="w-full px-4 py-4 bg-transparent outline-none font-black text-slate-800 placeholder:text-slate-300 placeholder:font-bold border-none ring-0 focus:ring-0" 
+            placeholder="81234567890"
+        >
+    </div>
+</div>
 
                         <div class="space-y-1">
                             <label class="label-style">Password</label>
