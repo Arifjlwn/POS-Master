@@ -17,4 +17,8 @@ type TransactionLaundryDetail struct {
 	EstimasiWaktu time.Time `json:"estimasi_waktu"` // Kapan kira-kira kelar
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
+	NamaParfum    string    `gorm:"type:varchar(100);default:'Parfum Standar'" json:"nama_parfum"`
+	HargaParfum   float64   `gorm:"type:decimal(10,2);default:0" json:"harga_parfum"`
+
+	Product       Product   `gorm:"foreignKey:ProductID" json:"product"`
 }

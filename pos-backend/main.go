@@ -221,7 +221,6 @@ func main() {
 			laundryAPI.GET("/tracking", laundry.AmbilDataTracking) 
 			laundryAPI.PUT("/tracking/:id/status", laundry.UpdateStatusCucian)
 			laundryAPI.GET("/customers/search", laundry.CariPelanggan)
-			laundryAPI.GET("/report", laundry.AmbilLaporan)
 			laundryAPI.GET("/setting", laundry.GetSettingToko)
 			laundryAPI.PUT("/setting", laundry.UpdateSettingToko)
 			laundryAPI.GET("/kasir", middlewares.RequireAuth, middlewares.RequireOwner, laundry.GetKasirList)
@@ -230,6 +229,10 @@ func main() {
 			laundryAPI.GET("/perfumes", middlewares.RequireAuth, laundry.GetPerfumes)
 			laundryAPI.POST("/perfumes", middlewares.RequireAuth, middlewares.RequireOwner, laundry.CreatePerfume)
 			laundryAPI.DELETE("/perfumes/:id", middlewares.RequireAuth, middlewares.RequireOwner, laundry.DeletePerfume)
+
+			// === LAPORAN & PELUNASAN PIUTANG ===
+			laundryAPI.GET("/report", middlewares.RequireAuth, laundry.GetLaporan)
+			laundryAPI.PUT("/transactions/:id/lunas", middlewares.RequireAuth, laundry.LunasiTransaksi)
 		}
 	}
 
