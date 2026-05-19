@@ -107,7 +107,11 @@ const routes = [
     },
 
     // ==========================================
-    // --- TIPE BISNIS: LAYANAN & JASA (LAUNDRY) ---
+    // --- TIPE BISNIS: LAYANAN & JASA ---
+    // ==========================================
+
+    // ==========================================
+    //            --- LAUNDRY ---
     // ==========================================
     {
         path: '/laundry/pos',
@@ -143,6 +147,28 @@ const routes = [
         path: '/laundry/karyawan',
         name: 'ManajemenKasirLaundry',
         component: () => import('../views/layanan-jasa/laundry/ManajemenKasir.vue'),
+        meta: { requiresAuth: true }
+    },
+
+    // ==========================================
+    // --- TIPE BISNIS: Food & Beverage ---
+    // ==========================================
+    {
+        path: '/fnb/kasir',
+        name: 'PosFnB',
+        component: () => import('../views/fnb/KasirFnB.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/fnb/dapur',
+        name: 'DapurFnB',
+        component: () => import('../views/fnb/DapurFnB.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/fnb/laporan',
+        name: 'LaporanFnB',
+        component: () => import('../views/fnb/LaporanFnB.vue'),
         meta: { requiresAuth: true }
     },
 

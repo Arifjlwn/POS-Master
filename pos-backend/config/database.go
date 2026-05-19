@@ -60,6 +60,11 @@ func ConnectDatabase() {
 		// ==========================================
 		&models.TransactionLaundryDetail{},
 		&models.Perfume{},
+
+		// ==========================================
+		// 			 FOOD & BEVERAGES
+		// ==========================================
+		&models.FnBDetail{},
 		
 
 	)

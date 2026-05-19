@@ -8,6 +8,7 @@ import (
 	"pos-backend/controllers/auth"   // 🚀 IMPORT FOLDER AUTH
 	"pos-backend/controllers/retail" // 🚀 IMPORT FOLDER RETAIL
 	"pos-backend/controllers/laundry" // 🚀 IMPORT FOLDER RETAIL
+	"pos-backend/controllers/fnb" // 🚀 IMPORT FOLDER RETAIL
 	"pos-backend/middlewares"
 	"pos-backend/models"
 	"time"
@@ -235,6 +236,16 @@ func main() {
 			laundryAPI.PUT("/transactions/:id/lunas", middlewares.RequireAuth, laundry.LunasiTransaksi)
 			laundryAPI.PUT("/transactions/:id/status", middlewares.RequireAuth, laundry.UpdateStatusCucian)
 		}
+
+		// ==========================================
+		// 		 RUTE KHUSUS FOOD AND BEVERAGES 
+		// ==========================================
+		fnbAPI := api.Group("/fnb")
+		fnbAPI.Use(middlewares.RequireAuth) // Proteksi wajib login
+			{
+    			// Rute buat nerima tembakan dari KasirFnB.vue
+    			fnbAPI.POST("/order", fnb.CreateOrder)
+			}
 	}
 
 	port := os.Getenv("PORT")
