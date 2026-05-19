@@ -54,7 +54,7 @@ const handleBukaKasir = async () => {
             showConfirmButton: false,
             customClass: { popup: 'rounded-[32px]' }
         }).then(() => {
-            router.push('/pos/kasir'); 
+            router.push('/retail/pos'); 
         });
 
     } catch (error) {
@@ -71,7 +71,7 @@ const handleBukaKasir = async () => {
                 customClass: { popup: 'rounded-[32px]' }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = '/absensi'; 
+                    window.location.href = '/retail/absensi'; 
                 }
             });
         } else {

@@ -656,10 +656,12 @@ const processCheckout = async () => {
                 <div class="divider-dash"></div>
                 
                 <table class="w-full text-xs line-tight">
-                    <tr><td class="w-24">No. Resi</td><td>: <b>{{ printData.invoice }}</b></td></tr>
-                    <tr><td>Tanggal</td><td>: {{ printData.tanggal }}</td></tr>
-                    <tr><td>Pelanggan</td><td>: <b>{{ printData.pelanggan }}</b></td></tr>
-                    <tr><td>Est Selesai</td><td>: {{ printData.estimasi }}</td></tr>
+                    <tbody>
+                        <tr><td class="w-24">No. Resi</td><td>: <b>{{ printData.invoice }}</b></td></tr>
+                        <tr><td>Tanggal</td><td>: {{ printData.tanggal }}</td></tr>
+                        <tr><td>Pelanggan</td><td>: <b>{{ printData.pelanggan }}</b></td></tr>
+                        <tr><td>Est Selesai</td><td>: {{ printData.estimasi }}</td></tr>
+                    </tbody>
                 </table>
                 
                 <div class="divider-dash"></div>
@@ -680,6 +682,7 @@ const processCheckout = async () => {
                 <div class="divider-dash"></div>
                 
                 <table class="w-full text-xs line-tight">
+                    <tbody>
                     <tr class="bold text-sm">
                         <td>GRAND TOTAL</td>
                         <td class="text-right">{{ formatRupiah(printData.total) }}</td>
@@ -696,6 +699,7 @@ const processCheckout = async () => {
                         <td class="bold">Uang Kembali</td>
                         <td class="text-right bold text-sm">{{ formatRupiah(printData.kembali) }}</td>
                     </tr>
+                    </tbody>
                 </table>
                 
                 <div class="divider-dash"></div>

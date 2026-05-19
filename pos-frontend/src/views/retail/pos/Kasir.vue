@@ -228,6 +228,18 @@ const decreaseQty = (product) => {
     }
 };
 
+const increaseQty = (product) => {
+    const existingItem = cart.value.find(item => item.id === product.id);
+    if (existingItem) {
+        if (existingItem.qty > 0) {
+            existingItem.qty++;
+        } else {
+            cart.value = cart.value.filter(item => item.id !== product.id);
+            if (cart.value.length === 0) isMobileCartOpen.value = false;
+        }
+    }
+};
+
 const validateQty = (product) => {
     const existingItem = cart.value.find(item => item.id === product.id);
     if (existingItem && existingItem.qty < 1) existingItem.qty = 1;
@@ -597,7 +609,7 @@ const logout = () => {
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4" /></svg>
                                     </button>
                                     <input type="number" v-model.number="item.qty" @change="validateQty(item)" class="w-8 md:w-10 text-center text-xs font-black text-slate-800 bg-transparent border-none focus:ring-0 p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
-                                    <button @click="addToCart(item)" class="w-6 h-6 md:w-7 md:h-7 flex items-center justify-center rounded-md md:rounded-lg text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 font-black transition-colors">
+                                    <button @click="increaseQty(item)" class="w-6 h-6 md:w-7 md:h-7 flex items-center justify-center rounded-md md:rounded-lg text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 font-black transition-colors">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
                                     </button>
                                 </div>

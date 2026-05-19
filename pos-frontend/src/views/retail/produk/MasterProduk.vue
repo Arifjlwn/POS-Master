@@ -567,6 +567,7 @@ const exportCSV = async () => {
                                             <option value="KG">KG</option>
                                             <option value="GRAM">GRAM</option>
                                             <option value="PACK">PACK</option>
+                                            <option value="BOX">BOX</option>
                                             <option value="LITER">LITER</option>
                                             <option value="BOTOL">BOTOL</option>
                                         </select>
