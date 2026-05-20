@@ -20,26 +20,79 @@ const uangBayarDisplay = ref(''); // String tampilan format ribuan
 const isReceiptModalOpen = ref(false);
 const lastOrderData = ref(null); 
 
-// --- MOUSE DRAG TO SCROLL (DESKTOP) ---
+// --- DRAG SCROLL CATEGORY (DESKTOP ONLY) ---
 const scrollContainer = ref(null);
-let isDown = false;
-let startX;
-let scrollLeft;
+
+let isDragging = false;
+let startX = 0;
+let scrollStart = 0;
+let movedDistance = 0;
 
 const onMouseDown = (e) => {
-    isDown = true;
+    // hanya desktop
+    if (window.innerWidth < 1024) return;
+
+    isDragging = true;
+    movedDistance = 0;
+
+    startX = e.pageX;
+    scrollStart = scrollContainer.value.scrollLeft;
+
     scrollContainer.value.classList.add('cursor-grabbing');
-    startX = e.pageX - scrollContainer.value.offsetLeft;
-    scrollLeft = scrollContainer.value.scrollLeft;
 };
-const onMouseLeave = () => { isDown = false; scrollContainer.value.classList.remove('cursor-grabbing'); };
-const onMouseUp = () => { isDown = false; scrollContainer.value.classList.remove('cursor-grabbing'); };
+
 const onMouseMove = (e) => {
-    if (!isDown) return;
+    if (!isDragging) return;
+
     e.preventDefault();
-    const x = e.pageX - scrollContainer.value.offsetLeft;
-    const walk = (x - startX) * 2;
-    scrollContainer.value.scrollLeft = scrollLeft - walk;
+
+    const walk = e.pageX - startX;
+
+    movedDistance = Math.abs(walk);
+
+    scrollContainer.value.scrollLeft = scrollStart - walk;
+};
+
+const stopDragging = () => {
+    isDragging = false;
+
+    if (scrollContainer.value) {
+        scrollContainer.value.classList.remove('cursor-grabbing');
+    }
+};
+
+const onMouseUp = () => {
+    stopDragging();
+};
+
+const onMouseLeave = () => {
+    stopDragging();
+};
+// --- TOUCH SUPPORT ---
+const onTouchStart = (e) => {
+    const touch = e.touches[0];
+
+    isDragging = true;
+    movedDistance = 0;
+
+    startX = touch.pageX;
+    scrollStart = scrollContainer.value.scrollLeft;
+};
+
+const onTouchMove = (e) => {
+    if (!isDragging) return;
+
+    const touch = e.touches[0];
+
+    const walk = touch.pageX - startX;
+
+    movedDistance = Math.abs(walk);
+
+    scrollContainer.value.scrollLeft = scrollStart - walk;
+};
+
+const onTouchEnd = () => {
+    stopDragging();
 };
 
 watch(isMobileCartOpen, (newVal) => {
@@ -198,7 +251,10 @@ const printReceipt = () => { window.print(); };
                     <div ref="scrollContainer" 
                          @mousedown="onMouseDown" @mouseleave="onMouseLeave" @mouseup="onMouseUp" @mousemove="onMouseMove"
                          class="px-4 lg:px-6 pb-4 flex gap-2 lg:gap-3 overflow-x-auto hide-scrollbar cursor-grab select-none">
-                        <button v-for="cat in categories" :key="cat.id" @click="activeCategory = cat.id" 
+                        <button 
+                            v-for="cat in categories" 
+                            :key="cat.id" 
+                            @click="movedDistance < 8 ? activeCategory = cat.id : null" 
                             class="whitespace-nowrap px-4 py-2 lg:py-2.5 rounded-xl text-[10px] lg:text-xs font-black uppercase tracking-widest transition-all flex items-center gap-1.5 lg:gap-2 border-2 active:scale-95 shrink-0 pointer-events-auto"
                             :class="activeCategory === cat.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-200' : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300 hover:bg-slate-50'">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 lg:w-4 lg:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path :d="cat.icon"/></svg>
@@ -213,7 +269,7 @@ const printReceipt = () => { window.print(); };
                         <span class="font-black text-xs uppercase tracking-widest">Menu tidak ditemukan</span>
                     </div>
                     
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-5">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-3 lg:gap-4">
                         <div v-for="prod in filteredProducts" :key="prod.id" class="bg-white border-2 border-slate-100/80 rounded-2xl lg:rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all flex flex-col group relative" :class="prod.is_available ? 'hover:border-indigo-300 hover:-translate-y-1' : 'opacity-75 grayscale-[30%]' ">
                             
                             <button @click="(e) => toggleMenuStatus(prod, e)" class="absolute top-2 left-2 z-20 px-2 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-md transition-all active:scale-95 border border-white/20 backdrop-blur-md" :class="prod.is_available ? 'bg-emerald-500/90 text-white hover:bg-emerald-600' : 'bg-rose-500/90 text-white hover:bg-rose-600'">
@@ -224,7 +280,7 @@ const printReceipt = () => { window.print(); };
                                 {{ getQtyInCart(prod.id) }}
                             </div>
 
-                            <div class="w-full aspect-square bg-slate-100 relative overflow-hidden shrink-0 cursor-pointer" @click="prod.is_available ? addToCart(prod) : null">
+                            <div class="w-full aspect-[4/3] bg-slate-100 relative overflow-hidden shrink-0 cursor-pointer" @click="prod.is_available ? addToCart(prod) : null">
                                 <img :src="prod.gambar" :alt="prod.nama" class="w-full h-full object-cover transition-transform duration-700" :class="prod.is_available ? 'group-hover:scale-110' : ''">
                                 <div class="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/10 to-transparent"></div>
                                 <div v-if="!prod.is_available" class="absolute inset-0 flex items-center justify-center backdrop-blur-[2px]">
@@ -259,7 +315,7 @@ const printReceipt = () => { window.print(); };
                 </div>
             </div>
 
-            <aside class="hidden xl:flex w-[400px] 2xl:w-[460px] bg-white border-l border-slate-200 flex-col h-full z-20 shadow-2xl relative print:hidden">
+            <aside class="hidden xl:flex w-[360px] 2xl:w-[420px] bg-white border-l border-slate-200 flex-col h-full z-20 shadow-2xl relative print:hidden">
                 
                 <div class="p-5 border-b border-slate-100 bg-white shrink-0 flex items-center gap-3">
                     <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-inner">
@@ -359,7 +415,7 @@ const printReceipt = () => { window.print(); };
 
         <div v-if="isMobileCartOpen" @click="isMobileCartOpen = false" class="xl:hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] transition-opacity animate-fade-in print:hidden"></div>
         
-        <div class="xl:hidden fixed inset-x-0 bottom-0 z-[70] flex flex-col bg-slate-50 rounded-t-[32px] shadow-[0_-20px_40px_rgba(0,0,0,0.3)] transition-transform duration-300 ease-out print:hidden h-[90vh]"
+        <div class="xl:hidden fixed inset-x-0 bottom-0 z-[70] flex flex-col bg-slate-50 rounded-t-[32px] shadow-[0_-20px_40px_rgba(0,0,0,0.3)] transition-transform duration-300 ease-out print:hidden h-[85vh]"
              :class="isMobileCartOpen ? 'translate-y-0' : 'translate-y-full'">
             
             <div class="p-4 shrink-0 bg-white rounded-t-[32px] border-b border-slate-100 flex flex-col items-center">

@@ -238,22 +238,42 @@ func main() {
 		}
 
 		// ==========================================
-        //       RUTE KHUSUS FOOD AND BEVERAGES 
-        // ==========================================
-        fnbAPI := api.Group("/fnb")
-        fnbAPI.Use(middlewares.RequireAuth) // Proteksi wajib login
-        {
-                // 🚀 Rute Order & Dapur (Yang Udah Ada)
-                fnbAPI.POST("/order", fnb.CreateOrder)
-                fnbAPI.GET("/kitchen", fnb.GetAntreanDapur)
-                fnbAPI.PUT("/kitchen/:id/selesai", fnb.SelesaikanOrderan)
+		//       RUTE KHUSUS FOOD AND BEVERAGES
+		// ==========================================
+		fnbAPI := api.Group("/fnb")
+		fnbAPI.Use(middlewares.RequireAuth)
 
-                // 🚀 Rute MASTER PRODUK F&B (Yang Baru Kita Bikin)
-                // Catatan: Pastikan nama package 'fnb' ini sesuai sama tempat kamu nyimpen controllernya ya!
-                fnbAPI.POST("/products", fnb.CreateProduct)          // Tambah menu baru (Owner only)
-                fnbAPI.PUT("/products/:id/toggle", fnb.ToggleAvailability) // Mati/Nyalain ketersediaan menu
-                fnbAPI.GET("/products", fnb.GetProducts)             // Tarik daftar menu buat Kasir & Self-Service
-        }
+		{
+			// ======================================
+			// ORDER & DAPUR
+			// ======================================
+
+			fnbAPI.POST("/order", fnb.CreateOrder)
+			fnbAPI.GET("/kitchen", fnb.GetAntreanDapur)
+			fnbAPI.PUT("/kitchen/:id/selesai", fnb.SelesaikanOrderan)
+
+			// ======================================
+			// MASTER PRODUCT FNB
+			// ======================================
+
+			// GET ALL PRODUCTS
+			fnbAPI.GET("/products", fnb.GetProducts)
+
+			// CREATE PRODUCT
+			fnbAPI.POST("/products", fnb.CreateProduct)
+
+			// UPDATE PRODUCT
+			fnbAPI.PUT("/products/:id", fnb.UpdateProduct)
+
+			// DELETE PRODUCT
+			fnbAPI.DELETE("/products/:id", fnb.DeleteProduct)
+
+			// TOGGLE READY / HABIS
+			fnbAPI.PUT(
+				"/products/:id/toggle",
+				fnb.ToggleAvailability,
+			)
+		}
 	}
 
 	port := os.Getenv("PORT")

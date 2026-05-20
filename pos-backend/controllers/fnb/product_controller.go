@@ -102,3 +102,109 @@ func GetProducts(c *gin.Context) {
 	query.Find(&products)
 	c.JSON(http.StatusOK, products)
 }
+
+// UPDATE PRODUCT
+func UpdateProduct(c *gin.Context) {
+	role, _ := c.Get("role")
+
+	// Hanya owner
+	if role != "owner" {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "Hanya owner yang boleh edit menu",
+		})
+		return
+	}
+
+	storeIDRaw, _ := c.Get("store_id")
+	storeID := uint(storeIDRaw.(float64))
+
+	productID := c.Param("id")
+
+	var product models.Product
+
+	// Cari produk sesuai toko
+	if err := config.DB.Where(
+		"id = ? AND store_id = ?",
+		productID,
+		storeID,
+	).First(&product).Error; err != nil {
+
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Produk tidak ditemukan",
+		})
+		return
+	}
+
+	var input struct {
+		Nama     string  `json:"nama"`
+		Harga    float64 `json:"harga"`
+		Kategori string  `json:"kategori"`
+		Gambar   string  `json:"gambar"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	product.NamaProduk = input.Nama
+	product.HargaJual = input.Harga
+	product.Kategori = input.Kategori
+	product.Gambar = input.Gambar
+
+	if err := config.DB.Save(&product).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Gagal update produk",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Menu berhasil diperbarui",
+		"data":    product,
+	})
+}
+
+// DELETE PRODUCT
+func DeleteProduct(c *gin.Context) {
+	role, _ := c.Get("role")
+
+	if role != "owner" {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "Hanya owner yang boleh hapus menu",
+		})
+		return
+	}
+
+	storeIDRaw, _ := c.Get("store_id")
+	storeID := uint(storeIDRaw.(float64))
+
+	productID := c.Param("id")
+
+	var product models.Product
+
+	if err := config.DB.Where(
+		"id = ? AND store_id = ?",
+		productID,
+		storeID,
+	).First(&product).Error; err != nil {
+
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Produk tidak ditemukan",
+		})
+		return
+	}
+
+	if err := config.DB.Delete(&product).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Gagal hapus produk",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Menu berhasil dihapus",
+	})
+}
