@@ -183,6 +183,7 @@ func Login(c *gin.Context) {
 		"foto_url":        user.FotoURL,
 		"has_setup_store": storeID != 0,
 		"store_name":      user.Store.NamaToko,
+		"business_type": user.Store.BusinessType,
 	})
 }
 
@@ -208,6 +209,6 @@ func GetMe(c *gin.Context) {
 		"tempat_lahir":  user.TempatLahir,
 		"tanggal_lahir": user.TanggalLahir,
 		"store_name":    user.Store.NamaToko,
-		"tipe_bisnis": user.Store.BusinessType,
+		"business_type": user.Store.BusinessType,
 	})
 }

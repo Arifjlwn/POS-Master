@@ -13,6 +13,7 @@ type Product struct {
     HargaJual    float64   `gorm:"type:decimal(10,2);not null" json:"harga_jual"`
     Stok         int       `gorm:"default:0" json:"stok"`
     Gambar       string    `gorm:"type:varchar(255)" json:"gambar"`
+    IsAvailable bool      `gorm:"default:true" json:"is_available"` // True = Menu Ada, False = Habis/Sembunyikan
     
     // 🚀 INI DIA 3 PASUKAN BARUNYA (LENGKAP DENGAN GORM & JSON)
     SatuanDasar  string    `gorm:"type:varchar(20);default:'PCS'" json:"satuan_dasar"`

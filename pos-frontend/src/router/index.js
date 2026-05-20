@@ -154,6 +154,12 @@ const routes = [
     // --- TIPE BISNIS: Food & Beverage ---
     // ==========================================
     {
+        path: '/fnb/master-menu',
+        name: 'MasterMenu',
+        component: () => import('../views/fnb/MasterMenuFnB.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
         path: '/fnb/kasir',
         name: 'PosFnB',
         component: () => import('../views/fnb/KasirFnB.vue'),

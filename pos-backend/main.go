@@ -88,7 +88,7 @@ func main() {
 			// Struct penangkap disesuaikan 100% dengan state Vue kamu
 			var input struct {
 				NamaToko     string   `json:"nama_toko" binding:"required"`
-				TipeBisnis   string   `json:"tipe_bisnis" binding:"required"` // Gabungan kategori & spesifikasi
+				Business_type   string   `json:"business_type" binding:"required"` // Gabungan kategori & spesifikasi
 				AlamatJalan  string   `json:"alamat_toko"`                    // Menerima form.alamat_jalan
 				Provinsi     string   `json:"provinsi"`
 				Kota         string   `json:"kota"`
@@ -118,7 +118,7 @@ func main() {
 
 			newStore := models.Store{
 				NamaToko:     input.NamaToko,
-				BusinessType: input.TipeBisnis,
+				BusinessType: input.Business_type,
 				Telepon:      input.Telepon,
 				FiturAktif:   fiturString,
 				Alamat:       alamatLengkap, // Masuk alamat gabungan
@@ -159,7 +159,7 @@ func main() {
 				"token":    tokenString,
 				"data": gin.H{
 					"nama_toko":   newStore.NamaToko,
-					"tipe_bisnis": newStore.BusinessType, 
+					"business_type": newStore.BusinessType, 
 				},
 			})
 		})
@@ -238,14 +238,22 @@ func main() {
 		}
 
 		// ==========================================
-		// 		 RUTE KHUSUS FOOD AND BEVERAGES 
-		// ==========================================
-		fnbAPI := api.Group("/fnb")
-		fnbAPI.Use(middlewares.RequireAuth) // Proteksi wajib login
-			{
-    			// Rute buat nerima tembakan dari KasirFnB.vue
-    			fnbAPI.POST("/order", fnb.CreateOrder)
-			}
+        //       RUTE KHUSUS FOOD AND BEVERAGES 
+        // ==========================================
+        fnbAPI := api.Group("/fnb")
+        fnbAPI.Use(middlewares.RequireAuth) // Proteksi wajib login
+        {
+                // 🚀 Rute Order & Dapur (Yang Udah Ada)
+                fnbAPI.POST("/order", fnb.CreateOrder)
+                fnbAPI.GET("/kitchen", fnb.GetAntreanDapur)
+                fnbAPI.PUT("/kitchen/:id/selesai", fnb.SelesaikanOrderan)
+
+                // 🚀 Rute MASTER PRODUK F&B (Yang Baru Kita Bikin)
+                // Catatan: Pastikan nama package 'fnb' ini sesuai sama tempat kamu nyimpen controllernya ya!
+                fnbAPI.POST("/products", fnb.CreateProduct)          // Tambah menu baru (Owner only)
+                fnbAPI.PUT("/products/:id/toggle", fnb.ToggleAvailability) // Mati/Nyalain ketersediaan menu
+                fnbAPI.GET("/products", fnb.GetProducts)             // Tarik daftar menu buat Kasir & Self-Service
+        }
 	}
 
 	port := os.Getenv("PORT")

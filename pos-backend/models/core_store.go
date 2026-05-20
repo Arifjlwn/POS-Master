@@ -12,7 +12,7 @@ type Store struct {
 	
 	// 🚀 EKOSISTEM UTAMA SAAS
 	// Berisi string gabungan kategori dan spesifikasi bisnis. Contoh: "Jasa - Laundry"
-	BusinessType string    `gorm:"type:varchar(100);column:business_type;not null" json:"tipe_bisnis"` 
+	BusinessType string    `gorm:"type:varchar(100);column:business_type;not null" json:"business_type"` 
 	
 	// Menyimpan daftar modul pilihan premium dari nomor 3 (contoh: "kasir,whatsapp,absensi")
 	FiturAktif   string    `gorm:"type:text;column:fitur_aktif" json:"fitur_aktif"` 

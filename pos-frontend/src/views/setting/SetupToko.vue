@@ -22,7 +22,7 @@ const detailOptions = {
 };
 
 // --- API WILAYAH INDONESIA ---
-const BASE_WILAYAH_API = 'https://www.emsifa.com/api-wilayah-indonesia/api';
+const BASE_WILAYAH_API = 'https://kanglerian.github.io/api-wilayah-indonesia/api';
 
 const listProvinsi = ref([]);
 const listKota = ref([]);
@@ -38,9 +38,21 @@ const regIds = ref({
 
 const loadProvinsi = async () => {
     try {
-        const res = await fetch(`${BASE_WILAYAH_API}/provinces.json`);
+        const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json`);
         listProvinsi.value = await res.json();
-    } catch (e) { console.error("Gagal load Provinsi"); }
+    } catch (e) { 
+        // JIKA SERVER UTAMA MATI, PAKAI BACKUP INI:
+        try {
+            const backupRes = await fetch(`https://kanglerian.github.io/api-wilayah-indonesia/api/provinces.json`);
+            listProvinsi.value = await backupRes.json();
+        } catch (err2) {
+             // JIKA KEDUA SERVER MATI (SUPER APES), KITA PAKAI API PIHAK KETIGA
+             const thirdRes = await fetch(`https://ibnux.github.io/data-indonesia/provinsi.json`);
+             const data = await thirdRes.json();
+             // Mapping datanya biar cocok sama struktur form kamu
+             listProvinsi.value = data.map(item => ({ id: item.id, name: item.nama }));
+        }
+    }
 };
 
 onMounted(() => loadProvinsi());
@@ -52,8 +64,11 @@ watch(() => regIds.value.provinsi, async (newId) => {
     form.value.provinsi = listProvinsi.value.find(p => p.id === newId)?.name || '';
     
     if (newId) {
-        const res = await fetch(`${BASE_WILAYAH_API}/regencies/${newId}.json`);
-        listKota.value = await res.json();
+        try {
+             const res = await fetch(`https://ibnux.github.io/data-indonesia/kabupaten/${newId}.json`);
+             const data = await res.json();
+             listKota.value = data.map(item => ({ id: item.id, name: item.nama }));
+        } catch (e) { console.error("Gagal load Kota"); }
     }
 });
 
@@ -63,8 +78,11 @@ watch(() => regIds.value.kota, async (newId) => {
     form.value.kota = listKota.value.find(p => p.id === newId)?.name || '';
     
     if (newId) {
-        const res = await fetch(`${BASE_WILAYAH_API}/districts/${newId}.json`);
-        listKecamatan.value = await res.json();
+        try {
+             const res = await fetch(`https://ibnux.github.io/data-indonesia/kecamatan/${newId}.json`);
+             const data = await res.json();
+             listKecamatan.value = data.map(item => ({ id: item.id, name: item.nama }));
+        } catch (e) { console.error("Gagal load Kecamatan"); }
     }
 });
 
@@ -73,8 +91,11 @@ watch(() => regIds.value.kecamatan, async (newId) => {
     form.value.kecamatan = listKecamatan.value.find(p => p.id === newId)?.name || '';
     
     if (newId) {
-        const res = await fetch(`${BASE_WILAYAH_API}/villages/${newId}.json`);
-        listKelurahan.value = await res.json();
+        try {
+             const res = await fetch(`https://ibnux.github.io/data-indonesia/kelurahan/${newId}.json`);
+             const data = await res.json();
+             listKelurahan.value = data.map(item => ({ id: item.id, name: item.nama }));
+        } catch (e) { console.error("Gagal load Kelurahan"); }
     }
 });
 
@@ -88,7 +109,7 @@ const form = ref({
     kategori_bisnis: 'Retail', 
     detail_bisnis: '',
     telepon: '',
-    fitur_opsional: ['kasir', 'whatsapp', 'absensi'], // Default fitur premium yang langsung aktif
+    fitur_opsional: ['kasir', 'whatsapp', 'absensi'],
     alamat: '',
     provinsi: '',
     kota: '',
@@ -127,10 +148,15 @@ const submit = async () => {
 
         const payload = {
             nama_toko: form.value.nama_toko,
-            business_type: finalTipeBisnis,
-            alamat_toko: alamatLengkap,
+            business_type: finalTipeBisnis, 
+            alamat_toko: form.value.alamat,
+            provinsi: form.value.provinsi,
+            kota: form.value.kota,
+            kecamatan: form.value.kecamatan,
+            kelurahan: form.value.kelurahan,
+            kode_pos: String(form.value.kode_pos), 
             telepon: `62${form.value.telepon}`,
-            fitur_aktif: form.value.fitur_opsional // Dikirim dalam bentuk array string ke Golang
+            fitur_aktif: form.value.fitur_opsional // 🚀 Kirim Array Asli
         };
 
         const response = await api.post('/setup', payload);

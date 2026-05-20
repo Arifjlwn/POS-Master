@@ -31,8 +31,8 @@ const handleLogin = async () => {
     localStorage.setItem('storeName', data.store_name || 'Toko Belum Di-Setup');
     
     // 🚀 Simpan tipe bisnis kalau ada (buat acuan komponen lain)
-    if (data.tipe_bisnis) {
-        localStorage.setItem('businessType', data.tipe_bisnis);
+    if (data.business_type) {
+        localStorage.setItem('businessType', data.business_type);
     }
 
     const Toast = Swal.mixin({
@@ -56,8 +56,8 @@ const handleLogin = async () => {
     } else {
       const roleUser = data.role.toLowerCase();
 
-      // Ambil tipe bisnis dari response backend, ubah ke huruf kecil biar aman di-cek
-      let tipeBisnis = (data.tipe_bisnis || '').toLowerCase();
+      // Ambil tipe bisnis dari response backend
+      let tipeBisnis = (data.business_type || data.tipe_bisnis || '').toLowerCase();
 
       // 🚀 HACK SAKTI (Jaga-jaga kalau backend kosong, tapi emailnya ada kata laundry)
       if (!tipeBisnis || tipeBisnis === '') {
@@ -82,7 +82,7 @@ const handleLogin = async () => {
           router.push(roleUser === 'owner' ? '/cuci-kendaraan/dashboard' : '/cuci-kendaraan/pos');
       } 
       else if (tipeBisnis.includes('f&b') || tipeBisnis.includes('food')) {
-          router.push(roleUser === 'owner' ? '/fnb/dashboard' : '/fnb/pos'); 
+          router.push(roleUser === 'owner' ? '/fnb/dashboard' : '/fnb/kasir'); 
       } 
       else {
           // 🚀 JALUR KHUSUS RETAIL / MINIMARKET
