@@ -1,7 +1,10 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import SidebarFnB from './SidebarFnB.vue'
-import api from '../../api.js'
+import SidebarFnB from '../components/SidebarFnB.vue'
+import ProductModal from '../components/master-menu/ProductModal.vue'
+import ProductStats from '../components/master-menu/ProductStats.vue'
+import ProductMobileCard from '../components/master-menu/ProductMobileCard.vue'
+import api from '../../../api.js'
 import Swal from 'sweetalert2'
 
 const products = ref([])
@@ -398,60 +401,11 @@ const toggleStatus = async (product) => {
                 class="relative flex-1 p-5 overflow-y-auto custom-scrollbar lg:p-8"
             >
                 <!-- STATS -->
-<div
-    class="grid grid-cols-3 gap-2 mb-5 md:gap-4 lg:gap-5"
->
-    <!-- TOTAL -->
-    <div
-        class="mobile-stat p-3 md:p-5 border rounded-[20px] md:rounded-[28px] bg-white/70 backdrop-blur-xl border-white/40 shadow-[0_10px_40px_rgba(15,23,42,0.06)]"
-    >
-        <p
-            class="text-[8px] md:text-[11px] font-black uppercase tracking-[0.18em] md:tracking-[0.25em] text-slate-400"
-        >
-            Total Menu
-        </p>
-
-        <h2
-            class="mt-1 md:mt-2 text-[22px] md:text-4xl font-black text-slate-800 leading-none"
-        >
-            {{ totalMenu }}
-        </h2>
-    </div>
-
-    <!-- READY -->
-    <div
-        class="mobile-stat p-3 md:p-5 border rounded-[20px] md:rounded-[28px] bg-white/70 backdrop-blur-xl border-white/40 shadow-[0_10px_40px_rgba(15,23,42,0.06)]"
-    >
-        <p
-            class="text-[8px] md:text-[11px] font-black uppercase tracking-[0.18em] md:tracking-[0.25em] text-slate-400"
-        >
-            Menu Ready
-        </p>
-
-        <h2
-            class="mt-1 md:mt-2 text-[22px] md:text-4xl font-black text-emerald-600 leading-none"
-        >
-            {{ totalAvailable }}
-        </h2>
-    </div>
-
-    <!-- HABIS -->
-    <div
-        class="mobile-stat p-3 md:p-5 border rounded-[20px] md:rounded-[28px] bg-white/70 backdrop-blur-xl border-white/40 shadow-[0_10px_40px_rgba(15,23,42,0.06)]"
-    >
-        <p
-            class="text-[8px] md:text-[11px] font-black uppercase tracking-[0.18em] md:tracking-[0.25em] text-slate-400"
-        >
-            Menu Habis
-        </p>
-
-        <h2
-            class="mt-1 md:mt-2 text-[22px] md:text-4xl font-black text-rose-600 leading-none"
-        >
-            {{ totalUnavailable }}
-        </h2>
-    </div>
-</div>
+                <ProductStats
+                    :total-menu="totalMenu"
+                    :total-available="totalAvailable"
+                    :total-unavailable="totalUnavailable"
+                />
 
                 <!-- LOADING -->
                 <div
@@ -669,110 +623,10 @@ const toggleStatus = async (product) => {
                 </div>
 
                 <!-- MOBILE CARD -->
-                <div
-                    v-if="filteredProducts.length > 0"
-                    class="grid grid-cols-1 gap-3 lg:hidden"
-                >
-
-                    <div
-                        v-for="prod in filteredProducts"
-                        :key="prod.id"
-                        class="overflow-hidden border border-white/50 bg-white/80 backdrop-blur-xl rounded-[26px] shadow-[0_10px_30px_rgba(15,23,42,0.06)]"
-                    >
-
-                        <div class="flex gap-3 p-3">
-
-                            <!-- IMAGE -->
-                            <div class="relative shrink-0">
-
-                                <img
-                                    :src="prod.gambar"
-                                    class="object-cover w-20 h-20 shadow-md rounded-2xl"
-                                >
-
-                                <div
-                                    class="absolute -bottom-1 left-1/2 -translate-x-1/2 px-2 py-[3px] rounded-full text-[8px] font-black tracking-widest text-white"
-                                    :class="prod.is_available
-                                        ? 'bg-emerald-500'
-                                        : 'bg-rose-500'"
-                                >
-                                    {{ prod.is_available ? 'READY' : 'HABIS' }}
-                                </div>
-
-                            </div>
-
-                            <!-- CONTENT -->
-                            <div class="flex flex-col justify-between flex-1 min-w-0">
-
-                                <div>
-
-                                    <div class="flex items-start justify-between gap-2">
-
-                                        <div class="min-w-0">
-
-                                            <h2 class="truncate text-[15px] font-black text-slate-800">
-                                                {{ prod.nama }}
-                                            </h2>
-
-                                            <p class="mt-1 text-[10px] uppercase tracking-[0.2em] text-slate-400 font-bold">
-                                                {{ prod.kategori }}
-                                            </p>
-
-                                        </div>
-
-                                        <!-- TOGGLE -->
-                                        <button
-                                            @click="toggleStatus(prod)"
-                                            class="relative inline-flex items-center w-11 h-6 transition-all rounded-full shrink-0"
-                                            :class="prod.is_available
-                                                ? 'bg-emerald-500'
-                                                : 'bg-slate-300'"
-                                        >
-                                            <span
-                                                class="inline-block w-4 h-4 transition-all bg-white rounded-full shadow-md"
-                                                :class="prod.is_available
-                                                    ? 'translate-x-6'
-                                                    : 'translate-x-1'"
-                                            />
-                                        </button>
-
-                                    </div>
-
-                                    <p class="mt-3 text-2xl font-black text-indigo-600">
-                                        {{ formatRupiah(prod.harga) }}
-                                    </p>
-
-                                </div>
-
-                                <!-- ACTION -->
-                                <div
-                                    v-if="userRole === 'owner'"
-                                    class="flex gap-2 mt-3"
-                                >
-
-                                    <button
-                                        @click="editMenu(prod)"
-                                        class="flex items-center justify-center flex-1 h-10 gap-2 text-[10px] font-black tracking-widest uppercase transition-all bg-blue-50 text-blue-600 rounded-2xl active:scale-95"
-                                    >
-                                        Edit
-                                    </button>
-
-                                    <button
-                                        @click="deleteMenu(prod.id)"
-                                        class="flex items-center justify-center flex-1 h-10 gap-2 text-[10px] font-black tracking-widest uppercase transition-all rounded-2xl bg-rose-50 text-rose-600 active:scale-95"
-                                    >
-                                        Hapus
-                                    </button>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </div>
+                <ProductMobileCard
+                    :open
+                />
+                
             </div>
 
             <!-- FAB -->
@@ -796,154 +650,15 @@ const toggleStatus = async (product) => {
                     />
                 </svg>
             </button>
-
+            
             <!-- MODAL -->
-            <div
-                v-if="isModalOpen"
-                class="fixed inset-0 z-[100] flex items-center justify-center px-4"
-            >
-                <div
-                    @click="closeModal"
-                    class="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
-                ></div>
-
-                <div
-                    class="relative z-10 w-full max-w-md overflow-hidden bg-white border shadow-2xl rounded-[36px] border-white/40"
-                >
-                    <div
-                        class="flex items-center justify-between p-6 border-b border-slate-100"
-                    >
-                        <div>
-                            <h2
-                                class="text-xl font-black text-slate-800"
-                            >
-                                {{
-                                    form.id
-                                        ? 'Edit Menu'
-                                        : 'Tambah Menu'
-                                }}
-                            </h2>
-
-                            <p
-                                class="mt-1 text-[11px] uppercase tracking-[0.2em] font-bold text-slate-400"
-                            >
-                                Product Information
-                            </p>
-                        </div>
-
-                        <button
-                            @click="closeModal"
-                            class="flex items-center justify-center w-10 h-10 rounded-2xl bg-slate-100"
-                        >
-                            ✕
-                        </button>
-                    </div>
-
-                    <div class="p-6">
-                        <form
-                            @submit.prevent="submitMenu"
-                            class="space-y-5"
-                        >
-                            <div>
-                                <label
-                                    class="block mb-2 ml-1 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400"
-                                >
-                                    Nama Menu
-                                </label>
-
-                                <input
-                                    v-model="form.nama"
-                                    type="text"
-                                    required
-                                    class="w-full px-5 py-4 text-sm font-bold border outline-none rounded-2xl border-slate-200 focus:border-indigo-500"
-                                />
-                            </div>
-
-                            <div>
-                                <label
-                                    class="block mb-2 ml-1 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400"
-                                >
-                                    Kategori
-                                </label>
-
-                                <select
-                                    v-model="form.kategori"
-                                    class="w-full px-5 py-4 text-sm font-bold border outline-none rounded-2xl border-slate-200 focus:border-indigo-500"
-                                >
-                                    <option
-                                        value="makanan"
-                                    >
-                                        Makanan
-                                    </option>
-
-                                    <option
-                                        value="minuman"
-                                    >
-                                        Minuman
-                                    </option>
-
-                                    <option value="paket">
-                                        Paket
-                                    </option>
-
-                                    <option value="snack">
-                                        Snack
-                                    </option>
-
-                                    <option
-                                        value="dessert"
-                                    >
-                                        Dessert
-                                    </option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label
-                                    class="block mb-2 ml-1 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400"
-                                >
-                                    Harga
-                                </label>
-
-                                <input
-                                    v-model="form.harga"
-                                    type="number"
-                                    required
-                                    class="w-full px-5 py-4 text-sm font-black border outline-none rounded-2xl border-slate-200 text-indigo-600 focus:border-indigo-500"
-                                />
-                            </div>
-
-                            <div>
-                                <label
-                                    class="block mb-2 ml-1 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400"
-                                >
-                                    Link Gambar
-                                </label>
-
-                                <input
-                                    v-model="form.gambar"
-                                    type="url"
-                                    class="w-full px-5 py-4 text-sm font-bold border outline-none rounded-2xl border-slate-200 focus:border-indigo-500"
-                                />
-                            </div>
-
-                            <button
-                                type="submit"
-                                :disabled="isSubmitting"
-                                class="w-full py-5 text-xs font-black tracking-widest text-white uppercase transition-all rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-800 active:scale-95 disabled:opacity-60"
-                            >
-                                {{
-                                    isSubmitting
-                                        ? 'Menyimpan...'
-                                        : form.id
-                                          ? 'Update Menu'
-                                          : 'Simpan Menu'
-                                }}
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
+            <ProductModal
+                :open="isModalOpen"
+                :form="form"
+                :loading="isSubmitting"
+                @close="closeModal"
+                @submit="submitMenu"
+            />
         </div>
     </SidebarFnB>
 </template>

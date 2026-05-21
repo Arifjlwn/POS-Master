@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue';
-import SidebarFnB from './SidebarFnB.vue';
+import SidebarFnB from '../components/SidebarFnB.vue';
+import api from '../../../api.js';
 
 // Dummy Data Laporan
 const stats = ref({ omset: 4500000, total_order: 124, avg_transaction: 36200 });

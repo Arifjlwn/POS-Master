@@ -1,5 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import Login from '../views/auth/Login.vue';
+import KasirFnB from '../modules/fnb/pages/KasirFnB.vue';
+import DapurFnB from '../modules/fnb/pages/DapurFnb.vue';
+import LaporanFnB from '../modules/fnb/pages/LaporanFnB.vue';
+import MasterMenuFnB from '../modules/fnb/pages/MasterMenuFnB.vue';
 
 const routes = [
     // ==========================================
@@ -156,25 +160,25 @@ const routes = [
     {
         path: '/fnb/master-menu',
         name: 'MasterMenu',
-        component: () => import('../views/fnb/MasterMenuFnB.vue'),
+        component: () => import('../modules/fnb/pages/MasterMenuFnB.vue'),
         meta: { requiresAuth: true }
     },
     {
         path: '/fnb/kasir',
         name: 'PosFnB',
-        component: () => import('../views/fnb/KasirFnB.vue'),
+        component: () => import('../modules/fnb/pages/KasirFnB.vue'),
         meta: { requiresAuth: true }
     },
     {
         path: '/fnb/dapur',
         name: 'DapurFnB',
-        component: () => import('../views/fnb/DapurFnB.vue'),
+        component: () => import('../modules/fnb/pages/DapurFnB.vue'),
         meta: { requiresAuth: true }
     },
     {
         path: '/fnb/laporan',
         name: 'LaporanFnB',
-        component: () => import('../views/fnb/LaporanFnB.vue'),
+        component: () => import('../modules/fnb/pages/LaporanFnB.vue'),
         meta: { requiresAuth: true }
     },
 

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-import SidebarFnB from './SidebarFnB.vue';
-import api from '../../api.js';
+import SidebarFnB from '../components/SidebarFnB.vue';
+import api from '../../../api.js';
 import Swal from 'sweetalert2';
 
 // --- STATE UTAMA ---
