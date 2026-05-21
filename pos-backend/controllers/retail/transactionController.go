@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"pos-backend/config"
+	"pos-backend/src/core/config"
 	"pos-backend/models"
 	"time"
 
@@ -37,7 +37,7 @@ func CreateTransaction(c *gin.Context) {
 	var savedTransaction models.Transaction
 
 	// --- MULAI DATABASE TRANSACTION (Biar Aman dari Error) ---
-	err := config.DB.Transaction(func(tx *gorm.DB) error {
+	err := src.DB.Transaction(func(tx *gorm.DB) error {
 		// Session kasir lagi aktif
 		var activeSession models.CashierSession
         if err := tx.Where("user_id = ? AND store_id = ? AND status = ?", 
@@ -172,7 +172,7 @@ func GetTransactions(c *gin.Context) {
 	var transactions []models.Transaction
 
 	// 🚀 Tarik data sekaligus: Transaksi + Kasir (User) + Rincian Barang (Details) + Nama Barang (Product)
-	if err := config.DB.
+	if err := src.DB.
 		Preload("User").
 		Preload("Store").
 		Preload("Details").

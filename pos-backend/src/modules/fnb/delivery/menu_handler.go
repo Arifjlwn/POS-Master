@@ -1,20 +1,25 @@
-package fnb
+package delivery
 
 import (
 	"net/http"
-	"pos-backend/config"
-	"pos-backend/models"
+	"strconv"
+
+	"pos-backend/src/modules/fnb/domain"
+	"pos-backend/src/modules/fnb/repository"
+
 	"github.com/gin-gonic/gin"
 )
 
+type MenuHandler struct {
+	Repo repository.MenuRepository
+}
+
 // 1. TAMBAH PRODUK BARU (HANYA OWNER)
-func CreateProduct(c *gin.Context) {
-	// Ambil data dari Auth Middleware kamu
+func (h *MenuHandler) CreateProduct(c *gin.Context) {
 	role, _ := c.Get("role")
 	storeIDRaw, _ := c.Get("store_id")
 	storeID := uint(storeIDRaw.(float64))
 
-	// Proteksi tingkat tinggi: Kalau bukan owner, tendang!
 	if role != "owner" {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Akses ditolak! Hanya Owner yang boleh menambah menu."})
 		return
@@ -33,7 +38,7 @@ func CreateProduct(c *gin.Context) {
 		return
 	}
 
-	product := models.Product{
+	product := domain.Menu{
 		StoreID:     storeID,
 		NamaProduk:  input.Nama,
 		HargaJual:   input.Harga,
@@ -43,7 +48,7 @@ func CreateProduct(c *gin.Context) {
 		IsAvailable: true, // Default aktif pas dibuat
 	}
 
-	if err := config.DB.Create(&product).Error; err != nil {
+	if err := h.Repo.Create(&product); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan produk"})
 		return
 	}
@@ -52,22 +57,24 @@ func CreateProduct(c *gin.Context) {
 }
 
 // 2. MATI-NYALAKAN MENU (OWNER, KASIR, KITCHEN BISA AKSES)
-func ToggleAvailability(c *gin.Context) {
-	productID := c.Param("id")
+func (h *MenuHandler) ToggleAvailability(c *gin.Context) {
+	productIDStr := c.Param("id")
+	productID, _ := strconv.Atoi(productIDStr)
+	
 	storeIDRaw, _ := c.Get("store_id")
 	storeID := uint(storeIDRaw.(float64))
 
-	var product models.Product
-	// Cari produk berdasarkan ID dan pastiin milik toko yang sama
-	if err := config.DB.Where("id = ? AND store_id = ?", productID, storeID).First(&product).Error; err != nil {
+	// Cari produk berdasarkan ID dan pastiin milik toko yang sama lewat Repo
+	product, err := h.Repo.GetByID(uint(productID), storeID)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Menu tidak ditemukan atau bukan milik toko Anda!"})
 		return
 	}
 
-	// 🚀 Balik statusnya (kalau true jadi false, kalau false jadi true)
+	// Balik statusnya
 	product.IsAvailable = !product.IsAvailable
 
-	if err := config.DB.Save(&product).Error; err != nil {
+	if err := h.Repo.Update(product); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengubah status menu"})
 		return
 	}
@@ -86,52 +93,45 @@ func ToggleAvailability(c *gin.Context) {
 }
 
 // 3. AMBIL DATA PRODUK (UNTUK KASIR & QR MEJA SELF-SERVICE)
-func GetProducts(c *gin.Context) {
+func (h *MenuHandler) GetProducts(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
-	storeID := uint(storeIDRaw.(float64)) // 👈 Convert dengan aman
+	storeID := uint(storeIDRaw.(float64))
 	role, _ := c.Get("role")
 
-	var products []models.Product
-	query := config.DB.Where("store_id = ?", storeID)
-
-	// 🚀 JIKA AKSES DARI QR MEJA / KASIR BIASA, HANYA TAMPILKAN YANG AVAILABLE
+	// JIKA AKSES DARI QR MEJA / KASIR BIASA, HANYA TAMPILKAN YANG AVAILABLE
+	onlyAvailable := false
 	if role != "owner" && role != "kitchen" && role != "kasir" {
-		query = query.Where("is_available = ?", true)
+		onlyAvailable = true
 	}
 
-	query.Find(&products)
+	products, err := h.Repo.GetAll(storeID, onlyAvailable)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data produk"})
+		return
+	}
+	
 	c.JSON(http.StatusOK, products)
 }
 
-// UPDATE PRODUCT
-func UpdateProduct(c *gin.Context) {
+// 4. UPDATE PRODUCT
+func (h *MenuHandler) UpdateProduct(c *gin.Context) {
 	role, _ := c.Get("role")
 
-	// Hanya owner
 	if role != "owner" {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Hanya owner yang boleh edit menu",
-		})
+		c.JSON(http.StatusForbidden, gin.H{"error": "Hanya owner yang boleh edit menu"})
 		return
 	}
 
 	storeIDRaw, _ := c.Get("store_id")
 	storeID := uint(storeIDRaw.(float64))
+	
+	productIDStr := c.Param("id")
+	productID, _ := strconv.Atoi(productIDStr)
 
-	productID := c.Param("id")
-
-	var product models.Product
-
-	// Cari produk sesuai toko
-	if err := config.DB.Where(
-		"id = ? AND store_id = ?",
-		productID,
-		storeID,
-	).First(&product).Error; err != nil {
-
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Produk tidak ditemukan",
-		})
+	// Cari produk sesuai toko lewat Repo
+	product, err := h.Repo.GetByID(uint(productID), storeID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Produk tidak ditemukan"})
 		return
 	}
 
@@ -143,9 +143,7 @@ func UpdateProduct(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -154,10 +152,8 @@ func UpdateProduct(c *gin.Context) {
 	product.Kategori = input.Kategori
 	product.Gambar = input.Gambar
 
-	if err := config.DB.Save(&product).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Gagal update produk",
-		})
+	if err := h.Repo.Update(product); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal update produk"})
 		return
 	}
 
@@ -167,44 +163,33 @@ func UpdateProduct(c *gin.Context) {
 	})
 }
 
-// DELETE PRODUCT
-func DeleteProduct(c *gin.Context) {
+// 5. DELETE PRODUCT
+func (h *MenuHandler) DeleteProduct(c *gin.Context) {
 	role, _ := c.Get("role")
 
 	if role != "owner" {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Hanya owner yang boleh hapus menu",
-		})
+		c.JSON(http.StatusForbidden, gin.H{"error": "Hanya owner yang boleh hapus menu"})
 		return
 	}
 
 	storeIDRaw, _ := c.Get("store_id")
 	storeID := uint(storeIDRaw.(float64))
+	
+	productIDStr := c.Param("id")
+	productID, _ := strconv.Atoi(productIDStr)
 
-	productID := c.Param("id")
-
-	var product models.Product
-
-	if err := config.DB.Where(
-		"id = ? AND store_id = ?",
-		productID,
-		storeID,
-	).First(&product).Error; err != nil {
-
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Produk tidak ditemukan",
-		})
+	// Cek apakah produk ada lewat Repo
+	_, err := h.Repo.GetByID(uint(productID), storeID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Produk tidak ditemukan"})
 		return
 	}
 
-	if err := config.DB.Delete(&product).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Gagal hapus produk",
-		})
+	// Hapus lewat Repo
+	if err := h.Repo.Delete(uint(productID), storeID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal hapus produk"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Menu berhasil dihapus",
-	})
+	c.JSON(http.StatusOK, gin.H{"message": "Menu berhasil dihapus"})
 }

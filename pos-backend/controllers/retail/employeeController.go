@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"pos-backend/config"
+	"pos-backend/src/core/config"
 	"pos-backend/models"
 	"strconv" // 🚀 Tambahkan ini untuk Atoi
 	"time"
@@ -52,7 +52,7 @@ func CreateEmployee(c *gin.Context) {
 
 	// 🚀 FIX: Ubah dari query `role = "kasir"` menjadi `role != "owner"` 
 	// Supaya manager, supervisor, dan kasir urutan nomor urut NIK-nya menyatu dalam 1 cabang toko!
-	err := config.DB.Where("store_id = ? AND role != ? AND nik LIKE ?", storeID, "owner", currentYear+"%").
+	err := src.DB.Where("store_id = ? AND role != ? AND nik LIKE ?", storeID, "owner", currentYear+"%").
 		Order("nik desc").
 		First(&lastEmployee).Error
 
@@ -93,7 +93,7 @@ func CreateEmployee(c *gin.Context) {
 		
 	}
 
-	if err := config.DB.Create(&employee).Error; err != nil {
+	if err := src.DB.Create(&employee).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal simpan ke database"})
 		return
 	}
@@ -115,7 +115,7 @@ func GetEmployees(c *gin.Context) {
 	var employees []models.User
 
 	// 🚀 SUDAH BERSIH TANPA SATPAM "owner": Diizinkan ditarik oleh manager/kasir untuk kebutuhan matriks TSM
-	if err := config.DB.Where("store_id = ?", storeID).Find(&employees).Error; err != nil {
+	if err := src.DB.Where("store_id = ?", storeID).Find(&employees).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data"})
 		return
 	}
@@ -135,7 +135,7 @@ func UpdateEmployee(c *gin.Context) {
 	id := c.Param("id")
 	var employee models.User
 
-	if err := config.DB.First(&employee, id).Error; err != nil {
+	if err := src.DB.First(&employee, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Karyawan tidak ditemukan!"})
 		return
 	}
@@ -203,7 +203,7 @@ if errBio == nil {
 }
 
 	// 4. Eksekusi simpan perubahan aman ke Supabase
-	if err := config.DB.Save(&employee).Error; err != nil {
+	if err := src.DB.Save(&employee).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan perubahan ke database"})
 		return
 	}

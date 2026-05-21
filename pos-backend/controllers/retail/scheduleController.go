@@ -2,7 +2,7 @@ package retail
 
 import (
 	"net/http"
-	"pos-backend/config"
+	"pos-backend/src/core/config"
 	"pos-backend/models"
 
 	"github.com/gin-gonic/gin"
@@ -35,7 +35,7 @@ func SaveSchedules(c *gin.Context) {
 		return
 	}
 
-	tx := config.DB.Begin() // Gunakan transaction biar kalau satu gagal, semua di-rollback
+	tx := src.DB.Begin() // Gunakan transaction biar kalau satu gagal, semua di-rollback
 
 	for _, item := range input.Schedules {
 		// Tentukan jam kerja default berdasarkan shift biar karyawan ga perlu input manual
@@ -102,7 +102,7 @@ func GetSchedules(c *gin.Context) {
 	endDate := c.Query("end_date")     // Contoh: 2026-05-17
 
 	var listJadwal []models.Schedule
-	query := config.DB.Preload("User").Where("store_id = ?", storeID)
+	query := src.DB.Preload("User").Where("store_id = ?", storeID)
 
 	// Filter berdasarkan range mingguan jika start dan end date diisi dari Vue
 	if startDate != "" && endDate != "" {

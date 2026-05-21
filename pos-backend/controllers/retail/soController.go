@@ -2,7 +2,7 @@ package retail
 
 import (
 	"net/http"
-	"pos-backend/config"
+	"pos-backend/src/core/config"
 	"pos-backend/models"
 	"time"
 
@@ -40,7 +40,7 @@ func CreateStockOpname(c *gin.Context) {
 	}
 
 	// 2. Mulai Transaksi Database
-	err := config.DB.Transaction(func(tx *gorm.DB) error {
+	err := src.DB.Transaction(func(tx *gorm.DB) error {
 		
 		// Buat Header Stock Opname
 		so := models.StockOpname{
@@ -106,7 +106,7 @@ func GetStockOpnameHistory(c *gin.Context) {
 	storeID, _ := c.Get("store_id")
 	
 	var history []models.StockOpname
-	config.DB.Preload("Details.Product").
+	src.DB.Preload("Details.Product").
 		Where("store_id = ?", storeID).
 		Order("created_at DESC").
 		Find(&history)

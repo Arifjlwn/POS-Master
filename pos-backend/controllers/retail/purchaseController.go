@@ -3,7 +3,7 @@ package retail
 import (
 	"fmt"
 	"net/http"
-	"pos-backend/config"
+	"pos-backend/src/core/config"
 	"pos-backend/models"
 
 	"github.com/gin-gonic/gin"
@@ -30,7 +30,7 @@ func CreateLPB(c *gin.Context) {
 		return
 	}
 
-	err := config.DB.Transaction(func(tx *gorm.DB) error {
+	err := src.DB.Transaction(func(tx *gorm.DB) error {
 		// 1. Buat Header Purchase
 		purchase := models.Purchase{
 			StoreID:      uint(storeID.(float64)),

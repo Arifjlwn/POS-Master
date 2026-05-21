@@ -3,108 +3,45 @@ import { ref, computed, watch, onMounted } from 'vue';
 import SidebarFnB from '../components/SidebarFnB.vue';
 import api from '../../../api.js';
 import Swal from 'sweetalert2';
+import { useOrderFnB } from '../composables/useOrderFnB';
 
-// --- STATE UTAMA ---
+// --- PANGGIL COMPOSABLE ---
+const { 
+    cart, tipeOrder, nomorMeja, namaPemesan, metodeBayar, uangBayarRaw, uangBayarDisplay, 
+    totalBelanja, kembalian, handleUangInput, addToCart, decreaseQty, getQtyInCart, resetCart 
+} = useOrderFnB();
+
+// --- STATE UI LOKAL ---
 const activeCategory = ref('semua');
 const searchQuery = ref('');
-const tipeOrder = ref('DINE_IN'); 
-const nomorMeja = ref('');
-const namaPemesan = ref('');
 const isMobileCartOpen = ref(false);
-const storeName = ref('Kasir POS'); 
-
-// --- STATE PEMBAYARAN & STRUK ---
-const metodeBayar = ref('CASH'); 
-const uangBayarRaw = ref(0);      // Angka murni untuk kalkulasi
-const uangBayarDisplay = ref(''); // String tampilan format ribuan
+const storeName = ref('Kasir POS');
 const isReceiptModalOpen = ref(false);
-const lastOrderData = ref(null); 
-
-// --- DRAG SCROLL CATEGORY (DESKTOP ONLY) ---
+const lastOrderData = ref(null);
+const products = ref([]);
 const scrollContainer = ref(null);
 
+// --- DRAG SCROLL (TETAP DI SINI) ---
 let isDragging = false;
 let startX = 0;
 let scrollStart = 0;
 let movedDistance = 0;
 
 const onMouseDown = (e) => {
-    // hanya desktop
     if (window.innerWidth < 1024) return;
-
-    isDragging = true;
-    movedDistance = 0;
-
-    startX = e.pageX;
-    scrollStart = scrollContainer.value.scrollLeft;
-
+    isDragging = true; movedDistance = 0;
+    startX = e.pageX; scrollStart = scrollContainer.value.scrollLeft;
     scrollContainer.value.classList.add('cursor-grabbing');
 };
+const onMouseMove = (e) => { if (!isDragging) return; e.preventDefault(); const walk = e.pageX - startX; movedDistance = Math.abs(walk); scrollContainer.value.scrollLeft = scrollStart - walk; };
+const stopDragging = () => { isDragging = false; if (scrollContainer.value) scrollContainer.value.classList.remove('cursor-grabbing'); };
+const onMouseUp = () => stopDragging();
+const onMouseLeave = () => stopDragging();
+const onTouchStart = (e) => { const touch = e.touches[0]; isDragging = true; movedDistance = 0; startX = touch.pageX; scrollStart = scrollContainer.value.scrollLeft; };
+const onTouchMove = (e) => { if (!isDragging) return; const touch = e.touches[0]; const walk = touch.pageX - startX; movedDistance = Math.abs(walk); scrollContainer.value.scrollLeft = scrollStart - walk; };
+const onTouchEnd = () => stopDragging();
 
-const onMouseMove = (e) => {
-    if (!isDragging) return;
-
-    e.preventDefault();
-
-    const walk = e.pageX - startX;
-
-    movedDistance = Math.abs(walk);
-
-    scrollContainer.value.scrollLeft = scrollStart - walk;
-};
-
-const stopDragging = () => {
-    isDragging = false;
-
-    if (scrollContainer.value) {
-        scrollContainer.value.classList.remove('cursor-grabbing');
-    }
-};
-
-const onMouseUp = () => {
-    stopDragging();
-};
-
-const onMouseLeave = () => {
-    stopDragging();
-};
-// --- TOUCH SUPPORT ---
-const onTouchStart = (e) => {
-    const touch = e.touches[0];
-
-    isDragging = true;
-    movedDistance = 0;
-
-    startX = touch.pageX;
-    scrollStart = scrollContainer.value.scrollLeft;
-};
-
-const onTouchMove = (e) => {
-    if (!isDragging) return;
-
-    const touch = e.touches[0];
-
-    const walk = touch.pageX - startX;
-
-    movedDistance = Math.abs(walk);
-
-    scrollContainer.value.scrollLeft = scrollStart - walk;
-};
-
-const onTouchEnd = () => {
-    stopDragging();
-};
-
-watch(isMobileCartOpen, (newVal) => {
-    if (typeof window !== 'undefined') document.body.style.overflow = newVal ? 'hidden' : 'auto';
-});
-
-// 🚀 FORMAT UANG REALTIME
-const handleUangInput = (e) => {
-    let val = e.target.value.replace(/\D/g, '');
-    uangBayarRaw.value = Number(val);
-    uangBayarDisplay.value = val ? new Intl.NumberFormat('id-ID').format(val) : '';
-};
+watch(isMobileCartOpen, (newVal) => { if (typeof window !== 'undefined') document.body.style.overflow = newVal ? 'hidden' : 'auto'; });
 
 // --- DATA MASTER ---
 const categories = ref([
@@ -116,20 +53,11 @@ const categories = ref([
     { id: 'dessert', nama: 'Dessert', icon: 'M6 8a6 6 0 0 1 12 0c0 7-3 9-3 9H9s-3-2-3-9' }
 ]);
 
-const products = ref([]);
-const cart = ref([]);
-
 const fetchMenuProducts = async () => {
     try {
         const response = await api.get('/fnb/products');
-        products.value = response.data.map(p => ({
-            ...p,
-            nama: p.nama_produk, 
-            harga: p.harga_jual,
-            kategori: p.kategori,
-            gambar: p.gambar || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80'
-        }));
-    } catch (error) { console.error("Gagal menarik data menu dari server", error); }
+        products.value = response.data.map(p => ({ ...p, nama: p.nama_produk, harga: p.harga_jual, kategori: p.kategori, gambar: p.gambar || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80' }));
+    } catch (error) { console.error("Gagal menarik data menu", error); }
 };
 
 onMounted(() => {
@@ -139,10 +67,10 @@ onMounted(() => {
 });
 
 const toggleMenuStatus = async (product, event) => {
-    event.stopPropagation(); 
+    event.stopPropagation();
     try {
         const response = await api.put(`/fnb/products/${product.id}/toggle`);
-        Swal.fire({ toast: true, position: 'top-end', icon: response.data.is_available ? 'success' : 'warning', title: response.data.message, showConfirmButton: false, timer: 2000, customClass: { popup: 'rounded-xl font-sans' } });
+        Swal.fire({ toast: true, position: 'top-end', icon: response.data.is_available ? 'success' : 'warning', title: response.data.message, showConfirmButton: false, timer: 2000 });
         fetchMenuProducts();
     } catch (error) { Swal.fire('Gagal!', 'Tidak dapat mengubah status menu.', 'error'); }
 };
@@ -157,67 +85,34 @@ const filteredProducts = computed(() => {
     });
 });
 
-// --- LOGIKA KERANJANG & KEMBALIAN ---
-const totalBelanja = computed(() => cart.value.reduce((sum, item) => sum + (item.harga * item.qty), 0));
-const kembalian = computed(() => Math.max(0, uangBayarRaw.value - totalBelanja.value));
-const getQtyInCart = (productId) => { const item = cart.value.find(i => i.id === productId); return item ? item.qty : 0; };
-
-const addToCart = (product) => {
-    const existingItem = cart.value.find(item => item.id === product.id);
-    if (existingItem) existingItem.qty++;
-    else cart.value.push({ ...product, qty: 1, notes: '' });
-};
-
-const decreaseQty = (product) => {
-    const existingItem = cart.value.find(item => item.id === product.id);
-    if (existingItem) {
-        if (existingItem.qty > 1) existingItem.qty--;
-        else {
-            cart.value = cart.value.filter(item => item.id !== product.id);
-            if (cart.value.length === 0) isMobileCartOpen.value = false;
-        }
-    }
-};
-
-// 🚀 FUNGSI CHECKOUT
+// 🚀 CHECKOUT ORDER
 const checkoutOrder = async () => {
-    if (cart.value.length === 0) return Swal.fire('Keranjang Kosong', 'Pilih menu dulu dong beb!', 'warning');
+    if (cart.value.length === 0) return Swal.fire('Keranjang Kosong', 'Pilih menu dulu!', 'warning');
     if (tipeOrder.value === 'DINE_IN' && !nomorMeja.value) return Swal.fire('Nomor Meja?', 'Dine In wajib isi nomor meja!', 'warning');
-    if (tipeOrder.value === 'TAKE_AWAY' && !namaPemesan.value) return Swal.fire('Nama Pemesan?', 'Wajib isi nama pemesan Take Away!', 'warning');
-    if (metodeBayar.value === 'CASH' && uangBayarRaw.value < totalBelanja.value) return Swal.fire('Uang Kurang!', 'Nominal uang pembayaran tidak cukup!', 'error');
+    if (tipeOrder.value === 'TAKE_AWAY' && !namaPemesan.value) return Swal.fire('Nama Pemesan?', 'Wajib isi nama!', 'warning');
+    if (metodeBayar.value === 'CASH' && uangBayarRaw.value < totalBelanja.value) return Swal.fire('Uang Kurang!', 'Pembayaran tidak cukup!', 'error');
 
     try {
-        const activeSessionId = localStorage.getItem('session_id') || 1; 
         const payload = {
-            session_id: Number(activeSessionId), 
+            session_id: Number(localStorage.getItem('session_id') || 1),
             tipe_order: tipeOrder.value,
             nomor_meja: tipeOrder.value === 'DINE_IN' ? nomorMeja.value : '-',
-            nama_pemesan: tipeOrder.value === 'TAKE_AWAY' ? namaPemesan.value : '-', 
-            metode_bayar: metodeBayar.value, 
+            nama_pemesan: tipeOrder.value === 'TAKE_AWAY' ? namaPemesan.value : '-',
+            metode_bayar: metodeBayar.value,
             uang_diterima: metodeBayar.value === 'CASH' ? uangBayarRaw.value : totalBelanja.value,
             kembalian: metodeBayar.value === 'CASH' ? kembalian.value : 0,
-            sub_total: totalBelanja.value, 
-            pajak: 0, 
+            sub_total: totalBelanja.value,
             total_harga: totalBelanja.value,
-            items: cart.value.map(item => ({
-                product_id: item.id, qty: item.qty, sub_total: item.harga * item.qty, notes: item.notes
-            }))
+            items: cart.value.map(item => ({ product_id: item.id, qty: item.qty, sub_total: item.harga * item.qty, notes: item.notes }))
         };
 
-        const response = await api.post('/fnb/order', payload); 
-
-        lastOrderData.value = {
-            ...payload,
-            invoice: response.data?.invoice || `INV-${Math.floor(Date.now() / 1000)}`,
-            waktu: new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }),
-            kasir: localStorage.getItem('name') || 'Kasir',
-            items: cart.value.map(item => ({...item, total_harga: item.harga * item.qty })) 
-        };
-
+        const response = await api.post('/fnb/order', payload);
+        lastOrderData.value = { ...payload, invoice: response.data?.invoice || `INV-${Math.floor(Date.now() / 1000)}`, waktu: new Date().toLocaleString('id-ID'), kasir: localStorage.getItem('name') || 'Kasir', items: cart.value.map(item => ({...item, total_harga: item.harga * item.qty })) };
+        
         isReceiptModalOpen.value = true;
-        cart.value = []; nomorMeja.value = ''; namaPemesan.value = ''; uangBayarRaw.value = 0; uangBayarDisplay.value = ''; isMobileCartOpen.value = false;
-
-    } catch (error) { Swal.fire('Gagal!', 'Terjadi kendala saat memproses pesanan.', 'error'); }
+        resetCart(); // Panggil fungsi reset dari composable
+        isMobileCartOpen.value = false;
+    } catch (error) { Swal.fire('Gagal!', 'Terjadi kendala.', 'error'); }
 };
 
 const printReceipt = () => { window.print(); };

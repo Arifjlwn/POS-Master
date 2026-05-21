@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"pos-backend/config"
+	"pos-backend/src/core/config"
 	"pos-backend/models"
 	"pos-backend/utils" // 🚀 Pastikan utils.SendOTPEmail sudah Mas buat
 	"strings"
@@ -36,7 +36,7 @@ func Register(c *gin.Context) {
 
 	// 1. Cek Email Terdaftar
 	var existingUser models.User
-	if err := config.DB.Where("email = ?", input.Email).First(&existingUser).Error; err == nil {
+	if err := src.DB.Where("email = ?", input.Email).First(&existingUser).Error; err == nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "Email sudah terdaftar!"})
 		return
 	}
@@ -61,7 +61,7 @@ func Register(c *gin.Context) {
         NoHP:         input.NoHP,
 	}
 
-	if err := config.DB.Create(&user).Error; err != nil {
+	if err := src.DB.Create(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat akun"})
 		return
 	}
@@ -88,7 +88,7 @@ func VerifyOTP(c *gin.Context) {
 	}
 
 	var user models.User
-	if err := config.DB.Where("email = ?", input.Email).First(&user).Error; err != nil {
+	if err := src.DB.Where("email = ?", input.Email).First(&user).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User tidak ditemukan"})
 		return
 	}
@@ -104,7 +104,7 @@ func VerifyOTP(c *gin.Context) {
 	}
 
 	// Update Status Verified
-	config.DB.Model(&user).Updates(map[string]interface{}{
+	src.DB.Model(&user).Updates(map[string]interface{}{
 		"is_verified": true,
 		"otp_code":    "",
 	})
@@ -128,7 +128,7 @@ func Login(c *gin.Context) {
 
 	var user models.User
 	// 🚀 Cari User berdasarkan Email atau NIK
-	query := config.DB.Preload("Store")
+	query := src.DB.Preload("Store")
 	if strings.Contains(input.Identifier, "@") {
 		query = query.Where("email = ?", input.Identifier)
 	} else {
@@ -193,7 +193,7 @@ func GetMe(c *gin.Context) {
 	userID := uint(userIDRaw.(float64))
 
 	var user models.User
-	if err := config.DB.Preload("Store").First(&user, userID).Error; err != nil {
+	if err := src.DB.Preload("Store").First(&user, userID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User tidak ditemukan!"})
 		return
 	}

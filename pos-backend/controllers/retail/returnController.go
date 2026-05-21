@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"pos-backend/config" // Sesuaikan nama module-mu
+	"pos-backend/src/core/config"
 	"pos-backend/models" // Sesuaikan nama module-mu
 
 	"github.com/gin-gonic/gin"
@@ -40,7 +40,7 @@ func CreateReturn(c *gin.Context) {
 	// 🚀 BIKIN NOMOR RETUR OTOMATIS (Contoh: RET-160526-12345)
 	returnNo := fmt.Sprintf("RET-%s-%d", time.Now().Format("060102150405"), userID)
 
-	tx := config.DB.Begin()
+	tx := src.DB.Begin()
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -109,7 +109,7 @@ func GetReturns(c *gin.Context) {
 	var returns []models.ProductReturn
 	var totalItems int64
 
-	query := config.DB.Model(&models.ProductReturn{}).Where("store_id = ?", storeID).
+	query := src.DB.Model(&models.ProductReturn{}).Where("store_id = ?", storeID).
 		Preload("Product").
 		Preload("User")
 

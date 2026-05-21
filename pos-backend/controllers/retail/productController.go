@@ -10,7 +10,7 @@ import (
     "strconv"
     "time"
 
-    "pos-backend/config"
+    "pos-backend/src/core/config"
     "pos-backend/models"
 
     "github.com/gin-gonic/gin"
@@ -93,7 +93,7 @@ func CreateProduct(c *gin.Context) {
     }
 
     // 5. Simpan ke database
-    if err := config.DB.Create(&product).Error; err != nil {
+    if err := src.DB.Create(&product).Error; err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan produk. Barcode mungkin sudah dipakai barang lain."})
         return
     }
@@ -125,7 +125,7 @@ func GetProducts(c *gin.Context) {
 	var totalItems int64
 	
 	// 3. Bangun Query Dasar
-	query := config.DB.Model(&models.Product{}).Where("store_id = ?", storeID)
+	query := src.DB.Model(&models.Product{}).Where("store_id = ?", storeID)
 
 	if search != "" {
 		searchTerm := "%" + search + "%"
@@ -188,7 +188,7 @@ func UpdateProduct(c *gin.Context) {
     var product models.Product
     
     // 3. Cari produknya. Syarat Wajib: ID Produk harus cocok DAN ID Toko harus cocok!
-    if err := config.DB.Where("id = ? AND store_id = ?", productID, storeID).First(&product).Error; err != nil {
+    if err := src.DB.Where("id = ? AND store_id = ?", productID, storeID).First(&product).Error; err != nil {
         c.JSON(http.StatusNotFound, gin.H{"error": "Produk tidak ditemukan atau bukan milik toko Anda!"})
         return
     }
@@ -249,7 +249,7 @@ func UpdateProduct(c *gin.Context) {
     }
 
     // 6. Simpan kembali ke database
-    if err := config.DB.Save(&product).Error; err != nil {
+    if err := src.DB.Save(&product).Error; err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal update produk. Barcode mungkin bentrok."})
         return
     }
@@ -275,7 +275,7 @@ func DeleteProduct(c *gin.Context) {
     var product models.Product
     
     // Pastikan produk yang mau dihapus itu beneran ada dan milik dia
-    if err := config.DB.Where("id = ? AND store_id = ?", productID, storeID).First(&product).Error; err != nil {
+    if err := src.DB.Where("id = ? AND store_id = ?", productID, storeID).First(&product).Error; err != nil {
         c.JSON(http.StatusNotFound, gin.H{"error": "Produk tidak ditemukan atau bukan milik toko Anda!"})
         return
     }
@@ -286,7 +286,7 @@ func DeleteProduct(c *gin.Context) {
     }
 
     // Hapus dari muka bumi (database)
-    config.DB.Delete(&product)
+    src.DB.Delete(&product)
     
     c.JSON(http.StatusOK, gin.H{"message": "Barang berhasil dihapus dari gudang! 🗑️"})
 }
@@ -304,7 +304,7 @@ func GetCategories(c *gin.Context) {
     var categories []string
 
     // Minta GORM ambil kolom "kategori" yang unik (tidak dobel) dan tidak kosong
-    config.DB.Model(&models.Product{}).
+    src.DB.Model(&models.Product{}).
         Where("store_id = ? AND kategori IS NOT NULL AND kategori != ''", storeID).
         Distinct("kategori").
         Pluck("kategori", &categories)
@@ -326,7 +326,7 @@ func ExportProducts(c *gin.Context) {
     storeID := uint(storeIDRaw.(float64))
 
     var products []models.Product
-    if err := config.DB.Where("store_id = ?", storeID).Order("id DESC").Find(&products).Error; err != nil {
+    if err := src.DB.Where("store_id = ?", storeID).Order("id DESC").Find(&products).Error; err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data produk"})
         return
     }
@@ -401,7 +401,7 @@ func ImportProducts(c *gin.Context) {
 	}
 
 	// 4. Proses Looping Data (Gunakan Transaksi DB agar aman)
-	err = config.DB.Transaction(func(tx *gorm.DB) error {
+	err = src.DB.Transaction(func(tx *gorm.DB) error {
 		for _, row := range records {
 			// Mapping kolom (Sesuaikan dengan urutan di Export)
 			// Index: 0:SKU, 1:Nama, 2:Kategori, 3:Modal, 4:Jual, 5:Stok, 6:Dasar, 7:Besar, 8:Isi

@@ -2,7 +2,7 @@ package retail
 
 import (
     "net/http"
-    "pos-backend/config"
+    "pos-backend/src/core/config"
     "pos-backend/models"
     "time"
 
@@ -43,7 +43,7 @@ func OpenSession(c *gin.Context) {
 	// Jika role-nya "owner", skip pengecekan database attendance ini!
 	if userRole != "owner" {
 		var attendance models.Attendance
-		if err := config.DB.Where("user_id = ? AND tanggal = ?", userID, today).First(&attendance).Error; err != nil {
+		if err := src.DB.Where("user_id = ? AND tanggal = ?", userID, today).First(&attendance).Error; err != nil {
 			c.JSON(http.StatusForbidden, gin.H{
 				"error":            "Anda wajib Absen Wajah terlebih dahulu!",
 				"tanggal_hari_ini": today,
@@ -54,7 +54,7 @@ func OpenSession(c *gin.Context) {
 
 	// 3. VALIDASI: Apakah ada session yang masih menggantung (Open)?
 	var existingSession models.CashierSession
-	if err := config.DB.Where("user_id = ? AND status = ?", userID, "open").First(&existingSession).Error; err == nil {
+	if err := src.DB.Where("user_id = ? AND status = ?", userID, "open").First(&existingSession).Error; err == nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":      "Anda masih memiliki session yang terbuka!",
 			"session_id": existingSession.ID,
@@ -72,7 +72,7 @@ func OpenSession(c *gin.Context) {
 		Status:        "open",
 	}
 
-	if err := config.DB.Create(&newSession).Error; err != nil {
+	if err := src.DB.Create(&newSession).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuka session kasir"})
 		return
 	}
@@ -91,7 +91,7 @@ func CheckSessionStatus(c *gin.Context) {
     var session models.CashierSession
     
     // 🚀 TAMBAHKAN Preload("Store") DI SINI BIAR ALAMAT & NAMA TOKO KEBAWA
-    if err := config.DB.Preload("Store").Where("user_id = ? AND status = ?", userID, "open").Order("id desc").First(&session).Error; err != nil {
+    if err := src.DB.Preload("Store").Where("user_id = ? AND status = ?", userID, "open").Order("id desc").First(&session).Error; err != nil {
         c.JSON(http.StatusOK, gin.H{"has_session": false})
         return
     }
@@ -121,7 +121,7 @@ func CloseSession(c *gin.Context) {
 
 	// 1. Cari Session
 	var session models.CashierSession
-	if err := config.DB.Preload("Store").First(&session, sessionID).Error; err != nil {
+	if err := src.DB.Preload("Store").First(&session, sessionID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Session tidak ditemukan"})
 		return
 	}
@@ -138,7 +138,7 @@ func CloseSession(c *gin.Context) {
 	var summary SalesSummary
 	
 	// 1. Hitung Total Penjualan & Pajak
-	config.DB.Table("transactions").
+	src.DB.Table("transactions").
 		Select("SUM(total_harga) as gross, SUM(pajak) as tax").
 		Where("session_id = ?", sessionID).
 		Scan(&summary)
@@ -148,20 +148,20 @@ func CloseSession(c *gin.Context) {
 	netSales := salesGross - totalTax
 
 	// 1. Hitung khusus pembayaran TUNAI (CASH) untuk laci
-    config.DB.Table("transactions").
+    src.DB.Table("transactions").
         Select("COALESCE(SUM(total_harga), 0)").
         Where("session_id = ? AND metode_bayar = ?", sessionID, "Cash").
         Scan(&salesCash)
 
     // 🚀 2. Hitung Sales QRIS secara Spesifik
-    config.DB.Table("transactions").
+    src.DB.Table("transactions").
         Select("COALESCE(SUM(total_harga), 0)").
         Where("session_id = ? AND metode_bayar = ?", sessionID, "QRIS").
         Scan(&salesQRIS)
 
     // 🚀 3. Hitung Sales BANK / DEBIT (Contoh: BCA)
     var salesBCA float64
-    config.DB.Table("transactions").
+    src.DB.Table("transactions").
         Select("COALESCE(SUM(total_harga), 0)").
         Where("session_id = ? AND metode_bayar = ?", sessionID, "BCA").
         Scan(&salesBCA)
@@ -184,7 +184,7 @@ func CloseSession(c *gin.Context) {
 	session.EndTime = &now
 	session.Status = "closed"
 
-	config.DB.Save(&session)
+	src.DB.Save(&session)
 
 	// 5. Kirim respon (Tambahkan sales_qris ke JSON biar Vue bisa nampilin)
     c.JSON(http.StatusOK, gin.H{

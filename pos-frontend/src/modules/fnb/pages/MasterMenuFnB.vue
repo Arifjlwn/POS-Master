@@ -1,20 +1,27 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useMenuFnB } from '../composables/useMenuFnB.js'
 import SidebarFnB from '../components/SidebarFnB.vue'
 import ProductModal from '../components/master-menu/ProductModal.vue'
 import ProductStats from '../components/master-menu/ProductStats.vue'
 import ProductMobileCard from '../components/master-menu/ProductMobileCard.vue'
-import api from '../../../api.js'
-import Swal from 'sweetalert2'
 
-const products = ref([])
-const isLoading = ref(false)
-const isModalOpen = ref(false)
-const isSubmitting = ref(false)
+// 1. Tarik semua amunisi dari "otak" composables
+const { 
+    products, 
+    isLoading, 
+    isSubmitting, 
+    fetchProducts, 
+    saveMenu, 
+    deleteMenu, 
+    toggleStatus 
+} = useMenuFnB()
 
+// 2. State Lokal (khusus buat urusan UI di halaman ini aja)
 const userRole = ref('')
 const search = ref('')
 const selectedCategory = ref('all')
+const isModalOpen = ref(false)
 
 const form = ref({
     id: null,
@@ -33,82 +40,33 @@ const categoryOptions = [
     { value: 'dessert', label: 'Dessert' }
 ]
 
-const defaultImage =
-    'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80'
-
-const formatRupiah = (angka) =>
-    new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        maximumFractionDigits: 0
-    }).format(angka || 0)
-
+// 3. Computed (Kalkulasi UI)
 const filteredProducts = computed(() => {
     return products.value.filter((p) => {
-        const matchSearch = p.nama
-            ?.toLowerCase()
-            .includes(search.value.toLowerCase())
-
-        const matchCategory =
-            selectedCategory.value === 'all'
-                ? true
-                : p.kategori === selectedCategory.value
-
+        const matchSearch = p.nama?.toLowerCase().includes(search.value.toLowerCase())
+        const matchCategory = selectedCategory.value === 'all' || p.kategori === selectedCategory.value
         return matchSearch && matchCategory
     })
 })
 
 const totalMenu = computed(() => products.value.length)
+const totalAvailable = computed(() => products.value.filter(p => p.is_available).length)
+const totalUnavailable = computed(() => products.value.filter(p => !p.is_available).length)
 
-const totalAvailable = computed(() =>
-    products.value.filter((p) => p.is_available).length
-)
-
-const totalUnavailable = computed(() =>
-    products.value.filter((p) => !p.is_available).length
-)
-
-const fetchProducts = async () => {
-    isLoading.value = true
-
-    try {
-        const response = await api.get('/fnb/products')
-
-        products.value = response.data.map((p) => ({
-            ...p,
-            nama: p.nama_produk,
-            harga: p.harga_jual,
-            kategori: p.kategori,
-            gambar: p.gambar || defaultImage
-        }))
-    } catch (error) {
-        Swal.fire(
-            'Gagal!',
-            'Tidak dapat memuat data menu.',
-            'error'
-        )
-    } finally {
-        isLoading.value = false
-    }
-}
-
-onMounted(() => {
-    userRole.value = localStorage.getItem('role') || ''
-    fetchProducts()
-})
+// 4. Helper & Aksi Modal
+const formatRupiah = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(angka || 0)
 
 const resetForm = () => {
-    form.value = {
-        id: null,
-        nama: '',
-        harga: '',
-        kategori: 'makanan',
-        gambar: ''
-    }
+    form.value = { id: null, nama: '', harga: '', kategori: 'makanan', gambar: '' }
 }
 
 const openAddModal = () => {
     resetForm()
+    isModalOpen.value = true
+}
+
+const openEditModal = (prod) => {
+    form.value = { ...prod } // Copy data produk ke form
     isModalOpen.value = true
 }
 
@@ -117,861 +75,124 @@ const closeModal = () => {
     resetForm()
 }
 
-const submitMenu = async () => {
-    if (userRole.value !== 'owner') {
-        return Swal.fire(
-            'Akses Ditolak!',
-            'Hanya Owner yang dapat mengubah menu.',
-            'error'
-        )
-    }
-
-    isSubmitting.value = true
-
-    try {
-        const payload = {
-            nama: form.value.nama,
-            harga: Number(form.value.harga),
-            kategori: form.value.kategori,
-            gambar: form.value.gambar || defaultImage
-        }
-
-        if (form.value.id) {
-            await api.put(
-                `/fnb/products/${form.value.id}`,
-                payload
-            )
-
-            Swal.fire(
-                'Berhasil!',
-                'Menu berhasil diperbarui.',
-                'success'
-            )
-        } else {
-            await api.post('/fnb/products', payload)
-
-            Swal.fire(
-                'Berhasil!',
-                'Menu berhasil ditambahkan.',
-                'success'
-            )
-        }
-
-        closeModal()
-        fetchProducts()
-    } catch (error) {
-        Swal.fire(
-            'Error!',
-            'Gagal menyimpan menu.',
-            'error'
-        )
-    } finally {
-        isSubmitting.value = false
-    }
+const handleFormSubmit = async () => {
+    // Panggil fungsi saveMenu dari composables, kalau true (sukses) baru tutup modal
+    const success = await saveMenu(form.value)
+    if (success) closeModal()
 }
 
-const editMenu = (prod) => {
-    if (userRole.value !== 'owner') {
-        return Swal.fire(
-            'Ditolak!',
-            'Hanya Owner.',
-            'error'
-        )
-    }
-
-    form.value = {
-        id: prod.id,
-        nama: prod.nama,
-        harga: prod.harga,
-        kategori: prod.kategori,
-        gambar: prod.gambar
-    }
-
-    isModalOpen.value = true
-}
-
-const deleteMenu = async (id) => {
-    if (userRole.value !== 'owner') {
-        return Swal.fire(
-            'Ditolak!',
-            'Hanya Owner.',
-            'error'
-        )
-    }
-
-    const result = await Swal.fire({
-        title: 'Hapus Menu?',
-        text: 'Data menu akan dihapus permanen.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, Hapus',
-        cancelButtonText: 'Batal',
-        confirmButtonColor: '#ef4444',
-        cancelButtonColor: '#64748b'
-    })
-
-    if (!result.isConfirmed) return
-
-    try {
-        await api.delete(`/fnb/products/${id}`)
-
-        Swal.fire(
-            'Berhasil!',
-            'Menu berhasil dihapus.',
-            'success'
-        )
-
-        fetchProducts()
-    } catch (error) {
-        Swal.fire(
-            'Error!',
-            'Gagal menghapus menu.',
-            'error'
-        )
-    }
-}
-
-const toggleStatus = async (product) => {
-    try {
-        const res = await api.put(
-            `/fnb/products/${product.id}/toggle`
-        )
-
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: res.data.is_available
-                ? 'success'
-                : 'warning',
-            title: res.data.message,
-            showConfirmButton: false,
-            timer: 1500
-        })
-
-        fetchProducts()
-    } catch (error) {
-        Swal.fire(
-            'Gagal!',
-            'Tidak dapat mengubah status.',
-            'error'
-        )
-    }
-}
+// 5. Lifecycle
+onMounted(() => {
+    userRole.value = localStorage.getItem('role') || ''
+    fetchProducts()
+})
 </script>
 
 <template>
     <SidebarFnB>
-        <div
-            class="relative flex flex-col h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-indigo-50"
-        >
-            <!-- BG -->
-            <div
-                class="absolute inset-0 overflow-hidden pointer-events-none"
-            >
-                <div
-                    class="absolute -top-40 -right-40 w-[400px] h-[400px] rounded-full bg-indigo-300/20 blur-3xl"
-                ></div>
+        <div class="flex flex-col h-screen bg-slate-50 overflow-hidden font-sans">
+            
+            <div class="px-5 py-6 bg-white border-b border-slate-200 shrink-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 class="text-2xl font-black uppercase tracking-tighter text-slate-800">Master Menu</h1>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Smart Product Management</p>
+                </div>
+                
+                <div class="flex flex-col md:flex-row w-full md:w-auto gap-3">
+                    <input v-model="search" placeholder="Cari menu..." class="flex-1 md:w-64 px-4 py-3 md:py-2.5 bg-slate-100 rounded-xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500">
+                    
+                    <select v-model="selectedCategory" class="px-4 py-3 md:py-2.5 bg-slate-100 rounded-xl text-xs font-bold outline-none border-2 border-transparent focus:border-indigo-500 cursor-pointer">
+                        <option v-for="cat in categoryOptions" :key="cat.value" :value="cat.value">{{ cat.label }}</option>
+                    </select>
 
-                <div
-                    class="absolute bottom-0 left-0 w-[350px] h-[350px] rounded-full bg-cyan-300/20 blur-3xl"
-                ></div>
-            </div>
-
-            <!-- HEADER -->
-            <div
-                class="sticky top-0 z-30 border-b backdrop-blur-xl bg-white/70 border-white/40"
-            >
-                <div
-                    class="flex flex-col gap-5 px-5 py-5 lg:px-8 lg:flex-row lg:items-center lg:justify-between"
-                >
-                    <!-- LEFT -->
-                    <div class="flex items-center gap-4">
-                        <div
-                            class="flex items-center justify-center w-14 h-14 text-white rounded-3xl bg-gradient-to-br from-indigo-600 to-indigo-800 shadow-[0_15px_40px_rgba(79,70,229,0.35)]"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="w-7 h-7"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                stroke-width="2.5"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M3 7h18M5 7l1 12h12l1-12"
-                                />
-                            </svg>
-                        </div>
-
-                        <div>
-                            <h1
-                                class="text-3xl font-black tracking-tight text-slate-800"
-                            >
-                                Master Menu
-                            </h1>
-
-                            <p
-                                class="mt-1 text-[11px] uppercase tracking-[0.25em] font-black text-slate-400"
-                            >
-                                Smart Product Management
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- RIGHT -->
-                    <div
-                        class="flex flex-col w-full gap-3 lg:w-auto lg:flex-row"
-                    >
-                        <!-- SEARCH -->
-                        <div class="relative w-full lg:w-80">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="absolute w-5 h-5 -translate-y-1/2 left-4 top-1/2 text-slate-400"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                stroke-width="2"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="m21 21-4.35-4.35"
-                                />
-
-                                <circle
-                                    cx="11"
-                                    cy="11"
-                                    r="6"
-                                />
-                            </svg>
-
-                            <input
-                                v-model="search"
-                                type="text"
-                                placeholder="Cari menu..."
-                                class="w-full h-12 pl-12 pr-4 text-sm font-bold transition-all border outline-none rounded-3xl bg-white/80 border-white/40 text-slate-700 focus:border-indigo-500"
-                            />
-                        </div>
-
-                        <!-- FILTER -->
-                        <select
-                            v-model="selectedCategory"
-                            class="h-12 px-4 text-sm font-black transition-all border outline-none rounded-2xl bg-white/80 border-white/40 text-slate-700 focus:border-indigo-500"
-                        >
-                            <option
-                                v-for="cat in categoryOptions"
-                                :key="cat.value"
-                                :value="cat.value"
-                            >
-                                {{ cat.label }}
-                            </option>
-                        </select>
-
-                        <!-- BTN -->
-                        <button
-                            v-if="userRole === 'owner'"
-                            @click="openAddModal"
-                            class="hidden lg:flex items-center justify-center gap-3 px-6 h-14 text-xs font-black tracking-widest text-white uppercase transition-all rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-800 shadow-[0_15px_40px_rgba(79,70,229,0.35)] hover:scale-[1.02] active:scale-95"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="w-5 h-5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                stroke-width="3"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M12 4v16m8-8H4"
-                                />
-                            </svg>
-
-                            Tambah Menu
-                        </button>
-                    </div>
+                    <button v-if="userRole === 'owner'" @click="openAddModal" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 md:py-2.5 rounded-xl text-xs font-black uppercase active:scale-95 transition-all">
+                        Tambah Menu
+                    </button>
                 </div>
             </div>
 
-            <!-- CONTENT -->
-            <div
-                class="relative flex-1 p-5 overflow-y-auto custom-scrollbar lg:p-8"
-            >
-                <!-- STATS -->
-                <ProductStats
-                    :total-menu="totalMenu"
-                    :total-available="totalAvailable"
-                    :total-unavailable="totalUnavailable"
-                />
+            <div class="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar relative">
+                
+                <ProductStats :total-menu="totalMenu" :total-available="totalAvailable" :total-unavailable="totalUnavailable" class="mb-6" />
 
-                <!-- LOADING -->
-                <div
-                    v-if="isLoading"
-                    class="flex flex-col items-center justify-center h-[60vh]"
-                >
-                    <div
-                        class="w-12 h-12 border-4 rounded-full border-slate-200 border-t-indigo-600 animate-spin"
-                    ></div>
-
-                    <p
-                        class="mt-5 text-xs font-black tracking-[0.25em] uppercase text-slate-400"
-                    >
-                        Memuat Data...
-                    </p>
+                <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
+                    <div class="w-10 h-10 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                    <p class="mt-4 text-xs font-black text-slate-400 uppercase tracking-widest">Memuat Katalog...</p>
                 </div>
 
-                <!-- EMPTY -->
-                <div
-                    v-else-if="filteredProducts.length === 0"
-                    class="flex flex-col items-center justify-center h-[60vh] p-10 border rounded-[40px] bg-white/70 backdrop-blur-xl border-white/40"
-                >
-                    <div
-                        class="flex items-center justify-center w-20 h-20 rounded-full bg-slate-100"
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="w-12 h-12 text-slate-300"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            stroke-width="1.5"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M20 13V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6"
-                            />
-                        </svg>
-                    </div>
-
-                    <h2
-                        class="mt-6 text-2xl font-black text-slate-800"
-                    >
-                        Menu Tidak Ditemukan
-                    </h2>
-
-                    <p
-                        class="mt-2 text-sm font-semibold text-center text-slate-400"
-                    >
-                        Coba gunakan pencarian lain.
-                    </p>
+                <div v-else-if="filteredProducts.length === 0" class="flex flex-col items-center justify-center py-20 text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 mb-4 opacity-30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2v20M17 5H9.5a4.5 4.5 0 0 0 0 9H15a4.5 4.5 0 0 1 0 9H6.5"/></svg>
+                    <p class="text-xs font-black uppercase tracking-widest text-slate-500">Menu Tidak Ditemukan</p>
                 </div>
 
-                <!-- DESKTOP -->
-                <div
-                    v-if="filteredProducts.length > 0"
-                    class="hidden overflow-hidden border lg:block rounded-[32px] bg-white/70 backdrop-blur-xl border-white/40 shadow-[0_20px_60px_rgba(15,23,42,0.08)]"
-                >
-                    <div class="overflow-x-auto">
-                        <table class="w-full">
-                            <thead>
-                                <tr
-                                    class="border-b bg-slate-50/80 border-slate-100"
-                                >
-                                    <th
-                                        class="p-5 text-[11px] text-left font-black uppercase tracking-[0.2em] text-slate-400"
-                                    >
-                                        Menu
-                                    </th>
-
-                                    <th
-                                        class="p-5 text-[11px] text-left font-black uppercase tracking-[0.2em] text-slate-400"
-                                    >
-                                        Kategori
-                                    </th>
-
-                                    <th
-                                        class="p-5 text-[11px] text-left font-black uppercase tracking-[0.2em] text-slate-400"
-                                    >
-                                        Harga
-                                    </th>
-
-                                    <th
-                                        class="p-5 text-[11px] text-center font-black uppercase tracking-[0.2em] text-slate-400"
-                                    >
-                                        Status
-                                    </th>
-
-                                    <th
-                                        class="p-5 text-[11px] text-center font-black uppercase tracking-[0.2em] text-slate-400"
-                                    >
-                                        Action
-                                    </th>
+                <div v-else>
+                    <div class="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th class="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Menu</th>
+                                    <th class="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Harga</th>
+                                    <th class="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Status Jualan</th>
+                                    <th class="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Aksi</th>
                                 </tr>
                             </thead>
-
-                            <tbody
-                                class="divide-y divide-slate-100"
-                            >
-                                <tr
-                                    v-for="prod in filteredProducts"
-                                    :key="prod.id"
-                                    class="transition-all hover:bg-white/60"
-                                >
-                                    <td class="p-5">
-                                        <div
-                                            class="flex items-center gap-4"
-                                        >
-                                            <img
-                                                :src="prod.gambar"
-                                                class="object-cover w-14 h-14 rounded-2xl"
-                                            />
-
-                                            <div>
-                                                <h3
-                                                    class="text-sm font-black text-slate-800"
-                                                >
-                                                    {{ prod.nama }}
-                                                </h3>
-
-                                                <p
-                                                    class="mt-1 text-[10px] uppercase tracking-[0.2em] font-bold text-slate-400"
-                                                >
-                                                    ID #{{
-                                                        prod.id
-                                                    }}
-                                                </p>
-                                            </div>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr v-for="prod in filteredProducts" :key="prod.id" class="hover:bg-slate-50/50 transition-colors">
+                                    <td class="p-4 flex items-center gap-4">
+                                        <img :src="prod.gambar" class="w-12 h-12 rounded-xl object-cover border border-slate-200 shadow-sm" :class="!prod.is_available ? 'opacity-50 grayscale' : ''">
+                                        <div>
+                                            <span class="block text-sm font-black text-slate-800 uppercase">{{ prod.nama }}</span>
+                                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{{ prod.kategori }}</span>
                                         </div>
                                     </td>
-
-                                    <td class="p-5">
-                                        <span
-                                            class="px-3 py-2 text-[10px] uppercase rounded-xl font-black tracking-[0.2em] bg-slate-100 text-slate-600"
-                                        >
-                                            {{ prod.kategori }}
-                                        </span>
-                                    </td>
-
-                                    <td
-                                        class="p-5 text-sm font-black text-indigo-600"
-                                    >
-                                        {{
-                                            formatRupiah(
-                                                prod.harga
-                                            )
-                                        }}
-                                    </td>
-
-                                    <td class="p-5 text-center">
-                                        <button
-                                            @click="
-                                                toggleStatus(
-                                                    prod
-                                                )
-                                            "
-                                            class="relative inline-flex items-center h-8 transition-all w-14 rounded-full"
-                                            :class="
-                                                prod.is_available
-                                                    ? 'bg-emerald-500'
-                                                    : 'bg-slate-300'
-                                            "
-                                        >
-                                            <span
-                                                class="inline-block w-6 h-6 transition-all bg-white rounded-full"
-                                                :class="
-                                                    prod.is_available
-                                                        ? 'translate-x-7'
-                                                        : 'translate-x-1'
-                                                "
-                                            ></span>
+                                    <td class="p-4 text-sm font-black text-indigo-600">{{ formatRupiah(prod.harga) }}</td>
+                                    <td class="p-4 text-center">
+                                        <button @click="toggleStatus(prod)" class="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all" :class="prod.is_available ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-rose-100 text-rose-700 hover:bg-rose-200'">
+                                            {{ prod.is_available ? 'Tersedia' : 'Habis' }}
                                         </button>
                                     </td>
-
-                                    <td class="p-5">
-                                        <div
-                                            class="flex items-center justify-center gap-2"
-                                        >
-                                            <button
-                                                v-if="
-                                                    userRole ===
-                                                    'owner'
-                                                "
-                                                @click="
-                                                    editMenu(
-                                                        prod
-                                                    )
-                                                "
-                                                class="flex items-center justify-center w-11 h-11 transition-all rounded-2xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white active:scale-95"
-                                            >
-                                                ✏️
-                                            </button>
-
-                                            <button
-                                                v-if="
-                                                    userRole ===
-                                                    'owner'
-                                                "
-                                                @click="
-                                                    deleteMenu(
-                                                        prod.id
-                                                    )
-                                                "
-                                                class="flex items-center justify-center w-11 h-11 transition-all rounded-2xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white active:scale-95"
-                                            >
-                                                🗑️
-                                            </button>
+                                    <td class="p-4">
+                                        <div class="flex items-center justify-center gap-2" v-if="userRole === 'owner'">
+                                            <button @click="openEditModal(prod)" class="p-2 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg transition-colors active:scale-95">✏️</button>
+                                            <button @click="deleteMenu(prod.id)" class="p-2 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-lg transition-colors active:scale-95">🗑️</button>
                                         </div>
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                </div>
 
-                <!-- MOBILE CARD -->
-                <ProductMobileCard
-                    :open
-                />
-                
-            </div>
-
-            <!-- FAB -->
-            <button
-                v-if="userRole === 'owner'"
-                @click="openAddModal"
-                class="fixed z-50 flex items-center justify-center text-white lg:hidden bottom-6 right-6 w-14 h-14 rounded-3xl bg-gradient-to-br from-indigo-600 to-indigo-800 shadow-[0_15px_40px_rgba(79,70,229,0.4)] active:scale-90"
-            >
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="w-7 h-7"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="3"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M12 4v16m8-8H4"
+                    <ProductMobileCard 
+                        class="lg:hidden"
+                        :products="filteredProducts" 
+                        :userRole="userRole" 
+                        :formatRupiah="formatRupiah"
+                        @toggle="toggleStatus"
+                        @edit="openEditModal"
+                        @delete="deleteMenu"
                     />
-                </svg>
-            </button>
+                </div>
+            </div>
             
-            <!-- MODAL -->
-            <ProductModal
-                :open="isModalOpen"
-                :form="form"
-                :loading="isSubmitting"
-                @close="closeModal"
-                @submit="submitMenu"
-            />
+            <button v-if="userRole === 'owner'" @click="openAddModal" class="lg:hidden fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-xl flex items-center justify-center active:scale-90 transition-transform z-40">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            </button>
         </div>
+
+        <ProductModal 
+            :open="isModalOpen" 
+            :form="form" 
+            :loading="isSubmitting" 
+            @close="closeModal" 
+            @submit="handleFormSubmit" 
+        />
     </SidebarFnB>
 </template>
 
 <style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
+.custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: linear-gradient(
-        to bottom,
-        #6366f1,
-        #4f46e5
-    );
-    border-radius: 999px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-* {
-    -webkit-tap-highlight-color: transparent;
-    box-sizing: border-box;
-}
-
-button {
-    user-select: none;
-}
-
-input,
-select,
-button {
-    transition:
-        0.25s ease,
-        transform 0.2s ease;
-}
-
-/* =========================================
-   RESPONSIVE GLOBAL
-========================================= */
-
-@media (max-width: 1280px) {
-    .desktop-table-wrap {
-        overflow-x: auto;
-    }
-}
-
-@media (max-width: 1024px) {
-    h1 {
-        line-height: 1.1;
-    }
-}
-
-/* =========================================
-   TABLET
-========================================= */
-
-@media (max-width: 768px) {
-    input,
-    select,
-    button,
-    textarea {
-        font-size: 16px !important;
-    }
-
-    .mobile-padding {
-        padding-left: 14px !important;
-        padding-right: 14px !important;
-    }
-
-    .mobile-card {
-        border-radius: 22px !important;
-    }
-
-    .mobile-title {
-        font-size: 24px !important;
-    }
-
-    .mobile-subtitle {
-        font-size: 9px !important;
-        letter-spacing: 0.22em !important;
-    }
-
-    .mobile-stat {
-        padding: 16px !important;
-        border-radius: 22px !important;
-    }
-
-    .mobile-stat h2 {
-        font-size: 28px !important;
-        margin-top: 8px !important;
-    }
-
-    .mobile-stat p {
-        font-size: 9px !important;
-        letter-spacing: 0.2em !important;
-    }
-
-    .mobile-search,
-    .mobile-select {
-        height: 48px !important;
-        border-radius: 18px !important;
-    }
-
-    .mobile-product-card {
-        border-radius: 22px !important;
-    }
-
-    .mobile-product-image {
-        width: 72px !important;
-        height: 72px !important;
-        border-radius: 18px !important;
-    }
-
-    .mobile-product-name {
-        font-size: 14px !important;
-        line-height: 1.2 !important;
-    }
-
-    .mobile-product-category {
-        font-size: 9px !important;
-    }
-
-    .mobile-product-price {
-        font-size: 24px !important;
-        margin-top: 10px !important;
-    }
-
-    .mobile-action-btn {
-        height: 38px !important;
-        border-radius: 14px !important;
-        font-size: 10px !important;
-    }
-
-    .mobile-modal {
-        border-radius: 26px !important;
-    }
-
-    .mobile-modal-padding {
-        padding: 18px !important;
-    }
-
-    .mobile-modal input,
-    .mobile-modal select {
-        padding: 14px 16px !important;
-        border-radius: 16px !important;
-    }
-
-    .mobile-modal button[type='submit'] {
-        padding: 16px !important;
-        border-radius: 16px !important;
-    }
-
-    .fab-mobile {
-        width: 56px !important;
-        height: 56px !important;
-        right: 18px !important;
-        bottom: 18px !important;
-        border-radius: 20px !important;
-    }
-}
-
-/* =========================================
-   HP KECIL
-========================================= */
-
-@media (max-width: 480px) {
-    .mobile-padding {
-        padding-left: 12px !important;
-        padding-right: 12px !important;
-    }
-
-    .mobile-header {
-        gap: 14px !important;
-        padding-top: 14px !important;
-        padding-bottom: 14px !important;
-    }
-
-    .mobile-icon-box {
-        width: 50px !important;
-        height: 50px !important;
-        border-radius: 18px !important;
-    }
-
-    .mobile-title {
-        font-size: 20px !important;
-    }
-
-    .mobile-subtitle {
-        font-size: 8px !important;
-        letter-spacing: 0.18em !important;
-    }
-
-    .mobile-search,
-    .mobile-select {
-        height: 44px !important;
-        border-radius: 16px !important;
-        font-size: 13px !important;
-    }
-
-    .mobile-search-icon {
-        width: 16px !important;
-        height: 16px !important;
-        left: 14px !important;
-    }
-
-    .mobile-search-input {
-        padding-left: 40px !important;
-        padding-right: 14px !important;
-        font-size: 13px !important;
-    }
-
-    .mobile-stat {
-        padding: 14px !important;
-        border-radius: 18px !important;
-    }
-
-    .mobile-stat h2 {
-        font-size: 24px !important;
-    }
-
-    .mobile-stat p {
-        font-size: 8px !important;
-    }
-
-    .mobile-product-card {
-        border-radius: 20px !important;
-    }
-
-    .mobile-product-image {
-        width: 64px !important;
-        height: 64px !important;
-        border-radius: 16px !important;
-    }
-
-    .mobile-product-name {
-        font-size: 13px !important;
-    }
-
-    .mobile-product-category {
-        font-size: 8px !important;
-        margin-top: 3px !important;
-    }
-
-    .mobile-product-price {
-        font-size: 20px !important;
-        line-height: 1 !important;
-    }
-
-    .mobile-status-badge {
-        font-size: 7px !important;
-        padding: 3px 7px !important;
-    }
-
-    .mobile-toggle {
-        width: 42px !important;
-        height: 22px !important;
-    }
-
-    .mobile-toggle-dot {
-        width: 14px !important;
-        height: 14px !important;
-    }
-
-    .mobile-action-btn {
-        height: 34px !important;
-        border-radius: 12px !important;
-        font-size: 9px !important;
-        letter-spacing: 0.15em !important;
-    }
-
-    .mobile-modal {
-        border-radius: 22px !important;
-    }
-
-    .mobile-modal-padding {
-        padding: 16px !important;
-    }
-
-    .fab-mobile {
-        width: 52px !important;
-        height: 52px !important;
-        border-radius: 18px !important;
-    }
-}
-
-/* =========================================
-   EXTRA SMALL DEVICE
-========================================= */
-
-@media (max-width: 360px) {
-    .mobile-title {
-        font-size: 18px !important;
-    }
-
-    .mobile-product-price {
-        font-size: 18px !important;
-    }
-
-    .mobile-product-name {
-        font-size: 12px !important;
-    }
-
-    .mobile-stat h2 {
-        font-size: 22px !important;
-    }
-
-    .mobile-search,
-    .mobile-select {
-        height: 42px !important;
-    }
-}
+/* DEDEK HAPUS SEMUA MEDIA QUERY YANG RIBET! */
 </style>

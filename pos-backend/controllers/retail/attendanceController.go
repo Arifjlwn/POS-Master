@@ -5,7 +5,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"net/http"
-	"pos-backend/config"
+	"pos-backend/src/core/config"
 	"pos-backend/models"
 	"time"
 
@@ -50,7 +50,7 @@ func StoreAttendance(c *gin.Context) {
 
 	if input.Jenis == "Masuk" {
 		// 🔍 Cek apakah sudah absen masuk hari ini?
-		if err := config.DB.Where("user_id = ? AND tanggal = ?", input.UserID, today).First(&attendance).Error; err == nil {
+		if err := src.DB.Where("user_id = ? AND tanggal = ?", input.UserID, today).First(&attendance).Error; err == nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Anda sudah melakukan Absen Masuk hari ini!"})
 			return
 		}
@@ -65,7 +65,7 @@ func StoreAttendance(c *gin.Context) {
 			Status:    "Hadir",
 		}
 
-		if err := config.DB.Create(&absen).Error; err != nil {
+		if err := src.DB.Create(&absen).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan absensi masuk!"})
 			return
 		}
@@ -74,7 +74,7 @@ func StoreAttendance(c *gin.Context) {
 
 	} else if input.Jenis == "Pulang" {
 		// 🔍 Cari record absen masuk hari ini untuk di-update (UPSERT Logic)
-		if err := config.DB.Where("user_id = ? AND tanggal = ?", input.UserID, today).First(&attendance).Error; err != nil {
+		if err := src.DB.Where("user_id = ? AND tanggal = ?", input.UserID, today).First(&attendance).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Anda belum melakukan Absen Masuk hari ini!"})
 			return
 		}
@@ -89,7 +89,7 @@ func StoreAttendance(c *gin.Context) {
 		attendance.JamPulang = nowTime
 		attendance.FotoPulang = input.Foto
 
-		if err := config.DB.Save(&attendance).Error; err != nil {
+		if err := src.DB.Save(&attendance).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan absen pulang!"})
 			return
 		}
@@ -117,7 +117,7 @@ func GetAttendance(c *gin.Context) {
     tahun := c.Query("tahun")     
 
     var riwayat []models.Attendance
-    query := config.DB.Preload("User").Where("store_id = ?", storeID)
+    query := src.DB.Preload("User").Where("store_id = ?", storeID)
 
     // Filter Tanggal / Bulan
     loc, _ := time.LoadLocation("Asia/Jakarta")
@@ -149,7 +149,7 @@ func GetAttendance(c *gin.Context) {
                 riwayat[i].Status = "Lupa Absen Pulang"
                 
                 // (Opsional) Langsung update statusnya di database Supabase biar permanen
-                config.DB.Model(&riwayat[i]).Update("status", "Lupa Absen Pulang")
+                src.DB.Model(&riwayat[i]).Update("status", "Lupa Absen Pulang")
             } else {
                 riwayat[i].Status = "Hadir" // Jika masih hari ini dan belum pulang, biarkan Hadir/Aktif dulu
             }
@@ -163,12 +163,12 @@ func CheckMangkirOtomatis(storeID uint, tanggalKemarin string) {
     var jadwalMasuk []models.Schedule
     
     // 1. Ambil semua jadwal karyawan yang harusnya masuk (bukan OFF) pada tanggal tersebut
-    config.DB.Where("store_id = ? AND tanggal = ? AND shift_type != ?", storeID, tanggalKemarin, "OFF").Find(&jadwalMasuk)
+    src.DB.Where("store_id = ? AND tanggal = ? AND shift_type != ?", storeID, tanggalKemarin, "OFF").Find(&jadwalMasuk)
 
     for _, j := range jadwalMasuk {
         var attendance models.Attendance
         // 2. Cek apakah ada record absennya di tabel attendance?
-        err := config.DB.Where("user_id = ? AND tanggal = ?", j.UserID, tanggalKemarin).First(&attendance).Error
+        err := src.DB.Where("user_id = ? AND tanggal = ?", j.UserID, tanggalKemarin).First(&attendance).Error
         
         // 3. Jika Error (artinya Record Not Found / tidak ada absen sama sekali)
         if err != nil {
@@ -180,7 +180,7 @@ func CheckMangkirOtomatis(storeID uint, tanggalKemarin string) {
                 JamPulang: "-",
                 Status:    "Mangkir", // 🚀 Otomatis Mangkir!
             }
-            config.DB.Create(&mangkirLog)
+            src.DB.Create(&mangkirLog)
         }
     }
 }
@@ -201,7 +201,7 @@ func ExportAttendance(c *gin.Context) {
 
 	var riwayat []models.Attendance
 	// Tambahkan ::text untuk filter ekspor juga
-	config.DB.Preload("User").
+	src.DB.Preload("User").
 		Where("store_id = ? AND tanggal::text LIKE ?", storeID, prefixBulan).
 		Order("tanggal ASC").
 		Find(&riwayat)

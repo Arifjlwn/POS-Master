@@ -3,7 +3,7 @@ package retail
 import (
 	"fmt"
 	"net/http"
-	"pos-backend/config"
+	"pos-backend/src/core/config"
 	"pos-backend/models"
 	"time"
 
@@ -59,7 +59,7 @@ func GetDashboardReport(c *gin.Context) {
 		Omzet float64
 		Qty   float64
 	}
-	config.DB.Table("transaction_details").
+	src.DB.Table("transaction_details").
 		Joins("JOIN transactions ON transactions.id = transaction_details.transaction_id").
 		Where("transactions.store_id = ? AND transactions.created_at BETWEEN ? AND ?", storeID, start, end).
 		Select("COALESCE(SUM(transaction_details.sub_total), 0) as omzet, COALESCE(SUM(transaction_details.kuantitas), 0) as qty").
@@ -70,7 +70,7 @@ func GetDashboardReport(c *gin.Context) {
 
 	// 2. Ambil Total Laba
 	var totalLaba float64
-	err := config.DB.Table("transaction_details").
+	err := src.DB.Table("transaction_details").
 		Select("COALESCE(SUM(transaction_details.sub_total - (COALESCE(products.harga_modal, 0) * transaction_details.kuantitas)), 0)").
 		Joins("JOIN transactions ON transactions.id = transaction_details.transaction_id").
 		Joins("LEFT JOIN products ON products.id = transaction_details.product_id").
@@ -83,7 +83,7 @@ func GetDashboardReport(c *gin.Context) {
 	report.TotalLaba = totalLaba
 
 	// 3. Hitung Jumlah Transaksi
-	config.DB.Model(&models.Transaction{}).
+	src.DB.Model(&models.Transaction{}).
 		Where("store_id = ? AND created_at BETWEEN ? AND ?", storeID, start, end).
 		Count(&report.JumlahTransaksi)
 
@@ -97,7 +97,7 @@ func GetDashboardReport(c *gin.Context) {
 		Loss float64
 	}
 	// Perhitungan Kerugian (Loss) = Qty Retur * Harga Modal Produk
-	config.DB.Table("product_returns").
+	src.DB.Table("product_returns").
 		Select("COALESCE(SUM(product_returns.qty), 0) as qty, COALESCE(SUM(product_returns.qty * COALESCE(products.harga_modal, 0)), 0) as loss").
 		Joins("LEFT JOIN products ON products.id = product_returns.product_id").
 		Where("product_returns.store_id = ? AND product_returns.created_at BETWEEN ? AND ?", storeID, start, end).
@@ -113,7 +113,7 @@ func GetDashboardReport(c *gin.Context) {
 	}
 	
 	// Kita join 3 tabel: Details (buat selisih & harga), Header (buat filter toko & tanggal), Products (buat harga_modal)
-	config.DB.Table("stock_opname_details").
+	src.DB.Table("stock_opname_details").
 		Select("COALESCE(SUM(ABS(stock_opname_details.selisih)), 0) as qty, COALESCE(SUM(ABS(stock_opname_details.selisih) * COALESCE(products.harga_modal, 0)), 0) as loss").
 		Joins("JOIN stock_opnames ON stock_opnames.id = stock_opname_details.opname_id").
 		Joins("LEFT JOIN products ON products.id = stock_opname_details.product_id").
@@ -125,7 +125,7 @@ func GetDashboardReport(c *gin.Context) {
 
 	// --- LOGIKA STOK MENIPIS (lowStockProducts) ---
 	var lowStockProducts []models.Product
-	config.DB.Where("store_id = ? AND stok < ?", storeID, 10).Find(&lowStockProducts)
+	src.DB.Where("store_id = ? AND stok < ?", storeID, 10).Find(&lowStockProducts)
 
 	// --- LOGIKA GRAFIK (grafikPenjualan) ---
 	type GrafikData struct {
@@ -155,7 +155,7 @@ func GetDashboardReport(c *gin.Context) {
 		}
 
 		// Ambil Omzet & Laba Harian
-		config.DB.Table("transaction_details").
+		src.DB.Table("transaction_details").
 			Select(`
 				COALESCE(SUM(transaction_details.sub_total), 0) as omzet,
 				COALESCE(SUM(transaction_details.sub_total - (COALESCE(products.harga_modal, 0) * transaction_details.kuantitas)), 0) as laba
@@ -166,7 +166,7 @@ func GetDashboardReport(c *gin.Context) {
 			Scan(&dailyData)
 
 		// 🚀 Ambil Kerugian Retur Harian
-		config.DB.Table("product_returns").
+		src.DB.Table("product_returns").
 			Select("COALESCE(SUM(product_returns.qty * COALESCE(products.harga_modal, 0)), 0)").
 			Joins("LEFT JOIN products ON products.id = product_returns.product_id").
 			Where("product_returns.store_id = ? AND product_returns.created_at BETWEEN ? AND ?", storeID, tgl, tglEnd).
@@ -189,7 +189,7 @@ func GetDashboardReport(c *gin.Context) {
 	}
 	var bestSellers []BestSeller
 
-	config.DB.Table("transaction_details").
+	src.DB.Table("transaction_details").
 		Select("products.nama_produk, products.sku, SUM(transaction_details.kuantitas) as qty_terjual, SUM(transaction_details.sub_total) as total_omzet").
 		Joins("JOIN transactions ON transactions.id = transaction_details.transaction_id").
 		Joins("JOIN products ON products.id = transaction_details.product_id").
