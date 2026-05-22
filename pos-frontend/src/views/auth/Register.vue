@@ -67,8 +67,8 @@ const handleRegister = async () => {
 
         Swal.fire({
             icon: 'success',
-            title: 'Daftar Berhasil!',
-            text: 'Silakan masukkan kode OTP dari email Anda.',
+            title: 'Pendaftaran Berhasil!',
+            text: 'Akun Anda telah tercatat. Silakan pilih metode untuk menerima kode verifikasi OTP.',
             confirmButtonColor: '#2563eb'
         });
         router.push({

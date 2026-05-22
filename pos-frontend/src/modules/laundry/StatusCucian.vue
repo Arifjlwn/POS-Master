@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import SidebarLaundry from './SidebarLaundry.vue';
-import api from '../../../api.js';
+import api from '../../api.js';
 import Swal from 'sweetalert2';
 
 const riwayat = ref([]);

@@ -143,7 +143,7 @@ const submit = async () => {
 
     isLoading.value = true;
     try {
-        const finalTipeBisnis = `${form.value.kategori_bisnis} - ${form.value.detail_bisnis}`;
+        const finalTipeBisnis = String(form.value.detail_bisnis || form.value.kategori_bisnis).toLowerCase();
         const alamatLengkap = `${form.value.alamat}, Kel. ${form.value.kelurahan}, Kec. ${form.value.kecamatan}, ${form.value.kota}, Prov. ${form.value.provinsi}, ${form.value.kode_pos}`;
 
         const payload = {
@@ -156,7 +156,7 @@ const submit = async () => {
             kelurahan: form.value.kelurahan,
             kode_pos: String(form.value.kode_pos), 
             telepon: `62${form.value.telepon}`,
-            fitur_aktif: form.value.fitur_opsional // 🚀 Kirim Array Asli
+            fitur_aktif: form.value.fitur_opsional
         };
 
         const response = await api.post('/setup', payload);
@@ -178,24 +178,25 @@ const submit = async () => {
         });
         
         // --- ROUTING CERDAS TANPA BONGKAR SETUP LAGI ---
-        const kat = form.value.kategori_bisnis;
-        const det = form.value.detail_bisnis;
+        const kat = form.value.kategori_bisnis; // 'Retail', 'F&B', 'Jasa', 'Lainnya'
+        const det = (form.value.detail_bisnis || '').toLowerCase(); // Ambil detail teks-nya lowercase
 
         if (kat === 'Retail' || kat === 'Lainnya') {
             router.push('/retail/dashboard');
         } else if (kat === 'F&B') {
             router.push('/fnb/dashboard');
         } else if (kat === 'Jasa') {
-            if (det === 'Laundry') {
+            // 🚀 DETEKSI LANGSUNG DETAIL BISNIS UNTUK MELEMPAR KE MODUL SPESIFIK
+            if (det.includes('laundry')) {
                 router.push('/laundry/laporan');
-            } else if (det === 'Bengkel Otomotif') {
-                router.push('/bengkel/pos');
-            } else if (det === 'Barbershop / Salon') {
-                router.push('/salon/pos');
-            } else if (det === 'Cuci Mobil / Motor') {
-                router.push('/cuci-kendaraan/pos');
+            } else if (det.includes('bengkel') || det.includes('otomotif')) {
+                router.push('/bengkel/dashboard'); // Arahkan ke dashboard bengkel baru lu
+            } else if (det.includes('barbershop') || det.includes('salon')) {
+                router.push('/salon/dashboard');
+            } else if (det.includes('cuci')) {
+                router.push('/cuci-kendaraan/dashboard');
             } else {
-                router.push('/retail/dashboard');
+                router.push('/retail/dashboard'); // Default aman jika jasa umum
             }
         }
 

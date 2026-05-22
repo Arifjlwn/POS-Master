@@ -14,8 +14,8 @@ const selectMethod = (method) => {
         return;
     }
     
-    // Jika pilih email, langsung lanjut ke halaman input OTP
-    router.push({ path: '/verify', query: { email: email } });
+    // 🚀 FIX: Diarahkan ke /verify-otp sesuai rute Kepala Suku index.js lu
+    router.push({ path: '/verify-otp', query: { email: email } });
 };
 </script>
 

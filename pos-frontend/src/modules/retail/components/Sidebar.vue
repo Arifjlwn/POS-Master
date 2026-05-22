@@ -1,55 +1,8 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import Swal from 'sweetalert2';
+import { useSidebar } from '../composables/useSidebar.js';
 
-const router = useRouter();
-const route = useRoute();
-const sidebarOpen = ref(false);
-
-// State untuk buka-tutup grup menu
-const openGroups = ref({
-    stock: route.path.includes('barang') || route.path.includes('opname') || route.path.includes('produk') || route.path.includes('returns'),
-    admin: route.path.startsWith('/dashboard') || route.path.startsWith('/karyawan') || route.path.startsWith('/setup')
-});
-
-const toggleGroup = (group) => {
-    openGroups.value[group] = !openGroups.value[group];
-};
-
-const user = ref({
-    name: localStorage.getItem('name') || 'User',
-    role: localStorage.getItem('role') || 'staff',
-    storeName: localStorage.getItem('storeName') || 'POS UMKM'
-});
-
-onMounted(() => {
-    user.value.name = localStorage.getItem('name') || 'User';
-    user.value.role = localStorage.getItem('role') || 'staff';
-});
-
-const logout = () => {
-    Swal.fire({
-        title: 'Mau keluar, Bos?',
-        text: "Pastikan semua kerjaan hari ini sudah tersimpan ya!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#4f46e5',
-        cancelButtonColor: '#94a3b8',
-        confirmButtonText: 'Ya, Logout',
-        cancelButtonText: 'Batal',
-        customClass: {
-            popup: 'rounded-[32px]',
-            confirmButton: 'rounded-[16px] font-black px-6 py-3',
-            cancelButton: 'rounded-[16px] font-black px-6 py-3'
-        }
-    }).then((result) => {
-        if (result.isConfirmed) {
-            localStorage.clear();
-            router.push('/login');
-        }
-    });
-};
+// Inject semua data dan fungsi dari layer composable
+const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar();
 </script>
 
 <template>
@@ -64,7 +17,7 @@ const logout = () => {
                 </button>
                 <div class="flex flex-col">
                     <div class="font-black text-lg sm:text-xl text-slate-900 tracking-tighter leading-none">
-                    <span class="text-indigo-600">{{ user.storeName }}</span>
+                        <span class="text-indigo-600">{{ user.storeName }}</span>
                     </div>
                 </div>
             </div>
@@ -136,11 +89,9 @@ const logout = () => {
                     </button>
                     
                     <div v-show="openGroups.stock" class="mt-2 space-y-1 ml-4 border-l-2 border-slate-100 pl-2">
-                        
                         <router-link v-if="user.role === 'owner'" to="/retail/master-produk" @click="sidebarOpen = false" class="sub-link hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-500" :class="{ 'active-sub !text-emerald-700 !bg-emerald-50/80 !border-emerald-500': route.path.startsWith('/retail/master-produk') }">
                             Master Data Produk
                         </router-link>
-
                         <router-link to="/retail/penerimaan-barang" @click="sidebarOpen = false" class="sub-link hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-500" :class="{ 'active-sub !text-emerald-700 !bg-emerald-50/80 !border-emerald-500': route.path === '/retail/penerimaan-barang' }">
                             Terima Barang (LPB)
                         </router-link>
@@ -160,23 +111,20 @@ const logout = () => {
                     </button>
                     
                     <div v-show="openGroups.admin" class="mt-2 space-y-1 ml-4 border-l-2 border-slate-100 pl-2">
-                        
                         <router-link to="/retail/stock-opname/report" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/stock-opname/report' }">
                             Laporan Hasil SO
                         </router-link>
-
                         <router-link to="/retail/retur-barang/report" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/retur-barang/report' }">
                             Laporan Retur Barang
                         </router-link>
-
                         <template v-if="user.role === 'owner'">
                             <router-link to="/retail/dashboard" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/dashboard' }">
                                 Dashboard Analitik
                             </router-link>
-                            <router-link to="/retail/karyawan" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path.startsWith('/retail/karyawan') }">
+                            <router-link to="/retail/karyawan" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-emerald-500': route.path.startsWith('/retail/karyawan') }">
                                 Manajemen Karyawan
                             </router-link>
-                            <router-link to="/setup" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path.startsWith('/setup') }">
+                            <router-link to="/setup-toko" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path.startsWith('/setup-toko') }">
                                 Pengaturan Sistem
                             </router-link>
                         </template>
@@ -216,45 +164,31 @@ const logout = () => {
 </template>
 
 <style scoped>
-/* Navigation Link Base */
 .nav-link {
     @apply flex items-center gap-3.5 px-4 py-3.5 rounded-[16px] text-xs font-black tracking-tight transition-all duration-300 border-2 border-transparent;
     @apply text-slate-500 hover:bg-white hover:border-slate-100 hover:shadow-sm;
 }
-
-/* Icon Base */
 .icon {
     @apply w-[18px] h-[18px] transition-transform duration-300;
 }
-
-/* Active State Operasional */
 .nav-link.active {
     @apply bg-slate-900 text-white shadow-xl shadow-slate-200 border-slate-900 translate-x-1;
 }
 .nav-link.active .icon {
     @apply text-indigo-400;
 }
-
-/* Group Button Base */
 .group-btn {
     @apply w-full flex items-center justify-between px-2 py-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] transition-colors;
 }
-
-/* Sub-links Base */
 .sub-link {
     @apply flex items-center gap-4 px-4 py-2.5 rounded-xl text-[11px] font-bold text-slate-500 transition-all duration-200 border-l-[3px] border-transparent;
 }
-
-/* Base style buat active sublink, dioverride di template via inline class :class */
 .active-sub {
     @apply shadow-sm;
 }
-
-/* Custom Transitions Overlay */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 
-/* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px;}
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }

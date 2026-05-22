@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import api from '../../../api.js';
+import api from '../../../../api.js'; // Mengarah ke api.js global kamu
 import Swal from 'sweetalert2';
 import { Html5Qrcode } from "html5-qrcode";
 
@@ -48,7 +48,7 @@ const lastTransaction = ref(null);
 const showReceiptClosing = ref(false);
 const lastClosingData = ref(null);
 
-// 🚀 STATE KHUSUS UNTUK HP (MOBILE CART DRAWER)
+// STATE KHUSUS UNTUK HP (MOBILE CART DRAWER)
 const isMobileCartOpen = ref(false);
 
 const getImageUrl = (path) => {
@@ -202,7 +202,6 @@ const addToCart = (product) => {
         cart.value.unshift({ id: product.id, name: product.name, price: product.price, qty: 1 });
     }
     
-    // 🚀 Feedback visual halus buat HP pas masukin barang tapi keranjang lagi ditutup
     if (window.innerWidth < 1024 && !isMobileCartOpen.value) {
         Swal.fire({
             toast: true,
@@ -231,11 +230,11 @@ const decreaseQty = (product) => {
 const increaseQty = (product) => {
     const existingItem = cart.value.find(item => item.id === product.id);
     if (existingItem) {
-        if (existingItem.qty > 0) {
+        const prodMaster = products.value.find(p => p.id === product.id);
+        if (prodMaster && existingItem.qty < prodMaster.stock) {
             existingItem.qty++;
         } else {
-            cart.value = cart.value.filter(item => item.id !== product.id);
-            if (cart.value.length === 0) isMobileCartOpen.value = false;
+            Swal.fire({ icon: 'warning', title: 'Stok Terbatas', text: 'Kuantitas melebihi stok!' });
         }
     }
 };
@@ -316,7 +315,6 @@ const setPaymentMethod = (method) => {
 };
 
 // PROSES CHECKOUT
-// State
 const isProcessingCheckout = ref(false);
 
 const executeCheckout = async() => {
@@ -340,7 +338,7 @@ const executeCheckout = async() => {
             return: response.data.kembali, 
             method: paymentMethod.value,
             subtotal: subTotalBelanja.value, 
-            pajak: nilaiPajak.value,         
+            pajak: nilaiPajak.value,          
             date: new Date().toLocaleString('id-ID', { year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '.')
         };
         
@@ -567,7 +565,7 @@ const logout = () => {
                         </button>
                     </div>
 
-                    <div v-auto-animate class="p-4 md:p-5 border-b border-slate-100 bg-slate-50/80 hidden lg:flex justify-between items-center shrink-0">
+                    <div class="p-4 md:p-5 border-b border-slate-100 bg-slate-50/80 hidden lg:flex justify-between items-center shrink-0">
                         <h2 class="text-sm md:text-base font-black text-slate-800 flex items-center gap-2 uppercase tracking-widest">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
                             Keranjang
@@ -575,7 +573,7 @@ const logout = () => {
                         <div class="flex gap-1.5 md:gap-2">
                             <button @click="showHeldModal = true" class="p-2 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-xl transition-colors relative" title="Lihat Pesanan Tertunda">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                <span v-if="heldOrders.length" class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[8px] font-black text-white">{{ heldOrders.length }}</span>
+                                <span class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[8px] font-black text-white">{{ heldOrders.length }}</span>
                             </button>
                             <button @click="holdTransaction" :disabled="cart.length===0" class="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl transition-colors disabled:opacity-50" title="Hold Pesanan Ini">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -668,7 +666,7 @@ const logout = () => {
 
                         <button @click="processCheckout" :disabled="cart.length === 0 || payAmount < totalBelanja || isProcessingCheckout"
                             class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black py-3 md:py-4 px-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 md:gap-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-emerald-200 hover:shadow-emerald-300 active:scale-95 text-xs md:text-sm uppercase tracking-widest">
-                            <template v-if = "isProcessingCheckout">
+                            <template v-if="isProcessingCheckout">
                                 <div class="w-4 h-4 md:w-5 md:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin">
                                 </div>
                                 Memproses...
@@ -876,16 +874,16 @@ const logout = () => {
                         <h2 class="font-black text-xs md:text-sm mb-1 italic">{{ currentSession?.store?.nama_toko || 'ARZU STORE' }}</h2>
                         <p class="font-bold text-[7px] md:text-[8px] tracking-widest border-y border-black py-1">CLOSING REPORT - POS {{ currentSession?.station_number }}</p>
                     </div>
-            
+                    
                     <div class="flex justify-between mb-1 font-bold"><span>MULAI :</span><span>{{ lastClosingData?.start_time }}</span></div>
                     <div class="flex justify-between mb-1 font-bold"><span>SELESAI :</span><span>{{ lastClosingData?.end_time }}</span></div>
                     <div class="flex justify-between mb-2 font-bold"><span>KASIR :</span><span>{{ currentUser.name.split(' ')[0] }}</span></div>
-            
+                    
                     <p class="border-b border-dashed border-black mb-2"></p>
                     <div class="flex justify-between font-bold"><span>SALES KOTOR :</span><span>{{ lastClosingData?.sales_gross?.toLocaleString('id-ID') || 0 }}</span></div>
                     <p class="border-b border-black my-1"></p>
                     <div class="flex justify-between font-black text-[10px] md:text-[11px]"><span>NET SALES :</span><span>{{ lastClosingData?.net_sales?.toLocaleString('id-ID') || 0 }}</span></div>
-            
+                    
                     <p class="border-b border-dashed border-black my-2"></p>
                     <div class="flex justify-between font-bold"><span>MODAL AWAL :</span><span>{{ currentSession?.modal_awal?.toLocaleString('id-ID') || 0 }}</span></div>
                     <div class="flex justify-between font-bold"><span>SALES TUNAI :</span><span>{{ lastClosingData?.sales_cash?.toLocaleString('id-ID') || 0 }}</span></div>
@@ -893,13 +891,13 @@ const logout = () => {
                     <div class="border-t border-dashed border-black my-1"></div>
                     <div class="flex justify-between font-bold"><span>SALES NON-TUNAI :</span><span>{{ lastClosingData?.sales_non_tunai?.toLocaleString('id-ID') || 0 }}</span></div>
                     <div class="flex justify-between font-black text-[10px] md:text-[11px] mt-1"><span>TOTAL MASUK :</span><span>{{ lastClosingData?.total_expected?.toLocaleString('id-ID') || 0 }}</span></div>
-            
+                    
                     <p class="border-b border-dashed border-black my-2"></p>
                     <div class="flex justify-between font-bold"><span>UANG FISIK :</span><span>{{ lastClosingData?.total_actual?.toLocaleString('id-ID') || 0 }}</span></div>
-                    <div class="flex justify-between font-black text-[11px] md:text-[12px] mt-1" :class="lastClosingData?.selisih < 0 ? 'text-black' : 'text-black'">
+                    <div class="flex justify-between font-black text-[11px] md:text-[12px] mt-1">
                         <span>SELISIH :</span><span>{{ lastClosingData?.selisih?.toLocaleString('id-ID') || 0 }}</span>
                     </div>
-            
+                    
                     <p class="border-b border-dashed border-black mt-4"></p>
                     <div class="text-center mt-2 font-bold text-[7px] md:text-[8px] tracking-widest">
                         <p>=== SHIFT SELESAI ===</p>
@@ -908,7 +906,7 @@ const logout = () => {
                 </div>
                 <div class="mt-5 md:mt-6 flex gap-2 md:gap-3 no-print">
                     <button @click="printClosing" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 md:py-3.5 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase tracking-widest shadow-lg transition-colors flex items-center justify-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                        <svg xmlns="http://www.w3.org/2000/xl" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                         Struk
                     </button>
                     <button @click="finishClosing" class="flex-1 bg-slate-100 hover:bg-slate-200 py-3 md:py-3.5 rounded-xl md:rounded-2xl font-black text-slate-600 text-[9px] md:text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center gap-2">
@@ -929,7 +927,6 @@ const logout = () => {
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-/* CSS Animasi untuk Teks Berjalan */
 .animate-marquee {
     display: inline-block;
     padding-left: 100%;
@@ -940,7 +937,6 @@ const logout = () => {
     100% { transform: translateX(-100%); }
 }
 
-/* Animasi Drawer Keranjang Mobile */
 @keyframes slide-in-right {
     from { transform: translateX(100%); }
     to { transform: translateX(0); }

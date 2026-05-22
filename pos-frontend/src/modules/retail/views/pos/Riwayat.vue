@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import api from '../../../api';
+import api from '../../../../api';
 import Sidebar from '../components/Sidebar.vue';
 
 // --- STATE DATA ---

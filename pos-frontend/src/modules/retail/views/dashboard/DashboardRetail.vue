@@ -1,190 +1,22 @@
 <script setup>
-import { ref, onMounted, nextTick, watch } from 'vue';
-import api from '../../../api.js';
-import Sidebar from '../components/Sidebar.vue';
-import Chart from 'chart.js/auto';
+import { onMounted } from 'vue';
+import { useDashboard } from '../../composables/useDashboard.js';
+import Sidebar from '../../components/Sidebar.vue';
 
-const reportData = ref(null);
-const isLoading = ref(true);
-
-// Ref untuk Canvas Grafik
-const lineChartCanvas = ref(null);
-const pieChartCanvas = ref(null);
-
-// Instance Chart
-let lineChart = null;
-let pieChart = null;
-
-const storeName = ref(localStorage.getItem('storeName') || 'POS UMKM');
-
-// --- FILTER TANGGAL ---
-const today = new Date().toISOString().split('T')[0];
-const lastWeek = new Date();
-lastWeek.setDate(lastWeek.getDate() - 6);
-const startDate = ref(lastWeek.toISOString().split('T')[0]);
-const endDate = ref(today);
-
-const formatRupiah = (angka) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(angka || 0);
-};
-
-// 🚀 RENDER GRAFIK GARIS (TREN PENJUALAN)
-const renderLineChart = (grafikData) => {
-    if (!lineChartCanvas.value || !grafikData) return;
-    if (lineChart) lineChart.destroy();
-
-    lineChart = new Chart(lineChartCanvas.value, {
-        type: 'line',
-        data: {
-            labels: grafikData.map(d => {
-                const date = new Date(d.tanggal);
-                return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-            }),
-            datasets: [
-                {
-                    label: 'Omzet (Rp)',
-                    data: grafikData.map(d => d.omzet),
-                    borderColor: '#4f46e5', // Indigo
-                    backgroundColor: 'rgba(79, 70, 229, 0.06)',
-                    borderWidth: 3,
-                    tension: 0.35,
-                    fill: true,
-                    pointBackgroundColor: '#ffffff',
-                    pointBorderColor: '#4f46e5',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
-                },
-                {
-                    label: 'Laba Bersih (Rp)',
-                    data: grafikData.map(d => d.laba || 0), 
-                    borderColor: '#10b981', // Emerald
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    borderDash: [5, 5],
-                    tension: 0.35,
-                    pointRadius: 0,
-                    pointHoverRadius: 4
-                },
-                {
-                    label: 'Kerugian Retur (Rp)',
-                    data: grafikData.map(d => d.retur_loss || 0), 
-                    borderColor: '#e11d48', // Rose 600
-                    backgroundColor: 'rgba(225, 29, 72, 0.1)', // Transparan dikit
-                    borderWidth: 2,
-                    tension: 0.35,
-                    fill: true,
-                    pointRadius: 0,
-                    pointHoverRadius: 4
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: { 
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                    padding: 10,
-                    cornerRadius: 8,
-                    callbacks: {
-                        label: function(context) {
-                            return ' ' + context.dataset.label + ': ' + new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(context.parsed.y);
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: { 
-                    beginAtZero: true, 
-                    grid: { color: '#f1f5f9', borderDash: [4, 4] }, 
-                    border: { display: false },
-                    ticks: { 
-                        font: { family: "'Inter', sans-serif", size: 10, weight: '600' },
-                        color: '#94a3b8',
-                        callback: (v) => v >= 1000000 ? 'Rp ' + (v / 1000000).toFixed(1) + 'M' : 'Rp ' + v.toLocaleString('id-ID')
-                    } 
-                },
-                x: { 
-                    grid: { display: false },
-                    border: { display: false },
-                    ticks: { font: { family: "'Inter', sans-serif", size: 10, weight: '600' }, color: '#64748b' }
-                }
-            }
-        }
-    });
-};
-
-// 🚀 RENDER GRAFIK DONAT (KOMPOSISI BARANG TERLARIS)
-const renderPieChart = (bestSellers) => {
-    if (!pieChartCanvas.value || !bestSellers || bestSellers.length === 0) return;
-    if (pieChart) pieChart.destroy();
-
-    const top5 = bestSellers.slice(0, 5);
-    
-    pieChart = new Chart(pieChartCanvas.value, {
-        type: 'doughnut',
-        data: {
-            labels: top5.map(item => item.nama_produk),
-            datasets: [{
-                data: top5.map(item => item.qty_terjual),
-                backgroundColor: ['#4f46e5', '#3b82f6', '#0ea5e9', '#10b981', '#f59e0b'],
-                borderWidth: 0,
-                hoverOffset: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '75%',
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                    callbacks: {
-                        label: function(context) { return ` Terjual: ${context.parsed} Pcs`; }
-                    }
-                }
-            }
-        }
-    });
-};
-
-const fetchData = async () => {
-    isLoading.value = true;
-    try {
-        const response = await api.get('/retail/report/dashboard', {
-            params: { start_date: startDate.value, end_date: endDate.value }
-        });
-        reportData.value = response.data.data;
-        
-        // Memperbaiki bug lifecycle canvas ghaib kemarin beb
-        isLoading.value = false;
-        
-        nextTick(() => {
-            renderLineChart(reportData.value.grafik_penjualan);
-            renderPieChart(reportData.value.best_sellers);
-        });
-    } catch (error) {
-        console.error("Gagal tarik data dashboard:", error);
-        isLoading.value = false;
-    }
-};
+const {
+    reportData,
+    isLoading,
+    storeName,
+    startDate,
+    endDate,
+    lineChartCanvas,
+    pieChartCanvas,
+    formatRupiah,
+    setQuickFilter,
+    fetchData
+} = useDashboard();
 
 onMounted(fetchData);
-
-const setQuickFilter = (days) => {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(end.getDate() - days);
-    
-    endDate.value = end.toISOString().split('T')[0];
-    startDate.value = start.toISOString().split('T')[0];
-};
-
-watch([startDate, endDate], fetchData);
 </script>
 
 <template>
@@ -214,7 +46,7 @@ watch([startDate, endDate], fetchData);
                 </div>
             </div>
 
-            <div v-if="isLoading" class="py-32 flex flex-col items-center justify-center bg-white rounded-[24px] border border-slate-200 shadow-sm">
+            <div window v-if="isLoading" class="py-32 flex flex-col items-center justify-center bg-white rounded-[24px] border border-slate-200 shadow-sm">
                 <div class="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
                 <p class="text-slate-400 font-bold text-xs uppercase tracking-widest animate-pulse">Menghubungkan Data Lapangan...</p>
             </div>
@@ -271,7 +103,7 @@ watch([startDate, endDate], fetchData);
                             </div>
                         </div>
                         <div>
-                            <p class="text-2xl font-black text-slate-900 tracking-tight">{{ reportData?.summary?.total_produk_terjual || 0 }} <span class="text-[12px] font-bold text-slate-400 uppercase tracking-normal">Pcs</span></p>
+                            <p class="text-2xl font-black text-slate-900 tracking-tight">{{ reportData?.summary?.total_produk_terjual || 0 }} <span class="text-[12px] font-bold text-slate-400">Pcs</span></p>
                             <p class="text-[10px] font-bold text-slate-400 mt-1">Produk Keluar Kasir</p>
                         </div>
                     </div>
@@ -381,7 +213,7 @@ watch([startDate, endDate], fetchData);
                                 <tr v-for="(item, index) in reportData.best_sellers" :key="index" class="hover:bg-slate-50/50 transition-colors">
                                     <td class="px-6 py-3 text-center">
                                         <span class="inline-flex items-center justify-center w-6 h-6 rounded-md text-[10px] font-black" 
-                                              :class="index === 0 ? 'bg-amber-100 text-amber-600' : (index === 1 ? 'bg-slate-200 text-slate-600' : (index === 2 ? 'bg-orange-100 text-orange-700' : 'text-slate-400'))">
+                                                :class="index === 0 ? 'bg-amber-100 text-amber-600' : (index === 1 ? 'bg-slate-200 text-slate-600' : (index === 2 ? 'bg-orange-100 text-orange-700' : 'text-slate-400'))">
                                             #{{ index + 1 }}
                                         </span>
                                     </td>

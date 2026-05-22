@@ -30,7 +30,6 @@ const handleLogin = async () => {
     localStorage.setItem('name', data.name || '');
     localStorage.setItem('storeName', data.store_name || 'Toko Belum Di-Setup');
     
-    // 🚀 Simpan tipe bisnis kalau ada (buat acuan komponen lain)
     if (data.business_type) {
         localStorage.setItem('businessType', data.business_type);
     }
@@ -50,22 +49,20 @@ const handleLogin = async () => {
       text: 'Selamat datang di sistem manajemen.'
     });
 
-    // 🚀 REDIRECT CERDAS BERDASARKAN TIPE BISNIS
+    // 🚀 FIX: Redirect ke /setup-toko jika toko belum di-onboarding (Sesuai index.js)
     if (data.has_setup_store === false) {
-      router.push('/setup');
+      router.push('/setup-toko');
     } else {
       const roleUser = data.role.toLowerCase();
-
-      // Ambil tipe bisnis dari response backend
       let tipeBisnis = (data.business_type || data.tipe_bisnis || '').toLowerCase();
 
-      // 🚀 HACK SAKTI (Jaga-jaga kalau backend kosong, tapi emailnya ada kata laundry)
+      // 🚀 HACK SAKTI JAGA-JAGA
       if (!tipeBisnis || tipeBisnis === '') {
         if (identifier.value.toLowerCase().includes('laundry')) {
-              tipeBisnis = 'laundry';
-          } else {
-              tipeBisnis = 'retail'; // Default aman
-          }
+            tipeBisnis = 'laundry';
+        } else {
+            tipeBisnis = 'retail';
+        }
       }
 
       // 🚀 LOGIKA ROUTING CLEAN & LANGSUNG TEMBAK!
@@ -82,10 +79,9 @@ const handleLogin = async () => {
           router.push(roleUser === 'owner' ? '/cuci-kendaraan/dashboard' : '/cuci-kendaraan/pos');
       } 
       else if (tipeBisnis.includes('f&b') || tipeBisnis.includes('food')) {
-          router.push(roleUser === 'owner' ? '/fnb/dashboard' : '/fnb/kasir'); 
+          router.push(roleUser === 'owner' ? '/fnb/laporan' : '/fnb/kasir'); 
       } 
       else {
-          // 🚀 JALUR KHUSUS RETAIL / MINIMARKET
           if (roleUser === 'owner') {
               router.push('/retail/dashboard');
           } else {
