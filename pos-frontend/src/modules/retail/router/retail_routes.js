@@ -24,4 +24,16 @@ export default [
     component: () => import('../views/pos/BukaKasir.vue'), // arahkan tepat ke file lego anyar lu beb
     meta: { requiresAuth: true }
   },
+  {
+    path: '/retail/pos/riwayat',
+    name: 'Riwayat',
+    component: () => import('../views/pos/Riwayat.vue'), // arahkan tepat ke file lego anyar lu beb
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/retail/produk/master-produk',
+    name: 'MasterProduk',
+    component: () => import('../views/produk/MasterProduk.vue'), // arahkan tepat ke file lego anyar lu beb
+    meta: { requiresAuth: true }
+  },
 ]

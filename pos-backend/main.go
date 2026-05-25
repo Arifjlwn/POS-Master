@@ -5,8 +5,7 @@ import (
 	"net/http"
 	"os"
 	"pos-backend/src/core/config"
-	"pos-backend/controllers/auth"   
-	"pos-backend/controllers/retail" 
+	"pos-backend/controllers/auth"
 	"pos-backend/src/core/middlewares"
 	"pos-backend/models"
 	"time"
@@ -17,6 +16,9 @@ import (
 	
 	laundryDelivery "pos-backend/src/modules/jasalayanan/laundry/delivery"
 	laundryRepository "pos-backend/src/modules/jasalayanan/laundry/repository"
+
+	retailDelivery "pos-backend/src/modules/retail/delivery"
+	retailRepository "pos-backend/src/modules/retail/repository"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -166,48 +168,15 @@ func main() {
 		})
 
 		// ==========================================
-		// 🛒 RUTE KHUSUS RETAIL (URL nambah /retail)
+		// 🛒 RUTE KHUSUS RETAIL (VERSI BERSIH MODULAR)
 		// ==========================================
 		retailAPI := api.Group("/retail")
 		{
-			// -- Rute Produk (CRUD) --
-			retailAPI.POST("/products", retail.CreateProduct)
-			retailAPI.GET("/products", retail.GetProducts)
-			retailAPI.PUT("/products/:id", retail.UpdateProduct)
-			retailAPI.DELETE("/products/:id", retail.DeleteProduct)
-			retailAPI.GET("/products/export", retail.ExportProducts)
-			retailAPI.POST("/products/import", retail.ImportProducts)
-			retailAPI.GET("/categories", retail.GetCategories)
-
-			// -- Rute Karyawan --
-			retailAPI.POST("/employees", retail.CreateEmployee)
-			retailAPI.GET("/employees", retail.GetEmployees)
-			retailAPI.PUT("/employees/:id", retail.UpdateEmployee)
-
-			retailAPI.POST("/schedules/bulk", retail.SaveSchedules)
-			retailAPI.GET("/schedules", retail.GetSchedules)
-
-			// -- Rute Absensi --
-			retailAPI.POST("/attendance", retail.StoreAttendance)
-			retailAPI.GET("/attendance", retail.GetAttendance)
-			retailAPI.GET("/attendance/export", retail.ExportAttendance)
-
-			// --- RUTE RETUR, LPB, STOK OPNAME ---
-			retailAPI.POST("/returns", retail.CreateReturn)
-			retailAPI.GET("/returns", retail.GetReturns)
-			retailAPI.POST("/purchases", retail.CreateLPB)
-			retailAPI.POST("/stock-opname", retail.CreateStockOpname)
-			retailAPI.GET("/stock-opname/history", retail.GetStockOpnameHistory)
-
-			// --- RUTE KASIR (POS) ---
-			retailAPI.POST("/pos/open-session", retail.OpenSession)
-			retailAPI.GET("/pos/check-session", retail.CheckSessionStatus)
-			retailAPI.POST("/pos/close-session/:id", retail.CloseSession)
-			retailAPI.POST("/checkout", retail.CreateTransaction)
-			retailAPI.GET("/transactions", retail.GetTransactions)
-
-			// Rute Laporan
-			retailAPI.GET("/report/dashboard", retail.GetDashboardReport)
+			// 🚀 KUNCI UTAMA: WIRING MODUL MODULAR RETAIL YANG BARU
+			// Ini bakal nge-handle: Schedule, Session Kasir, Checkout POS, Absensi, Retur, LPB, dan Dashboard SO!
+			retailRepo := retailRepository.NewRetailRepo(src.DB)
+			retailHandler := retailDelivery.NewRetailHandler(retailRepo)
+			retailDelivery.RegisterRetailInventoryRoutes(retailAPI, retailHandler)
 		}
 
 		// ==========================================

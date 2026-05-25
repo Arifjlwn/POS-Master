@@ -4,11 +4,10 @@ import (
     "log"
     "os"
     
-    // 🚀 Import model FnB dari rumah barunya
+    retailDomain "pos-backend/src/modules/retail/domain"
     fnbDomain"pos-backend/src/modules/fnb/domain"
     laundryDomain "pos-backend/src/modules/jasalayanan/laundry/domain"
     "pos-backend/models" // Biarin aja, buat nahan modul Retail & Laundry biar ga error
-
     "gorm.io/driver/postgres" 
     "gorm.io/gorm"
 )
@@ -47,11 +46,11 @@ func ConnectDatabase() {
         // 🛍️ RETAIL & INVENTORY
         // ==========================================
         &models.TransactionDetail{}, 
-        &models.Purchase{},          
-        &models.PurchaseDetail{},
-        &models.StockOpname{},       
-        &models.StockOpnameDetail{},
-        &models.ProductReturn{},     
+        &retailDomain.StockOpname{},
+        &retailDomain.StockOpnameDetail{},
+        &retailDomain.ProductReturn{},
+        &retailDomain.Purchase{},
+        &retailDomain.PurchaseDetail{},     
         
         // ==========================================
         // 🧺 LAYANAN & JASA (LAUNDRY)

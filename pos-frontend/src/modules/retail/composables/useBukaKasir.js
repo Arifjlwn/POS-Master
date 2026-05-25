@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { sessionService } from '../services/posService.js';
+// 🚀 1. Arahkan import dengan benar ke posService, sesuaikan relative path foldernya
+import { posService } from '../services/posService.js'; 
 import Swal from 'sweetalert2';
 
 export function useBukaKasir() {
@@ -18,8 +19,10 @@ export function useBukaKasir() {
 
     // 🔍 Cek Sesi Aktif pas Halaman Pertama Kali Dibuka
     const checkExistingSession = async () => {
+        const token = localStorage.getItem('token');
         try {
-            const res = await sessionService.checkActiveSession();
+            // 🚀 2. Ganti ke posService.checkSession dan kirim tokennya
+            const res = await posService.checkSession(token);
             if (res.has_session) {
                 router.push('/retail/pos');
             }
@@ -47,7 +50,8 @@ export function useBukaKasir() {
 
         loading.value = true;
         try {
-            await sessionService.openSession({
+            // 🚀 3. Ganti ke objek posService yang valid
+            await posService.openSession({
                 station_number: stationNumber.value,
                 modal_awal: parseFloat(modalAwal.value)
             });
@@ -66,7 +70,7 @@ export function useBukaKasir() {
         } catch (error) {
             const msg = error.response?.data?.error || 'Gagal membuka kasir';
             
-            // 📸 Interseptor Otorisasi Absensi Face AI / PIN Kak Arif
+            // 📸 Interseptor Otorisasi Absensi Face AI / PIN
             if (msg.toLowerCase().includes('absen')) {
                 Swal.fire({
                     title: 'Otorisasi Gagal',
