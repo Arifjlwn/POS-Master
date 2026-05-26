@@ -84,7 +84,7 @@ export default [
   {
     path: '/retail/sdm/karyawan',
     name: 'Karyawan',
-    component: () => import('../views/sdm/ManageKaryawan.vue'),
+    component: () => import('../views/sdm/ManageEmployee.vue'),
     meta: { requiresAuth: true }
   },
 ]

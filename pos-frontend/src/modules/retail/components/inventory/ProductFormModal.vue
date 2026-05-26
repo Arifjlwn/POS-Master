@@ -133,12 +133,21 @@ const triggerImageUpload = () => {
                     <div class="md:col-span-2 grid grid-cols-1 gap-4 bg-slate-50 p-5 rounded-[24px] border border-slate-200">
                         <div v-if="form.has_satuan_besar" class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
                             <div>
-                                <label class="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-2 block">Jumlah {{ form.satuan_besar || 'KARTON' }}</label>
-                                <input :value="stokDalamKarton" @input="emit('update:stokDalamKarton', $event.target.value)" type="number" min="0" placeholder="0" class="w-full px-4 py-3.5 rounded-xl bg-white border border-slate-200 focus:border-indigo-600 outline-none font-black text-lg text-indigo-600 transition-all shadow-sm">
+                                <label class="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-2 block">Jumlah {{ form.satuan_besar }}</label>
+                                <input 
+                                    :value="stokDalamKarton"
+                                    @input="emit('update:stokDalamKarton', Number($event.target.value))" 
+                                    type="number" min="0" placeholder="0" 
+                                    class="w-full px-4 py-3.5 rounded-xl bg-white border border-slate-200 focus:border-indigo-600 outline-none font-black text-lg text-indigo-600 transition-all shadow-sm">
                             </div>
                             <div>
                                 <label class="text-[9px] font-black text-amber-600 uppercase tracking-widest mb-2 block">+ Lebih Eceran ({{ form.satuan_dasar }})</label>
-                                <input :value="eceranTambahan" @input="emit('update:eceranTambahan', $event.target.value)" type="number" min="0" placeholder="0" class="w-full px-4 py-3.5 rounded-xl bg-white border border-slate-200 focus:border-amber-600 outline-none font-black text-lg text-amber-600 transition-all shadow-sm">
+                                <input 
+                                    :value="eceranTambahan"
+                                    @input="emit('update:eceranTambahan', Number($event.target.value))"
+                                    type="number" min="0" placeholder="0"
+                                    class="w-full px-4 py-3.5 rounded-xl bg-white border border-slate-200 focus:border-amber-600 outline-none font-black text-lg text-amber-600 transition-all shadow-sm"
+                                >
                             </div>
                             <div>
                                 <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Total Stok Akhir</label>

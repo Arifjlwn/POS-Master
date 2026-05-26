@@ -93,6 +93,7 @@ export function useMasterProduk() {
             eceran_tambahan.value
         ],
         ([hargaBesar, isiPerBesar, hasSatuanBesar, jmlKarton, jmlEceran]) => {
+            
             // 1. Hitung Otomatis Harga Modal Eceran
             if (hasSatuanBesar && hargaBesar > 0 && isiPerBesar > 0) {
                 form.value.cost_price = Math.round(hargaBesar / isiPerBesar);
@@ -100,9 +101,16 @@ export function useMasterProduk() {
 
             // 2. Rumus Hitung Stok Campuran Grosir (Karton + Eceran Tambahan)
             if (hasSatuanBesar && isiPerBesar > 0) {
-                const totalDariKarton = (jmlKarton > 0) ? (jmlKarton * isiPerBesar) : 0;
-                const totalDariEceran = (jmlEceran > 0) ? jmlEceran : 0;
-                form.value.stock = totalDariKarton + totalDariEceran;
+                // 🚀 Bantai String Concatenation: Paksa semua data jadi INT / Number!
+                const karton = parseInt(jmlKarton) || 0;
+                const eceran = parseInt(jmlEceran) || 0;
+                const isi = parseInt(isiPerBesar) || 0;
+
+                const totalDariKarton = karton * isi;
+                
+                // Matematika mutlak: (Karton * Isi) + Eceran
+                form.value.stock = totalDariKarton + eceran;
+                
             } else if (!hasSatuanBesar) {
                 stok_dalam_karton.value = null;
                 eceran_tambahan.value = null;
