@@ -70,12 +70,12 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                             <span>Riwayat Transaksi</span>
                         </router-link>
 
-                        <router-link to="/retail/absensi" @click="sidebarOpen = false" class="nav-link group" :class="{ 'active': route.path === '/retail/absensi' }">
+                        <router-link to="/retail/sdm/absensi" @click="sidebarOpen = false" class="nav-link group" :class="{ 'active': route.path === '/retail/sdm/absensi' }">
                             <svg class="icon group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                             <span>Absensi</span>
                         </router-link>
 
-                        <router-link to="/retail/schedule" @click="sidebarOpen = false" class="nav-link group" :class="{ 'active': route.path === '/retail/schedule' }">
+                        <router-link to="/retail/sdm/schedule" @click="sidebarOpen = false" class="nav-link group" :class="{ 'active': route.path === '/retail/sdm/schedule' }">
                             <svg class="icon group-hover:rotate-45" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                             <span>Jadwal Shift (TSM)</span>
                         </router-link>
@@ -92,13 +92,13 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                         <router-link v-if="user.role === 'owner'" to="/retail/produk/master-produk" @click="sidebarOpen = false" class="sub-link hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-500" :class="{ 'active-sub !text-emerald-700 !bg-emerald-50/80 !border-emerald-500': route.path.startsWith('/retail/produk/master-produk') }">
                             Master Data Produk
                         </router-link>
-                        <router-link to="/retail/penerimaan-barang" @click="sidebarOpen = false" class="sub-link hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-500" :class="{ 'active-sub !text-emerald-700 !bg-emerald-50/80 !border-emerald-500': route.path === '/retail/penerimaan-barang' }">
+                        <router-link to="/retail/produk/penerimaan-barang" @click="sidebarOpen = false" class="sub-link hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-500" :class="{ 'active-sub !text-emerald-700 !bg-emerald-50/80 !border-emerald-500': route.path === '/retail/produk/penerimaan-barang' }">
                             Terima Barang (LPB)
                         </router-link>
-                        <router-link to="/retail/stock-opname" @click="sidebarOpen = false" class="sub-link hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-500" :class="{ 'active-sub !text-emerald-700 !bg-emerald-50/80 !border-emerald-500': route.path === '/retail/stock-opname' }">
+                        <router-link to="/retail/inventori/stock-opname" @click="sidebarOpen = false" class="sub-link hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-500" :class="{ 'active-sub !text-emerald-700 !bg-emerald-50/80 !border-emerald-500': route.path === '/retail/inventori/stock-opname' }">
                             Stock Opname
                         </router-link>
-                        <router-link to="/retail/retur-barang" @click="sidebarOpen = false" class="sub-link hover:text-rose-600 hover:bg-rose-50 hover:border-rose-500" :class="{ 'active-sub !text-rose-700 !bg-rose-50/80 !border-rose-500': route.path.startsWith('/retail/retur-barang') }">
+                        <router-link to="/retail/produk/retur-barang" @click="sidebarOpen = false" class="sub-link hover:text-rose-600 hover:bg-rose-50 hover:border-rose-500" :class="{ 'active-sub !text-rose-700 !bg-rose-50/80 !border-rose-500': route.path.startsWith('/retail/produk/retur-barang') }">
                             Waste & Retur
                         </router-link>
                     </div>
@@ -111,23 +111,20 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                     </button>
                     
                     <div v-show="openGroups.admin" class="mt-2 space-y-1 ml-4 border-l-2 border-slate-100 pl-2">
-                        <router-link to="/retail/stock-opname/report" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/stock-opname/report' }">
-                            Laporan Hasil SO
-                        </router-link>
-                        <router-link to="/retail/retur-barang/report" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/retur-barang/report' }">
-                            Laporan Retur Barang
-                        </router-link>
                         <template v-if="user.role === 'owner'">
                             <router-link to="/retail/dashboard" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/dashboard' }">
                                 Dashboard Analitik
                             </router-link>
-                            <router-link to="/retail/karyawan" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-emerald-500': route.path.startsWith('/retail/karyawan') }">
+                            <router-link to="/retail/sdm/karyawan" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-emerald-500': route.path.startsWith('/retail/sdm/karyawan') }">
                                 Manajemen Karyawan
                             </router-link>
-                            <router-link to="/setup-toko" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path.startsWith('/setup-toko') }">
-                                Pengaturan Sistem
-                            </router-link>
                         </template>
+                        <router-link to="/retail/inventori/report" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/inventori/report' }">
+                            Laporan Hasil SO
+                        </router-link>
+                        <router-link to="/retail/produk/retur-barang/report" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/produk/retur-barang/report' }">
+                            Laporan Retur Barang
+                        </router-link>
                     </div>
                 </div>
 

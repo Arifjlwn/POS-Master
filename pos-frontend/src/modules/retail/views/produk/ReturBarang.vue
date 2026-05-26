@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
-import Sidebar from '../components/Sidebar.vue';
-import api from '../../../api.js';
+import Sidebar from '../../components/Sidebar.vue';
+import api from '../../../../api.js';
 import Swal from 'sweetalert2';
 import { Html5Qrcode } from "html5-qrcode";
 

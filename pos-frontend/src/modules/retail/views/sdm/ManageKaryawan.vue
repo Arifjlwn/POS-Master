@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'; // 🚀 FIX: Tambah computed untuk Live Search
-import api from '../../../api.js';
-import Sidebar from '../components/Sidebar.vue';
+import api from '../../../../api.js';
+import Sidebar from '../../components/Sidebar.vue';
 import Swal from 'sweetalert2';
 
 // --- STATE DATA ---

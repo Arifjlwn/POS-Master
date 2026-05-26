@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onBeforeUnmount } from 'vue';
-import Sidebar from '../components/Sidebar.vue';
-import api from '../../../api.js';
+import Sidebar from '../../components/Sidebar.vue';
+import api from '../../../../api.js';
 import Swal from 'sweetalert2';
 import { Html5Qrcode } from "html5-qrcode"; // 🚀 IMPORT SCANNER
 
