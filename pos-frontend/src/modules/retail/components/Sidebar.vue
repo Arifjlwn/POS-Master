@@ -114,7 +114,7 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                             <router-link to="/retail/dashboard" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/dashboard' }">
                                 Dashboard Analitik
                             </router-link>
-                            <router-link to="/retail/sdm/karyawan" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-emerald-500': route.path.startsWith('/retail/sdm/karyawan') }">
+                            <router-link to="/retail/sdm/karyawan" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/sdm/karyawan' }">
                                 Manajemen Karyawan
                             </router-link>
                         </template>
