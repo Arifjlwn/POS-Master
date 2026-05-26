@@ -468,11 +468,13 @@ func (h *RetailHandler) CreateEmployee(c *gin.Context) {
 
 	lastEmployee, err := h.Repo.GetLastEmployeeNIK(storeID, currentYear)
 	if err != nil {
-		newNIK = currentYear + "0001"
+		newNIK = fmt.Sprintf("%s%03d001", currentYear, storeID)
 	} else {
 		lastNIK := *lastEmployee.NIK
-		lastSequence, _ := strconv.Atoi(lastNIK[4:])
-		newNIK = fmt.Sprintf("%s%04d", currentYear, lastSequence+1)
+		
+		// 🚀 Ambil 3 digit paling belakang sebagai urutan karyawan
+		lastSequence, _ := strconv.Atoi(lastNIK[len(lastNIK)-3:])
+		newNIK = fmt.Sprintf("%s%03d%03d", currentYear, storeID, lastSequence+1)
 	}
 
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)

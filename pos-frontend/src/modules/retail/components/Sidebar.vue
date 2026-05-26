@@ -6,9 +6,9 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
 </script>
 
 <template>
-    <div class="min-h-screen bg-[#F8FAFC] flex flex-col relative overflow-hidden font-sans selection:bg-indigo-100 selection:text-indigo-600">
+    <div class="h-screen w-screen flex flex-col bg-[#F8FAFC] font-sans overflow-hidden relative selection:bg-indigo-100 selection:text-indigo-600">
         
-        <header class="bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-40 shadow-sm">
+        <header class="bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-40 shadow-sm shrink-0 no-print">
             <div class="flex items-center gap-4 sm:gap-5">
                 <button @click="sidebarOpen = true" class="group flex flex-col gap-1.5 p-2 rounded-xl hover:bg-indigo-50 transition-all active:scale-95">
                     <div class="w-6 h-0.5 bg-indigo-600 rounded-full group-hover:w-4 transition-all"></div>
@@ -39,9 +39,9 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
             <div v-if="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-40 transition-all"></div>
         </Transition>
 
-        <aside :class="sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'" class="fixed inset-y-0 left-0 w-[280px] sm:w-[320px] bg-white transform transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-50 flex flex-col border-r border-slate-100">
+        <aside :class="sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'" class="fixed inset-y-0 left-0 w-[280px] sm:w-[320px] bg-white transform transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-50 flex flex-col border-r border-slate-100 h-full">
             
-            <div class="p-6 sm:p-8 flex items-center justify-between bg-slate-50/50 border-b border-slate-100">
+            <div class="p-6 sm:p-8 flex items-center justify-between bg-slate-50/50 border-b border-slate-100 shrink-0">
                 <div class="flex flex-col">
                     <div class="font-black text-xl sm:text-2xl text-slate-900 tracking-tighter leading-none">
                         POS<span class="text-indigo-600">UMKM</span>
@@ -53,8 +53,7 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                 </button>
             </div>
 
-            <nav class="flex-1 px-4 sm:px-6 py-6 space-y-8 overflow-y-auto custom-scrollbar">
-                
+            <nav class="flex-1 px-4 sm:px-6 py-6 space-y-8 overflow-y-auto custom-scrollbar min-h-0">
                 <div>
                     <div class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] px-2 mb-4 flex items-center gap-2">
                         <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.6)]"></span> Operasional
@@ -65,8 +64,8 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                             <span>Mesin Kasir (POS)</span>
                         </router-link>
 
-                        <router-link to="/retail/pos/riwayat" @click="sidebarOpen = false" class="nav-link group" :class="{ 'active': route.path.startsWith('/retail/riwayat') }">
-                            <svg class="icon group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                        <router-link to="/retail/pos/riwayat" @click="sidebarOpen = false" class="nav-link group" :class="{ 'active': route.path.startsWith('/retail/pos/riwayat') }">
+                            <svg class="icon group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2-2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
                             <span>Riwayat Transaksi</span>
                         </router-link>
 
@@ -127,15 +126,9 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                         </router-link>
                     </div>
                 </div>
-
-                <div v-if="user.role === 'staff'" class="px-4 py-4 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center gap-2 mt-4 text-slate-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                    <span class="text-[9px] font-black uppercase tracking-[0.2em]">Akses Manajemen Dibatasi</span>
-                </div>
-
             </nav>
 
-            <div class="p-4 sm:p-6 bg-slate-50/80 border-t border-slate-100">
+            <div class="p-4 sm:p-6 bg-slate-50/80 border-t border-slate-100 shrink-0">
                 <div class="flex items-center justify-between p-3 sm:p-4 bg-white rounded-2xl shadow-sm border border-slate-100 hover:border-slate-200 transition-colors">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-[14px] bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md">
@@ -147,13 +140,13 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                         </div>
                     </div>
                     <button @click="logout" class="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-white hover:bg-rose-500 transition-all active:scale-95 group" title="Logout">
-                        <svg class="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3 3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        <svg class="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                     </button>
                 </div>
             </div>
         </aside>
 
-        <main class="flex-1 w-full max-w-full overflow-y-auto bg-[#F8FAFC] h-[calc(100vh-64px)] relative scroll-smooth custom-scrollbar">
+        <main class="flex-1 w-full overflow-y-auto bg-[#F8FAFC] relative scroll-smooth custom-scrollbar">
             <slot /> 
         </main>
 
