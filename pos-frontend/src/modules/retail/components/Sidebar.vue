@@ -89,7 +89,7 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                     </button>
                     
                     <div v-show="openGroups.stock" class="mt-2 space-y-1 ml-4 border-l-2 border-slate-100 pl-2">
-                        <router-link v-if="user.role === 'owner'" to="/retail/master-produk" @click="sidebarOpen = false" class="sub-link hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-500" :class="{ 'active-sub !text-emerald-700 !bg-emerald-50/80 !border-emerald-500': route.path.startsWith('/retail/master-produk') }">
+                        <router-link v-if="user.role === 'owner'" to="/retail/produk/master-produk" @click="sidebarOpen = false" class="sub-link hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-500" :class="{ 'active-sub !text-emerald-700 !bg-emerald-50/80 !border-emerald-500': route.path.startsWith('/retail/produk/master-produk') }">
                             Master Data Produk
                         </router-link>
                         <router-link to="/retail/penerimaan-barang" @click="sidebarOpen = false" class="sub-link hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-500" :class="{ 'active-sub !text-emerald-700 !bg-emerald-50/80 !border-emerald-500': route.path === '/retail/penerimaan-barang' }">

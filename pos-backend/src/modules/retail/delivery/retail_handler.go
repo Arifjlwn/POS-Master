@@ -1063,6 +1063,11 @@ func (h *RetailHandler) CheckSessionStatus(c *gin.Context) {
 		return
 	}
 
+	store, errStore := h.Repo.GetStoreByIDSimple(db, storeID)
+	if errStore == nil {
+		session.Store = *store // Inject data toko ke object session sebelum dikirim ke Vue
+	}
+
 	c.JSON(http.StatusOK, gin.H{"has_session": true, "session": session})
 }
 

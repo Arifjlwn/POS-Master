@@ -1,8 +1,9 @@
 <script setup>
 import { useJournal } from '../../composables/useJournal.js';
 import Sidebar from '../../components/Sidebar.vue';
+// 🚀 PERUBAHAN 1: Import file komponen ReceiptModal lu di sini beb!
+import ReceiptModal from '../../components/pos/ReceiptModal.vue';
 
-// 🚀 Hubungkan view ke sirkuit otak Composable yang utuh di atas
 const {
     isLoading,
     tanggalDipilih,
@@ -106,82 +107,16 @@ const {
             </div>
         </main>
 
-        <div v-if="showReceipt" class="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-[200] p-4 backdrop-blur-sm no-print">
-            <div class="bg-white rounded-[40px] p-6 md:p-8 max-w-sm w-full shadow-2xl border-[8px] border-slate-800 flex flex-col max-h-[90vh]">
-                
-                <div class="overflow-y-auto custom-scrollbar bg-white p-2 mx-auto" id="print-area" style="width: 58mm;">
-                    <div class="text-center mb-4 font-mono leading-none">
-                        <h2 class="font-black text-sm uppercase tracking-tighter mb-1 italic">
-                            {{ selectedTrx.Store?.nama_toko || 'ARZU STORE' }}
-                        </h2>
-                        <p class="text-[8px] font-bold uppercase tracking-widest opacity-80">
-                            {{ selectedTrx.Store?.alamat || 'JAKARTA, INDONESIA' }}
-                        </p>
-                        <p class="text-[8px] font-bold uppercase tracking-widest opacity-80 mt-1">
-                            WA: {{ selectedTrx.Store?.telepon || '-' }}
-                        </p>
-                    </div>
-
-                    <div class="border-y border-black py-1.5 text-center font-black mb-3 font-mono text-[9px] tracking-[0.2em] uppercase bg-slate-100">
-                        Invoice Reprint
-                    </div>
-
-                    <div class="mb-3 text-[8px] font-bold font-mono uppercase space-y-0.5">
-                        <div class="flex justify-between"><span>DATE:</span><span>{{ new Date(selectedTrx.created_at).toLocaleString('id-ID') }}</span></div>
-                        <div class="flex justify-between"><span>CASHIER:</span><span>{{ selectedTrx.User?.name ? selectedTrx.User.name.split(' ')[0] : 'KASIR' }}</span></div>
-                    </div>
-
-                    <div class="border-b border-black border-dashed mb-2"></div>
-
-                    <div v-for="item in selectedTrx.details" :key="item.id" class="mb-2 font-bold font-mono text-[9px] leading-tight uppercase">
-                        <div class="truncate w-full pr-2">{{ item.product?.nama_produk || 'Item Belanja' }}</div>
-                        <div class="flex justify-between pl-2 text-[8px] mt-0.5">
-                            <span>{{ item.kuantitas }} x {{ formatRupiah(item.harga_satuan) }}</span>
-                            <span class="font-black text-[9px]">{{ formatRupiah(item.sub_total) }}</span>
-                        </div>
-                    </div>
-
-                    <div class="border-t border-black border-dashed mt-2 pt-2"></div>
-
-                    <div class="flex justify-between font-black text-[11px] mb-2 font-mono uppercase italic">
-                        <span>TOTAL:</span>
-                        <span>Rp{{ formatRupiah(selectedTrx.total_harga) }}</span>
-                    </div>
-
-                    <div class="border-b border-black border-dashed mb-2"></div>
-
-                    <div class="flex justify-between mb-1 font-bold font-mono text-[8px] uppercase">
-                        <span>PAID ({{ selectedTrx.metode_bayar || 'CASH' }}):</span>
-                        <span>Rp{{ formatRupiah(selectedTrx.nominal_bayar) }}</span>
-                    </div>
-                    <div class="flex justify-between font-black font-mono text-[9px] uppercase italic text-black">
-                        <span>CHANGE:</span>
-                        <span>Rp{{ formatRupiah(selectedTrx.kembalian) }}</span>
-                    </div>
-
-                    <div class="mt-5 text-[7px] font-bold text-center border-t border-black border-dashed pt-2 font-mono uppercase space-y-1">
-                        <p>SUBTOTAL: Rp{{ formatRupiah(selectedTrx.sub_total) }} | TAX: Rp{{ formatRupiah(selectedTrx.pajak) }}</p>
-                        <p class="font-black">INV: {{ selectedTrx.no_invoice }}</p>
-                    </div>
-
-                    <div class="text-center mt-4 font-black font-mono text-[8px] border-2 border-black p-1.5 uppercase">
-                        Terima Kasih!<br>Barang tidak dapat ditukar.
-                    </div>
-                </div>
-
-                <div class="mt-6 flex flex-col gap-2 md:gap-3 shrink-0 no-print">
-                    <button @click="printReceipt" class="w-full bg-blue-600 text-white py-3 md:py-4 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-blue-200 flex items-center justify-center gap-2 active:scale-95 transition-all">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 md:w-5 md:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
-                        Cetak Ulang Struk
-                    </button>
-                    <button @click="showReceipt = false" class="w-full bg-slate-100 text-slate-500 py-3 md:py-3.5 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all">Tutup</button>
-                </div>
-            </div>
-        </div>
+        <ReceiptModal 
+            :show="showReceipt" 
+            :invoiceData="selectedTrx" 
+            @close="showReceipt = false" 
+        />
     </Sidebar>
 </template>
 
 <style scoped>
+/* 🚀 PERUBAHAN 3: Bersihkan seluruh css @media print di bawah ini karena udah di-handle di dalem komponen */
 .custom-scrollbar::-webkit-scrollbar { width: 5px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 20px; }
@@ -194,19 +129,5 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 input[type="date"]::-webkit-calendar-picker-indicator:hover {
     opacity: 1;
-}
-
-@media print {
-    body * { visibility: hidden; }
-    #print-area, #print-area * { visibility: visible; }
-    #print-area {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 58mm; 
-        margin: 0;
-        padding: 0;
-    }
-    @page { margin: 0; }
 }
 </style>
