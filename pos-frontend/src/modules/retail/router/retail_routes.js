@@ -8,15 +8,15 @@ export default [
     meta: { requiresAuth: true, role: 'owner' }
   },
 
-  // === INVENTORI ===
+  // === Stock Opname ===
   {
-    path: '/retail/inventori/stock-opname',
+    path: '/retail/stock-opname',
     name: 'StockOpname',
     component: () => import('../views/inventori/StockOpname.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/retail/inventori/report',
+    path: '/retail/stock-opname/report',
     name: 'StockOpnameReport',
     component: () => import('../views/inventori/StockOpnameReport.vue'),
     meta: { requiresAuth: true }

@@ -229,56 +229,45 @@ func (h *RetailHandler) CreateLPB(c *gin.Context) {
 
 	var input PurchaseInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data LPB tidak valid!"})
 		return
 	}
+
+	if len(input.Items) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Keranjang penerimaan kosong!"})
+		return
+	}
+
+	// 1. Susun Struktur Header Transaksi Pembelian
+	purchase := domain.Purchase{
+		StoreID:      storeID,
+		UserID:       userID,
+		SupplierName: input.SupplierName,
+		NoFaktur:     input.NoFaktur,
+		TotalItem:    len(input.Items),
+	}
+
+	// 2. Susun Detail Item Pembelian
+	var details []domain.PurchaseDetail
+	for _, item := range input.Items {
+		details = append(details, domain.PurchaseDetail{
+			ProductID:  item.ProductID,
+			QtyMasuk:   item.QtyMasuk,
+			HargaModal: item.HargaModal,
+		})
+	}
+	purchase.Details = details
 
 	db := h.Repo.GetDB()
-	err := db.Transaction(func(tx *gorm.DB) error {
-		purchase := domain.Purchase{
-			StoreID:      storeID,
-			UserID:       userID,
-			SupplierName: input.SupplierName,
-			NoFaktur:     input.NoFaktur,
-			TotalItem:    len(input.Items),
-		}
 
-		if err := h.Repo.CreatePurchase(tx, &purchase); err != nil {
-			return err
-		}
-
-		for _, item := range input.Items {
-			product, err := h.Repo.GetProductByID(tx, item.ProductID, storeID)
-			if err != nil {
-				return err
-			}
-
-			product.Stok += item.QtyMasuk
-			product.HargaModal = item.HargaModal
-
-			if err := h.Repo.SaveProduct(tx, product); err != nil {
-				return err
-			}
-
-			detail := domain.PurchaseDetail{
-				PurchaseID: purchase.ID,
-				ProductID:  item.ProductID,
-				QtyMasuk:   item.QtyMasuk,
-				HargaModal: item.HargaModal,
-			}
-			if err := h.Repo.CreatePurchaseDetail(tx, &detail); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal proses LPB: " + err.Error()})
+	// 3. 🚀 EKSEKUSI PENYIMPANAN + MOVING AVERAGE COST KE REPOSITORY
+	// Semua kalkulasi stok akhir dan perubahan harga master diselesaikan secara Atomik oleh GORM di sini.
+	if err := h.Repo.CreatePurchaseWithMovingAverage(db, &purchase); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses LPB dan HPP: " + err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "LPB Berhasil! Stok barang sudah bertambah."})
+	c.JSON(http.StatusOK, gin.H{"message": "Penerimaan Barang berhasil! Stok & Modal HPP telah di-update."})
 }
 
 type AbsenInput struct {

@@ -92,9 +92,9 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                             Master Data Produk
                         </router-link>
                         <router-link to="/retail/produk/penerimaan-barang" @click="sidebarOpen = false" class="sub-link hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-500" :class="{ 'active-sub !text-emerald-700 !bg-emerald-50/80 !border-emerald-500': route.path === '/retail/produk/penerimaan-barang' }">
-                            Terima Barang (LPB)
+                            Terima Barang (PSB)
                         </router-link>
-                        <router-link to="/retail/inventori/stock-opname" @click="sidebarOpen = false" class="sub-link hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-500" :class="{ 'active-sub !text-emerald-700 !bg-emerald-50/80 !border-emerald-500': route.path === '/retail/inventori/stock-opname' }">
+                        <router-link to="/retail/stock-opname" @click="sidebarOpen = false" class="sub-link hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-500" :class="{ 'active-sub !text-emerald-700 !bg-emerald-50/80 !border-emerald-500': route.path === '/retail/stock-opname' }">
                             Stock Opname
                         </router-link>
                         <router-link to="/retail/produk/retur-barang" @click="sidebarOpen = false" class="sub-link hover:text-rose-600 hover:bg-rose-50 hover:border-rose-500" :class="{ 'active-sub !text-rose-700 !bg-rose-50/80 !border-rose-500': route.path.startsWith('/retail/produk/retur-barang') }">

@@ -1,9 +1,11 @@
 package repository
 
 import (
+	"math"
 	"pos-backend/models"
 	"pos-backend/src/modules/retail/domain"
 	"time"
+
 	"gorm.io/gorm"
 )
 
@@ -25,6 +27,7 @@ type RetailRepository interface {
 	// Purchase / LPB
 	CreatePurchase(tx *gorm.DB, purchase *domain.Purchase) error
 	CreatePurchaseDetail(tx *gorm.DB, detail *domain.PurchaseDetail) error
+	CreatePurchaseWithMovingAverage(db *gorm.DB, purchase *domain.Purchase) error // 🚀 TAMBAHAN BARU
 
 	// Absensi Karyawan
 	GetAttendanceToday(userID uint, tanggal string) (*models.Attendance, error)
@@ -85,6 +88,79 @@ func NewRetailRepo(db *gorm.DB) RetailRepository {
 
 func (r *retailRepo) GetDB() *gorm.DB { return r.db }
 
+// ==========================================
+// 🚀 IMPLEMENTASI PURCHASE / LPB DENGAN MOVING AVERAGE
+// ==========================================
+
+func (r *retailRepo) CreatePurchase(tx *gorm.DB, p *domain.Purchase) error {
+	return tx.Create(p).Error
+}
+
+func (r *retailRepo) CreatePurchaseDetail(tx *gorm.DB, detail *domain.PurchaseDetail) error {
+	return tx.Create(detail).Error
+}
+
+// 🟢 KUNCI SAKTI: Fungsi ini menghandle penyimpanan Faktur + Kalkulasi Ulang Harga Modal (HPP)
+func (r *retailRepo) CreatePurchaseWithMovingAverage(db *gorm.DB, purchase *domain.Purchase) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		
+		// 1. Simpan Header Pembelian (Faktur & Supplier)
+		if err := tx.Create(purchase).Error; err != nil {
+			return err
+		}
+
+		// 2. Loop setiap item yang masuk
+		for _, detail := range purchase.Details {
+			var product models.Product
+			
+			// Ambil data produk master saat ini beserta stok & harga lamanya
+			if err := tx.Where("id = ? AND store_id = ?", detail.ProductID, purchase.StoreID).First(&product).Error; err != nil {
+				return err // Kalau barangnya ga ada di toko ini, batalkan semua (rollback)
+			}
+
+			// --- RUMUS MOVING AVERAGE COST ---
+			stokLama := float64(product.Stok)
+			hargaModalLama := product.HargaModal
+			
+			stokBaruMasuk := float64(detail.QtyMasuk)
+			hargaModalBaruMasuk := detail.HargaModal // Ini adalah harga_beli/pcs dari inputan kasir
+			
+			// Aset Lama = (10 pcs x Rp 5.000)
+			totalAsetLama := stokLama * hargaModalLama
+			// Aset Baru Masuk = (10 pcs x Rp 4.000)
+			totalAsetBaru := stokBaruMasuk * hargaModalBaruMasuk
+			
+			totalStokAkhir := stokLama + stokBaruMasuk
+			
+			var hargaPokokRataRata float64
+			if totalStokAkhir > 0 {
+				rawAverage := (totalAsetLama + totalAsetBaru)/totalStokAkhir
+				// 🚀 LOGIKA PEMBULATAN KE ATAS KE 100 TERDEKAT
+    			// Contoh: 14.895 -> (14.895 / 100) = 148,95
+				// Math.Ceil(148,95) = 149
+				// 149 * 100 = 14.900
+				hargaPokokRataRata = math.Ceil(rawAverage / 100) * 100
+			} else {
+				hargaPokokRataRata = hargaModalLama 
+			}
+
+			// 3. Timpa Stok & Harga Modal di Master Produk
+			if err := tx.Model(&product).Updates(map[string]interface{}{
+				"stok":        int(totalStokAkhir),
+				"harga_modal": hargaPokokRataRata,
+			}).Error; err != nil {
+				return err 
+			}
+		}
+
+		return nil
+	})
+}
+
+// ==========================================
+// SISA IMPLEMENTASI REPO (TIDAK ADA YANG DIUBAH)
+// ==========================================
+
 func (r *retailRepo) GetProductByID(tx *gorm.DB, id uint, storeID uint) (*models.Product, error) {
 	var p models.Product
 	err := tx.Where("id = ? AND store_id = ?", id, storeID).First(&p).Error
@@ -125,14 +201,6 @@ func (r *retailRepo) GetReturnsHistory(storeID uint, limit int, offset int) ([]d
 	if limit > 0 { query = query.Limit(limit).Offset(offset) }
 	err := query.Order("created_at DESC").Find(&list).Error
 	return list, total, err
-}
-
-func (r *retailRepo) CreatePurchase(tx *gorm.DB, p *domain.Purchase) error {
-	return tx.Create(p).Error
-}
-
-func (r *retailRepo) CreatePurchaseDetail(tx *gorm.DB, detail *domain.PurchaseDetail) error {
-	return tx.Create(detail).Error
 }
 
 func (r *retailRepo) GetAttendanceToday(userID uint, tanggal string) (*models.Attendance, error) {
@@ -249,7 +317,6 @@ func (r *retailRepo) GetTopBestSellers(storeID uint, start time.Time, end time.T
 	return list, err
 }
 
-// 📅 IMPLEMENTASI JADWAL BARU
 func (r *retailRepo) GetScheduleByDate(tx *gorm.DB, userID uint, tanggal string) (*models.Schedule, error) {
 	var s models.Schedule
 	err := tx.Where("user_id = ? AND tanggal = ?", userID, tanggal).First(&s).Error
@@ -265,7 +332,6 @@ func (r *retailRepo) GetSchedulesRange(storeID uint, start string, end string) (
 	return list, err
 }
 
-// 💵 IMPLEMENTASI CASHIER SESSION BARU
 func (r *retailRepo) GetActiveSession(tx *gorm.DB, userID uint, storeID uint) (*models.CashierSession, error) {
 	var s models.CashierSession
 	err := tx.Where("user_id = ? AND store_id = ? AND status = ?", userID, storeID, "open").First(&s).Error
@@ -289,7 +355,6 @@ func (r *retailRepo) GetSalesTotalAndTax(sessionID string) (float64, float64, er
 	return res.Gross, res.Tax, err
 }
 
-// 🛒 IMPLEMENTASI CHECKOUT TRANSAKSI
 func (r *retailRepo) GetStoreByIDSimple(tx *gorm.DB, storeID uint) (*models.Store, error) {
 	var s models.Store
 	err := tx.First(&s, storeID).Error
