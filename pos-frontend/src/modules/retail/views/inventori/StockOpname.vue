@@ -8,8 +8,8 @@ import StockOpnameSummary from '../../components/stockopname/StockOpnameSummary.
 
 const {
     activeTab, soStep, notes, searchQuery, products, cartSO, cartKlaim, isSubmitting, showScanner, isOwner,
-    startScanner, stopScanner, searchProduct, addToCart, removeItem, 
-    proceedToReview, submitSOFinal, submitKlaimTemuan
+    isKlaimEligible, daysLeftKlaim,startScanner, stopScanner, searchProduct, addToCart, removeItem, 
+    proceedToReview, backToCounting, submitSOFinal, submitKlaimTemuan
 } = useStockOpname();
 </script>
 
@@ -28,11 +28,6 @@ const {
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
                 
                 <div class="xl:col-span-2 space-y-6">
-                    <div v-if="activeTab === 'KLAIM'" class="bg-amber-50 border-2 border-amber-200 p-6 rounded-[32px] animate-fade-in">
-                        <h3 class="font-black text-amber-800 text-sm uppercase tracking-widest mb-2">Klaim Barang Nyempil</h3>
-                        <p class="text-xs text-amber-700 font-medium">Gunakan form ini HANYA jika menemukan barang <b class="font-black">PLUS</b> setelah audit selesai. Membutuhkan Approval Owner.</p>
-                    </div>
-
                     <StockOpnameSearch 
                         v-if="soStep === 'COUNTING' || activeTab === 'KLAIM'"
                         v-model:searchQuery="searchQuery" 
@@ -46,7 +41,7 @@ const {
                         :cartSO="activeTab === 'SO' ? cartSO : cartKlaim"
                         :soStep="activeTab === 'SO' ? soStep : 'REVIEW'" 
                         :isOwner="isOwner"
-                        @remove="removeItem"
+                        :activeTab="activeTab" @remove="removeItem"
                     />
                 </div>
 

@@ -43,6 +43,17 @@ type StockOpnameInput struct {
     Items  []SOItemInput `json:"items"`
 }
 
+type KlaimItemInput struct {
+    ProductID uint   `json:"product_id"`
+    Qty       int    `json:"qty"`
+    Alasan    string `json:"alasan"` // Alasan ketemunya di mana
+}
+
+type KlaimRequest struct {
+    Notes string           `json:"notes"` // Misal: "Klaim Barang Nyempil"
+    Items []KlaimItemInput `json:"items"`
+}
+
 func (h *RetailHandler) CreateStockOpname(c *gin.Context) {
     storeID := uint(c.MustGet("store_id").(float64))
     userID := uint(c.MustGet("user_id").(float64))
@@ -166,6 +177,143 @@ func (h *RetailHandler) GetStockOpnameHistory(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": history})
+}
+
+func (h *RetailHandler) GetLastSOStatus(c *gin.Context) {
+    storeID := uint(c.MustGet("store_id").(float64)) // 🚀 Filter by Toko
+    
+    var lastSO domain.StockOpname
+    db := h.Repo.GetDB()
+    
+    // Cari SO terakhir di toko ini yang statusnya APPROVED
+    result := db.Where("store_id = ? AND status = ?", storeID, "APPROVED").
+        Order("created_at desc").
+        First(&lastSO)
+    
+    if result.Error != nil {
+        // Kalau toko ini belum pernah punya SO yg di-approve
+        c.JSON(http.StatusOK, gin.H{"last_so_date": nil})
+        return
+    }
+
+    // Balikin tanggalnya
+    c.JSON(http.StatusOK, gin.H{"last_so_date": lastSO.CreatedAt})
+}
+
+func (h *RetailHandler) SubmitKlaimBarang(c *gin.Context) {
+    storeID := uint(c.MustGet("store_id").(float64))
+	userID := uint(c.MustGet("user_id").(float64))
+    
+    var req KlaimRequest
+    // 🚀 Karena gak ada foto, tetep pake ShouldBindJSON (Sangat simpel!)
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Format data tidak valid"})
+        return
+    }
+
+    db := h.Repo.GetDB()
+    tx := db.Begin()
+
+    // Simpan ke tabel adjustment dengan status PENDING_APPROVAL
+    adj := domain.StockAdjustment{
+        StoreID:   storeID,
+		UserID:    userID,
+        Notes:     req.Notes,
+        Status:    "PENDING_APPROVAL",
+        CreatedAt: time.Now(),
+    }
+    
+    if err := tx.Create(&adj).Error; err != nil {
+        tx.Rollback()
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal simpan klaim"})
+        return
+    }
+
+    for _, item := range req.Items {
+        adjItem := domain.StockAdjustmentDetail{
+            AdjustmentID: adj.ID,
+            ProductID:    item.ProductID,
+            Qty:          item.Qty,
+            Alasan:       item.Alasan,
+        }
+        tx.Create(&adjItem)
+    }
+
+    tx.Commit()
+    c.JSON(http.StatusOK, gin.H{"message": "Klaim barang temuan berhasil diajukan ke Owner!"})
+}
+
+func (h *RetailHandler) GetStockAdjustmentHistory(c *gin.Context) {
+    storeID := uint(c.MustGet("store_id").(float64))
+    
+    var history []domain.StockAdjustment
+    db := h.Repo.GetDB()
+    
+    // Tarik data klaim, preload detail barang dan data produknya
+    err := db.Where("store_id = ?", storeID).
+        Preload("Details.Product").
+        Order("created_at desc").
+        Find(&history).Error
+        
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil riwayat klaim"})
+        return
+    }
+    
+    c.JSON(http.StatusOK, gin.H{"data": history})
+}
+
+// 2. Fungsi Owner Ngetok Palu Approve Klaim Barang
+func (h *RetailHandler) ApproveStockAdjustment(c *gin.Context) {
+    adjID := c.Param("id")
+    userRole := c.MustGet("role").(string)
+    
+    if userRole != "owner" {
+        c.JSON(http.StatusForbidden, gin.H{"error": "Hanya Owner yang berhak menyetujui klaim barang!"})
+        return
+    }
+
+    db := h.Repo.GetDB()
+    err := db.Transaction(func(tx *gorm.DB) error {
+        var adj domain.StockAdjustment
+        if err := tx.Preload("Details").First(&adj, adjID).Error; err != nil {
+            return err
+        }
+
+        if adj.Status == "APPROVED" {
+            return nil // Sudah pernah di-approve sebelumnya
+        }
+
+        // Update status induk jadi APPROVED
+        if err := tx.Model(&adj).Update("status", "APPROVED").Error; err != nil {
+            return err
+        }
+
+        // 🚀 LOGIC TAMBAH STOK SUPER AMAN (Pakai Repository Bawaan Lu)
+        for _, detail := range adj.Details {
+            // 1. Tarik dulu master produknya
+            product, err := h.Repo.GetProductByID(tx, detail.ProductID, adj.StoreID)
+            if err != nil { 
+                return err 
+            }
+
+            // 2. Tambah stoknya secara matematika Go murni
+            product.Stok = product.Stok + detail.Qty
+
+            // 3. Timpa/Save ulang ke database
+            if err := h.Repo.SaveProduct(tx, product); err != nil {
+                return err
+            }
+        }
+        return nil
+    })
+
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyetujui klaim: " + err.Error()})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"message": "Klaim disetujui, stok master otomatis bertambah!"})
 }
 
 // 🚀 RETUR HANDLERS

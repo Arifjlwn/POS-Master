@@ -55,13 +55,13 @@ const router = createRouter({
 })
 
 // Satpam Guard JWT bawaan lu tetep ditaruh di sini
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   const token = localStorage.getItem('token') // sesuaikan dengan cara simpan lu
   
   if (to.meta.requiresAuth && !token) {
-    next('/login')
+    return('/login')
   } else {
-    next()
+    return
   }
 })
 

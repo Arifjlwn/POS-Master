@@ -48,6 +48,8 @@ func ConnectDatabase() {
         &models.TransactionDetail{}, 
         &retailDomain.StockOpname{},
         &retailDomain.StockOpnameDetail{},
+        &retailDomain.StockAdjustment{},
+        &retailDomain.StockAdjustmentDetail{},
         &retailDomain.ProductReturn{},
         &retailDomain.Purchase{},
         &retailDomain.PurchaseDetail{},     
