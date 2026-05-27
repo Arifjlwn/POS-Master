@@ -29,76 +29,133 @@ func NewRetailHandler(repo repository.RetailRepository) *RetailHandler {
 }
 
 // 🚀 STOCK OPNAME HANDLERS
+type SOItemInput struct {
+    ProductID uint   `json:"product_id"`
+    SystemQty int    `json:"system_qty"`
+    ActualQty int    `json:"actual_qty"`
+    Selisih   int    `json:"selisih"`
+    Alasan    string `json:"alasan"`
+}
+
 type StockOpnameInput struct {
-	Notes string `json:"notes"`
-	Items []struct {
-		ProductID uint `json:"product_id"`
-		ActualQty int  `json:"actual_qty"`
-	} `json:"items"`
+    Notes  string        `json:"notes"`
+    Status string        `json:"status"` // 'APPROVED' atau 'PENDING_APPROVAL'
+    Items  []SOItemInput `json:"items"`
 }
 
 func (h *RetailHandler) CreateStockOpname(c *gin.Context) {
-	storeID := uint(c.MustGet("store_id").(float64))
-	userID := uint(c.MustGet("user_id").(float64))
+    storeID := uint(c.MustGet("store_id").(float64))
+    userID := uint(c.MustGet("user_id").(float64))
+    userRole := c.MustGet("role").(string) // Ambil role dari JWT/Middleware
 
-	var input StockOpnameInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data tidak valid!"})
-		return
-	}
+    var input StockOpnameInput
+    if err := c.ShouldBindJSON(&input); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Format data tidak valid!"})
+        return
+    }
 
-	if len(input.Items) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Daftar barang opname tidak boleh kosong!"})
-		return
-	}
+    // Default status jika user bukan owner
+    status := "PENDING_APPROVAL"
+    if userRole == "owner" {
+        status = "APPROVED"
+    }
 
-	db := h.Repo.GetDB()
-	err := db.Transaction(func(tx *gorm.DB) error {
-		so := domain.StockOpname{
-			StoreID:   storeID,
-			UserID:    userID,
-			Notes:     input.Notes,
-			CreatedAt: time.Now(),
-		}
+    db := h.Repo.GetDB()
+    err := db.Transaction(func(tx *gorm.DB) error {
+        so := domain.StockOpname{
+            StoreID:   storeID,
+            UserID:    userID,
+            Notes:     input.Notes,
+            Status:    status, // Simpan status
+            CreatedAt: time.Now(),
+        }
 
-		if err := h.Repo.CreateStockOpname(tx, &so); err != nil {
-			return err
-		}
+        if err := h.Repo.CreateStockOpname(tx, &so); err != nil {
+            return err
+        }
 
-		for _, item := range input.Items {
-			product, err := h.Repo.GetProductByID(tx, item.ProductID, storeID)
-			if err != nil {
-				return err 
-			}
+        for _, item := range input.Items {
+            detail := domain.StockOpnameDetail{
+                OpnameID:  so.ID,
+                ProductID: item.ProductID,
+                SystemQty: item.SystemQty,
+                ActualQty: item.ActualQty,
+                Selisih:   item.Selisih,
+                Alasan:    item.Alasan, // Simpan alasan selisih
+            }
 
-			selisih := item.ActualQty - product.Stok
+            if err := h.Repo.CreateStockOpnameDetail(tx, &detail); err != nil {
+                return err
+            }
 
-			detail := domain.StockOpnameDetail{
-				OpnameID:  so.ID,
-				ProductID: item.ProductID,
-				SystemQty: product.Stok,
-				ActualQty: item.ActualQty,
-				Selisih:   selisih,
-			}
+            // 🚀 STOK HANYA UPDATE JIKA APPROVED
+            if status == "APPROVED" {
+                product, err := h.Repo.GetProductByID(tx, item.ProductID, storeID)
+                if err != nil { return err }
+                
+                product.Stok = item.ActualQty
+                if err := h.Repo.SaveProduct(tx, product); err != nil {
+                    return err
+                }
+            }
+        }
+        return nil
+    })
 
-			if err := h.Repo.CreateStockOpnameDetail(tx, &detail); err != nil {
-				return err
-			}
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal proses SO: " + err.Error()})
+        return
+    }
+    c.JSON(http.StatusOK, gin.H{"message": "Audit berhasil diajukan"})
+}
 
-			product.Stok = item.ActualQty
-			if err := h.Repo.SaveProduct(tx, product); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+func (h *RetailHandler) ApproveStockOpname(c *gin.Context) {
+    opnameID := c.Param("id") // Ambil ID dari URL /api/retail/stock-opname/:id/approve
+    
+    // Pastikan cuma Owner yang bisa akses
+    userRole := c.MustGet("role").(string)
+    if userRole != "owner" {
+        c.JSON(http.StatusForbidden, gin.H{"error": "Hanya Owner yang bisa menyetujui audit!"})
+        return
+    }
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses Stock Opname: " + err.Error()})
-		return
-	}
+    db := h.Repo.GetDB()
+    err := db.Transaction(func(tx *gorm.DB) error {
+        // 1. Ambil data SO dan item-itemnya
+        var so domain.StockOpname
+        if err := tx.Preload("Details").First(&so, opnameID).Error; err != nil {
+            return err
+        }
 
-	c.JSON(http.StatusOK, gin.H{"message": "Stock Opname berhasil disimpan. Stok master telah diperbarui!"})
+        if so.Status == "APPROVED" {
+            return nil // Sudah pernah di-approve
+        }
+
+        // 2. Update status SO jadi APPROVED
+        if err := tx.Model(&so).Update("status", "APPROVED").Error; err != nil {
+            return err
+        }
+
+        // 3. Loop item dan update stok Master Product
+        for _, detail := range so.Details {
+            product, err := h.Repo.GetProductByID(tx, detail.ProductID, so.StoreID)
+            if err != nil { return err }
+
+            // Update stok master dengan hasil fisik (ActualQty)
+            product.Stok = detail.ActualQty
+            if err := h.Repo.SaveProduct(tx, product); err != nil {
+                return err
+            }
+        }
+        return nil
+    })
+
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal approve SO: " + err.Error()})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"message": "Audit berhasil disetujui, stok master diupdate!"})
 }
 
 func (h *RetailHandler) GetStockOpnameHistory(c *gin.Context) {

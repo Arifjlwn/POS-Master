@@ -118,7 +118,7 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                                 Manajemen Karyawan
                             </router-link>
                         </template>
-                        <router-link to="/retail/inventori/report" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/inventori/report' }">
+                        <router-link to="/retail/stock-opname/report" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/stock-opname/report' }">
                             Laporan Hasil SO
                         </router-link>
                         <router-link to="/retail/produk/retur-barang/report" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/produk/retur-barang/report' }">

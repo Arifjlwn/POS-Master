@@ -17,6 +17,7 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 	// Stock Opname
 	rg.POST("/stock-opname", h.CreateStockOpname)
 	rg.GET("/stock-opname/history", h.GetStockOpnameHistory)
+	rg.PATCH("/stock-opname/:id/approve", h.ApproveStockOpname)
 
 	// Retur Barang
 	rg.POST("/returns", h.CreateReturn)
