@@ -1,5 +1,4 @@
 <script setup>
-import { defineProps, defineEmits } from 'vue';
 
 defineProps({
     isMobileCartOpen: Boolean,
@@ -28,9 +27,10 @@ const emit = defineEmits([
 </script>
 
 <template>
-    <div :class="isMobileCartOpen ? 'fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex justify-end transition-all' : 'hidden lg:flex lg:relative w-4/12 xl:w-3/12'">
+    <div :class="isMobileCartOpen ? 'fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex justify-end transition-all' : 'hidden lg:flex flex-col shrink-0 w-full max-w-[320px] xl:max-w-[380px] 2xl:max-w-[420px]'">
+        
         <div :class="isMobileCartOpen ? 'w-[85%] sm:w-[360px] h-full animate-slide-in-right' : 'w-full h-full'" 
-             class="bg-white lg:rounded-[32px] shadow-2xl border-l lg:border border-slate-100 flex flex-col shrink-0 overflow-hidden">
+             class="bg-white lg:rounded-[32px] shadow-2xl border-l lg:border border-slate-100 flex flex-col overflow-hidden">
             
             <div class="lg:hidden p-4 bg-indigo-900 text-white flex justify-between items-center shrink-0">
                 <h2 class="font-black tracking-widest uppercase text-sm flex items-center gap-2">
@@ -92,50 +92,51 @@ const emit = defineEmits([
                 </div>
             </div>
 
-            <div class="p-3 md:p-5 bg-white border-t border-slate-100 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)] shrink-0 z-10 lg:rounded-b-[32px]">
-                <div class="mb-3 md:mb-4">
-                    <span class="font-black text-[8px] md:text-[9px] text-slate-400 block mb-1.5 md:mb-2 uppercase tracking-widest text-center">Metode Pembayaran</span>
+            <div class="p-3 bg-white border-t border-slate-100 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)] shrink-0 z-10 lg:rounded-b-[32px]">
+                
+                <div class="mb-2.5">
+                    <span class="font-black text-[8px] md:text-[9px] text-slate-400 block mb-1.5 uppercase tracking-widest text-center">Metode Pembayaran</span>
                     <div class="grid grid-cols-3 gap-1.5 md:gap-2">
-                        <button v-for="method in ['Cash', 'QRIS', 'Debit']" :key="method" @click="emit('set-payment', method)" :class="paymentMethod === method ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 border-indigo-600' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'" class="py-2.5 rounded-lg md:rounded-xl font-black text-[9px] md:text-[10px] uppercase transition-all flex flex-col items-center gap-1.5 border">
-                            <svg v-if="method === 'Cash'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                            <svg v-else-if="method === 'QRIS'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
-                            <svg v-else-if="method === 'Debit'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                        <button v-for="method in ['Cash', 'QRIS', 'Debit']" :key="method" @click="emit('set-payment', method)" :class="paymentMethod === method ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 border-indigo-600' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'" class="py-1.5 md:py-2 rounded-lg font-black text-[9px] uppercase transition-all flex flex-col items-center gap-1 border">
+                            <svg v-if="method === 'Cash'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                            <svg v-else-if="method === 'QRIS'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
+                            <svg v-else-if="method === 'Debit'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
                             {{ method === 'Cash' ? 'Tunai' : method }}
                         </button>
                     </div>
                 </div>
 
-                <div class="space-y-3 md:space-y-4 mb-4 md:mb-5">
-                    <div class="flex justify-between items-end border-b border-dashed border-slate-200 pb-1.5 md:pb-2">
+                <div class="space-y-2 mb-3">
+                    <div class="flex justify-between items-end border-b border-dashed border-slate-200 pb-1.5">
                         <span class="font-black text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest">Total Tagihan</span>
-                        <span class="text-2xl md:text-3xl font-black text-indigo-800 leading-none tracking-tighter">Rp {{ totalBelanja.toLocaleString('id-ID') }}</span>
+                        <span class="text-xl md:text-2xl font-black text-indigo-800 leading-none tracking-tighter">Rp {{ totalBelanja.toLocaleString('id-ID') }}</span>
                     </div>
 
-                    <div class="flex justify-between items-center bg-slate-50 p-2 md:p-2.5 rounded-xl md:rounded-2xl border-2 border-slate-100 focus-within:border-indigo-500 transition-all">
+                    <div class="flex justify-between items-center bg-slate-50 p-1.5 md:p-2 rounded-xl border-2 border-slate-100 focus-within:border-indigo-500 transition-all">
                         <span class="font-black text-[9px] md:text-[10px] text-slate-600 uppercase tracking-widest pl-2">Bayar</span>
                         <div class="relative flex-1 ml-2 md:ml-4">
-                            <span class="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs md:text-sm italic">Rp</span>
+                            <span class="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs italic">Rp</span>
                             <input
                                 type="text"
                                 :value="payAmount === 0 ? '' : payAmount.toLocaleString('id-ID')"
                                 @input="emit('format-rupiah', $event)"
                                 :disabled="paymentMethod !== 'Cash'"
                                 :class="paymentMethod !== 'Cash' ? 'bg-slate-200/50 text-slate-400 cursor-not-allowed border-transparent' : 'bg-white text-slate-900 border-slate-200 shadow-sm'"
-                                class="w-full text-right text-base md:text-lg font-black rounded-lg md:rounded-xl py-1.5 md:py-2 pl-8 pr-3 transition-all outline-none border"
+                                class="w-full text-right text-sm md:text-base font-black rounded-lg py-1 pl-8 pr-3 transition-all outline-none border"
                                 placeholder="0">
                         </div>
                     </div>
 
                     <div class="flex justify-between items-center px-1">
                         <span class="font-black text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest">Kembali</span>
-                        <span class="text-lg md:text-xl font-black" :class="kembalian >= 0 ? 'text-emerald-500' : 'text-rose-500'">
+                        <span class="text-base md:text-lg font-black" :class="kembalian >= 0 ? 'text-emerald-500' : 'text-rose-500'">
                             Rp {{ kembalian.toLocaleString('id-ID') }}
                         </span>
                     </div>
                 </div>
 
                 <button @click="emit('checkout')" :disabled="cart.length === 0 || payAmount < totalBelanja || isProcessingCheckout"
-                    class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black py-3 md:py-4 px-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 md:gap-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-emerald-200 hover:shadow-emerald-300 active:scale-95 text-xs md:text-sm uppercase tracking-widest">
+                    class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black py-2.5 md:py-3 px-4 rounded-xl transition-all flex justify-center items-center gap-2 md:gap-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-emerald-200 hover:shadow-emerald-300 active:scale-95 text-xs md:text-sm uppercase tracking-widest">
                     <template v-if="isProcessingCheckout">
                         <div class="w-4 h-4 md:w-5 md:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                         Memproses...

@@ -13,13 +13,14 @@ const {
     filteredRiwayat,
     formatRupiah,
     openReceipt,
-    printReceipt
+    currentUser,
+    currentSession
 } = useJournal();
 </script>
 
 <template>
-    <Sidebar>
-        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans bg-[#f8fafc] min-h-screen">
+    <Sidebar class="print:bg-white print:h-auto ">
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans bg-[#f8fafc] min-h-screen print:hidden">
             
             <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 rounded-[32px] p-6 md:p-10 mb-6 text-white shadow-2xl flex flex-col md:flex-row md:items-center justify-between relative overflow-hidden gap-6">
                 <div class="z-10 text-center md:text-left">
@@ -106,17 +107,29 @@ const {
                 </table>
             </div>
         </main>
-
-        <ReceiptModal 
-            :show="showReceipt" 
-            :invoiceData="selectedTrx" 
-            @close="showReceipt = false" 
-        />
     </Sidebar>
+    <ReceiptModal 
+        :show="showReceipt" 
+        :invoiceData="selectedTrx" 
+        :storeData="selectedTrx?.Store || currentSession?.store || currentSession?.Store"
+        :cashierName="selectedTrx?.User?.name ? selectedTrx.User.name.split(' ')[0] : (currentUser?.name ? currentUser.name.split(' ')[0] : 'KASIR')"
+        :stationNumber="'01'"
+        @close="showReceipt = false" 
+    />
 </template>
 
 <style scoped>
-/* 🚀 PERUBAHAN 3: Bersihkan seluruh css @media print di bawah ini karena udah di-handle di dalem komponen */
+/* 🚀 TAMBAHKAN CSS INI BIAR LAYAR BERSIH PAS NGEPRINT */
+@media print {
+    @page { 
+        margin: 0; 
+    }
+    body { 
+        background: white; 
+        -webkit-print-color-adjust: exact; 
+    }
+}
+
 .custom-scrollbar::-webkit-scrollbar { width: 5px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 20px; }

@@ -14,6 +14,23 @@ export function useJournal() {
     const showReceipt = ref(false);
     const selectedTrx = ref(null);
 
+    // 🚀 AMBIL DATA USER DAN TOKO DARI LOCAL STORAGE
+    const currentUser = ref(null);
+    const currentSession = ref(null);
+
+    const loadSessionData = () => {
+        try {
+            const user = localStorage.getItem('user');
+            if (user) currentUser.value = JSON.parse(user);
+
+            // Coba ambil data store/toko (tergantung lu nyimpennya gimana pas login)
+            const store = localStorage.getItem('storeData') || localStorage.getItem('store');
+            if (store) currentSession.value = { store: JSON.parse(store) };
+        } catch (e) {
+            console.error("Gagal parse data session", e);
+        }
+    };
+
     const formatRupiah = (angka) => {
         return new Intl.NumberFormat('id-ID').format(angka);
     };
@@ -31,10 +48,13 @@ export function useJournal() {
         }
     };
 
-    onMounted(() => fetchRiwayat());
+    onMounted(() => {
+        loadSessionData(); // Panggil fungsi load profil
+        fetchRiwayat();
+    });
     watch(tanggalDipilih, () => fetchRiwayat());
 
-    // 🚀 FITUR PENCARIAN REALTIME (Tanpa perlu nembak API ulang)
+    // 🚀 FITUR PENCARIAN REALTIME
     const filteredRiwayat = computed(() => {
         if (!searchQuery.value) return riwayat.value;
         const query = searchQuery.value.toLowerCase();
@@ -49,51 +69,11 @@ export function useJournal() {
         showReceipt.value = true;
     };
 
-    // 🚀 LOGIC INJECT WINDOW PRINT THERMAL STRUK
-    const printReceipt = () => {
-        const printContent = document.getElementById('print-area').innerHTML;
-        const printWindow = window.open('', '_blank', 'width=300,height=600');
-        
-        printWindow.document.write(`
-            <html>
-                <head>
-                    <title>Cetak Struk Transaksi ${selectedTrx.value?.no_invoice}</title>
-                    <style>
-                        body { font-family: 'Courier New', Courier, monospace; width: 58mm; margin: 0; padding: 0; font-size: 11px; color: #000; }
-                        .text-center { text-align: center; }
-                        .font-black { font-weight: 900; }
-                        .font-bold { font-weight: bold; }
-                        .flex { display: flex; }
-                        .justify-between { justify-content: space-between; }
-                        .uppercase { text-transform: uppercase; }
-                        .border-y { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 5px 0; }
-                        .border-b { border-bottom: 1px dashed #000; margin-bottom: 5px; padding-bottom: 5px; }
-                        .border-t { border-top: 1px dashed #000; margin-top: 5px; padding-top: 5px; }
-                        .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                        .w-full { width: 100%; }
-                        .pl-4 { padding-left: 10px; }
-                        p { margin: 2px 0; }
-                    </style>
-                </head>
-                <body onload="window.print(); window.close();">
-                    \${printContent}
-                </body>
-            </html>
-        `);
-        printWindow.document.close();
-    };
+    // (HAPUS FUNGSI printReceipt KARENA UDAH DI-HANDLE SAMA RECEIPTMODAL KITA)
 
     return {
-        riwayat,
-        isLoading,
-        tanggalDipilih,
-        searchQuery,
-        showReceipt,
-        selectedTrx,
-        filteredRiwayat,
-        formatRupiah,
-        fetchRiwayat,
-        openReceipt,
-        printReceipt
+        riwayat, isLoading, tanggalDipilih, searchQuery, showReceipt, selectedTrx,
+        filteredRiwayat, formatRupiah, fetchRiwayat, openReceipt,
+        currentUser, currentSession // 🚀 EXPORT 2 VARIABEL INI BIAR BISA DIPAKE DI VUE
     };
 }

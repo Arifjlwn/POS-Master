@@ -1,5 +1,5 @@
 <script setup>
-import { ref, defineProps, defineEmits } from 'vue';
+import { ref, computed, defineProps, defineEmits } from 'vue';
 
 const props = defineProps({
     show: Boolean,
@@ -26,6 +26,14 @@ const imageInput = ref(null);
 const triggerImageUpload = () => {
     imageInput.value.click();
 };
+
+const showCategoryDropdown = ref(false);
+
+const filteredCategories = computed(() => {
+    if (!props.form.category) return props.categories;
+    const q = props.form.category.toLowerCase();
+    return props.categories.filter(c => c.toLowerCase().includes(q));
+});
 </script>
 
 <template>
@@ -59,10 +67,56 @@ const triggerImageUpload = () => {
                         <input type="file" ref="imageInput" @change="(e) => emit('file-change', e)" accept="image/*" class="hidden">
                     </div>
 
-                    <div class="md:col-span-2">
+                    <div class="md:col-span-2 relative">
                         <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Kategori</label>
-                        <input list="kategori-list" v-model="form.category" placeholder="Pilih / Ketik Kategori Baru..." class="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:border-blue-600 outline-none font-bold text-sm bg-white uppercase transition-all text-slate-800">
-                        <datalist id="kategori-list"><option v-for="cat in categories" :key="cat" :value="cat"></option></datalist>
+                        
+                        <div v-if="showCategoryDropdown" @click="showCategoryDropdown = false" class="fixed inset-0 z-40"></div>
+
+                        <div class="relative z-50">
+                            <input 
+                                v-model="form.category" 
+                                @focus="showCategoryDropdown = true"
+                                placeholder="Pilih / Ketik Kategori Baru..." 
+                                class="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:border-blue-600 outline-none font-bold text-sm bg-white uppercase transition-all text-slate-800"
+                            >
+                            <div @click="showCategoryDropdown = !showCategoryDropdown" class="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer hover:scale-110 transition-transform">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-400 transition-transform duration-200 hover:text-blue-500" :class="showCategoryDropdown ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                            </div>
+                        </div>
+
+                        <transition
+                            enter-active-class="transition duration-200 ease-out"
+                            enter-from-class="transform scale-95 opacity-0"
+                            enter-to-class="transform scale-100 opacity-100"
+                            leave-active-class="transition duration-100 ease-in"
+                            leave-from-class="transform scale-100 opacity-100"
+                            leave-to-class="transform scale-95 opacity-0"
+                        >
+                            <div v-if="showCategoryDropdown" class="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-52 overflow-y-auto custom-scrollbar overflow-hidden flex flex-col">
+                                
+                                <div 
+                                    v-for="cat in filteredCategories" 
+                                    :key="cat"
+                                    @click="selectCategory(cat)"
+                                    class="px-4 py-3 hover:bg-blue-50 cursor-pointer text-xs md:text-sm font-bold text-slate-700 transition-colors uppercase border-b border-slate-50 last:border-0"
+                                >
+                                    {{ cat }}
+                                </div>
+                                
+                                <div 
+                                    v-if="form.category && !categories.some(c => c.toLowerCase() === form.category.toLowerCase())"
+                                    @click="showCategoryDropdown = false"
+                                    class="px-4 py-3 bg-indigo-50 hover:bg-indigo-100 cursor-pointer text-xs md:text-sm font-black text-indigo-700 transition-colors uppercase flex items-center gap-2 sticky bottom-0 border-t border-indigo-100"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                                    <span class="truncate">Buat Baru: "{{ form.category }}"</span>
+                                </div>
+
+                                <div v-if="filteredCategories.length === 0 && !form.category" class="p-4 text-center text-xs font-bold text-slate-400 italic">
+                                    Belum ada kategori tersedia.
+                                </div>
+                            </div>
+                        </transition>
                     </div>
 
                     <div class="md:col-span-2 p-5 bg-slate-900 rounded-[28px] text-white shadow-xl mt-2 mb-2">

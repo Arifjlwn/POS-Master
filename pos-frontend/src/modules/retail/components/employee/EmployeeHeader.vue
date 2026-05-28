@@ -1,6 +1,4 @@
 <script setup>
-import { defineProps, defineEmits } from 'vue';
-
 defineProps({ searchQuery: String });
 const emit = defineEmits(['update:searchQuery', 'add-new']);
 </script>

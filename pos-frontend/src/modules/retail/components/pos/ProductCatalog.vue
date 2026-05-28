@@ -1,5 +1,4 @@
 <script setup>
-import { defineProps, defineEmits } from 'vue';
 
 defineProps({
     searchQuery: String,
@@ -21,7 +20,7 @@ const emit = defineEmits(['update:searchQuery', 'barcode-scan', 'start-scanner',
                 <input
                     type="text"
                     :value="searchQuery"
-                    @input="emit('update:searchQuery', $target.value)"
+                    @input="emit('update:searchQuery', $event.target.value)" 
                     @keydown.enter.prevent="emit('barcode-scan')"
                     placeholder="Cari atau Scan..."
                     class="w-full h-full pl-12 md:pl-14 pr-4 rounded-[16px] md:rounded-[20px] border-2 border-slate-200 focus:border-indigo-600 shadow-sm text-slate-800 font-bold bg-white text-xs md:text-sm transition-all outline-none"

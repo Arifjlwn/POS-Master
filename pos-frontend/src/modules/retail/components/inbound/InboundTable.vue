@@ -1,6 +1,4 @@
 <script setup>
-import { defineProps, defineEmits } from 'vue';
-
 defineProps({
     cartLPB: Array,
     isOwner: Boolean,

@@ -1,6 +1,4 @@
 <script setup>
-import { defineProps, defineEmits } from 'vue';
-
 const props = defineProps({
     show: Boolean,
     invoiceData: Object,
@@ -22,30 +20,21 @@ const triggerPrint = () => {
 </script>
 
 <template>
-    <div v-if="show && invoiceData" class="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-[200] p-4 backdrop-blur-sm no-print">
-        <div class="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] shadow-2xl w-full max-w-sm flex flex-col max-h-[90vh] border-[6px] md:border-[8px] border-slate-800">
+    <div v-if="show && invoiceData" class="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-[200] p-4 backdrop-blur-sm print:static print:bg-white print:p-0 print:block">
+        
+        <div class="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] shadow-2xl w-full max-w-sm flex flex-col max-h-[90vh] border-[6px] md:border-[8px] border-slate-800 print:border-none print:shadow-none print:max-h-none print:max-w-none print:rounded-none print:m-0 print:p-0">
             
-            <div class="overflow-y-auto custom-scrollbar bg-white p-2 mx-auto" id="print-area" style="width: 58mm;">
+            <div class="overflow-y-auto custom-scrollbar bg-white p-2 mx-auto print:overflow-visible print:mx-0 print:px-3 print:py-2" id="print-area" style="width: 58mm;">
                 
                 <div class="text-center mb-4 font-mono leading-none">
                     <h2 class="font-black text-sm uppercase tracking-tighter mb-1 italic">
-                        {{ 
-                            storeData?.NamaToko || storeData?.nama_toko || storeData?.namaToko ||
-                            invoiceData.store?.NamaToko || invoiceData.store?.nama_toko ||
-                            invoiceData.Store?.NamaToko || invoiceData.Store?.nama_toko || 
-                            'NEXA POS STORE' 
-                        }}
+                        {{ storeData?.NamaToko || storeData?.nama_toko || 'NEXA POS STORE' }}
                     </h2>
                     <p class="text-[8px] font-bold uppercase tracking-widest opacity-80">
-                        {{ 
-                            storeData?.Alamat || storeData?.alamat || 
-                            invoiceData.store?.Alamat || invoiceData.store?.alamat ||
-                            invoiceData.Store?.Alamat || invoiceData.Store?.alamat || 
-                            'JAKARTA, INDONESIA' 
-                        }}
+                        {{ storeData?.Alamat || storeData?.alamat || 'JAKARTA, INDONESIA' }}
                     </p>
-                    <p v-if="storeData?.Telepon || storeData?.telepon || storeData?.no_hp" class="text-[8px] font-bold uppercase tracking-widest opacity-80 mt-1">
-                        WA: {{ storeData?.Telepon || storeData?.telepon || storeData?.no_hp }}
+                    <p v-if="storeData?.Telepon || storeData?.telepon" class="text-[8px] font-bold uppercase tracking-widest opacity-80 mt-1">
+                        WA: {{ storeData?.Telepon || storeData?.telepon }}
                     </p>
                 </div>
                 
@@ -60,7 +49,7 @@ const triggerPrint = () => {
                     </div>
                     <div class="flex justify-between">
                         <span>KASIR:</span>
-                        <span>{{ cashierName || invoiceData.User?.name?.split(' ')[0] || 'KASIR' }} / POS-{{ stationNumber || invoiceData.station_number || '01' }}</span>
+                        <span>{{ cashierName || 'KASIR' }} / POS-{{ stationNumber || '01' }}</span>
                     </div>
                 </div>
                 
@@ -101,7 +90,7 @@ const triggerPrint = () => {
                 </div>
             </div>
             
-            <div class="mt-4 md:mt-6 flex flex-col gap-2 md:gap-3 shrink-0 no-print">
+            <div class="mt-4 md:mt-6 flex flex-col gap-2 md:gap-3 shrink-0 print:hidden">
                 <button @click="triggerPrint" class="w-full bg-indigo-600 text-white py-3 md:py-4 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-indigo-200 flex items-center justify-center gap-2 active:scale-95 transition-all">
                     Cetak Struk
                 </button>

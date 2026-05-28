@@ -24,12 +24,7 @@ const {
 
 // DOM Logic Print spesifik untuk view layer
 const printClosing = () => {
-    const printContent = document.getElementById('print-closing').innerHTML;
-    const originalContent = document.body.innerHTML;
-    document.body.innerHTML = printContent;
-    window.print();
-    document.body.innerHTML = originalContent;
-    window.location.reload(); 
+    window.print(); 
 };
 
 const finishClosing = () => router.push('/retail/absensi');
@@ -37,9 +32,10 @@ const goToDashboard = () => currentUser.value.role === 'owner' ? router.push('/r
 </script>
 
 <template>
-    <div class="h-[100dvh] flex flex-col bg-slate-100 font-sans overflow-hidden">
+    <div class="h-[100dvh] flex flex-col bg-slate-100 font-sans overflow-hidden print:h-auto print:bg-white print:overflow-visible print:block">
         
-        <PosHeader 
+        <PosHeader
+            class="print:hidden" 
             :currentUser="currentUser" 
             :currentSession="currentSession" 
             :currentTime="currentTime"
@@ -47,7 +43,7 @@ const goToDashboard = () => currentUser.value.role === 'owner' ? router.push('/r
             @logout="logout"
         />
 
-        <div class="flex-1 flex overflow-hidden p-2 md:p-4 pt-2 md:pt-4 gap-4 relative">
+        <div class="flex-1 flex overflow-hidden p-2 md:p-4 pt-2 md:pt-4 gap-4 relative print:hidden">
             
             <ProductCatalog 
                 v-model:searchQuery="searchQuery"
@@ -81,14 +77,14 @@ const goToDashboard = () => currentUser.value.role === 'owner' ? router.push('/r
             />
         </div>
 
-        <div v-if="cart.length > 0" class="lg:hidden fixed bottom-0 left-0 right-0 p-3 bg-white/90 backdrop-blur-sm border-t border-slate-200 z-40 shadow-md">
+        <div v-if="cart.length > 0" class="lg:hidden fixed bottom-0 left-0 right-0 p-3 bg-white/90 backdrop-blur-sm border-t border-slate-200 z-40 shadow-md print:hidden">
             <button @click="isMobileCartOpen = true" class="w-full bg-indigo-600 text-white p-3 rounded-xl flex justify-between items-center active:scale-95 transition-all">
                 <span class="bg-white text-indigo-600 font-black px-3 py-1 rounded-lg text-xs">{{ cart.length }} Item</span>
                 <span class="font-black text-sm">Rp {{ totalBelanja.toLocaleString('id-ID') }} ➔</span>
             </button>
         </div>
 
-        <div v-if="showHeldModal" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-[150] p-4 backdrop-blur-sm">
+        <div v-if="showHeldModal" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-[150] p-4 backdrop-blur-sm print:hidden">
             <div class="bg-white p-6 md:p-8 rounded-[32px] shadow-2xl w-full max-w-xl max-h-[80vh] flex flex-col">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-lg font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">💾 Pesanan Tertunda</h2>
@@ -108,7 +104,7 @@ const goToDashboard = () => currentUser.value.role === 'owner' ? router.push('/r
             </div>
         </div>
 
-        <div v-if="showScanner" class="fixed inset-0 bg-slate-900/90 flex items-center justify-center z-[150] p-4 backdrop-blur-sm">
+        <div v-if="showScanner" class="fixed inset-0 bg-slate-900/90 flex items-center justify-center z-[150] p-4 backdrop-blur-sm print:hidden">
             <div class="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
                 <div class="p-6 border-b flex justify-between items-center bg-slate-50/50">
                     <h2 class="text-lg font-black text-slate-800 uppercase tracking-widest">Scan Barcode</h2>
@@ -120,7 +116,7 @@ const goToDashboard = () => currentUser.value.role === 'owner' ? router.push('/r
             </div>
         </div>
 
-        <div v-if="showQrisModal" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-[150] p-4 backdrop-blur-sm">
+        <div v-if="showQrisModal" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-[150] p-4 backdrop-blur-sm print:hidden">
             <div class="bg-white p-6 md:p-8 rounded-[32px] shadow-2xl w-full max-w-sm text-center flex flex-col border-t-8 border-indigo-600">
                 <h2 class="text-xl font-black text-slate-900 uppercase tracking-widest mb-1">Bayar via QRIS</h2>
                 <div class="bg-white p-3 rounded-2xl border border-slate-300 w-full mb-4 flex justify-center items-center min-h-[200px]">
@@ -173,11 +169,13 @@ const goToDashboard = () => currentUser.value.role === 'owner' ? router.push('/r
 .animate-slide-in-right { animation: slide-in-right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
 
 @media print {
-    body * { visibility: hidden; }
-    #print-area, #print-area *, #print-closing, #print-closing * { visibility: visible; }
-    #print-area, #print-closing { position: absolute; left: 0; top: 0; width: 58mm; padding: 0; margin: 0; }
-    @page { margin: 0; }
-    .no-print { display: none !important; }
+    @page { 
+        margin: 0; 
+    }
+    body { 
+        background: white; 
+        -webkit-print-color-adjust: exact; 
+    }
 }
 
 :deep(.swal2-popup) { font-family: 'Inter', sans-serif !important; border-radius: 28px !important; }
