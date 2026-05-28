@@ -79,91 +79,132 @@ export function usePenerimaanBarang() {
     const searchProduct = async (isFromScanner = false) => {
         clearTimeout(searchTimer);
         if (isFromScanner) {
-        return executeSearch(true);
-    }
-    searchTimer = setTimeout(() => {
-        executeSearch(false);
-    }, 300);
-};
-        // 🚀 Fungsi Inti Pencarian (Biar kode lebih DRY - Don't Repeat Yourself)
-const executeSearch = async (isFromScanner) => {
-    if (!isFromScanner && searchQuery.value.length < 2) {
-        products.value = [];
-        return;
-    }
-
-    try {
-        const res = await api.get(`/retail/products?search=${searchQuery.value}`);
-        const foundData = res.data.data || [];
-
-        if (isFromScanner) {
-            if (foundData.length > 0) {
-                addToCart(foundData[0]); // Ambil hasil pertama
-                Swal.fire({ 
-                    toast: true, 
-                    position: 'top-end', 
-                    icon: 'success', 
-                    title: `${foundData[0].nama_produk} ditambahkan!`, 
-                    showConfirmButton: false, 
-                    timer: 1500 
-                });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Oops!',
-                    text: 'Barcode tidak terdaftar di Master Produk.',
-                    timer: 2000
-                });
-            }
-            searchQuery.value = ''; // Reset input setelah scan
-            products.value = [];    // Bersihkan hasil dropdown
-        } else {
-            products.value = foundData;
+            return executeSearch(true);
         }
-    } catch (err) { 
-        console.error("Gagal cari produk:", err);
-        products.value = [];
-    }
-};
+        searchTimer = setTimeout(() => {
+            executeSearch(false);
+        }, 300);
+    };
 
+    // 🚀 Fungsi Inti Pencarian (Biar kode lebih DRY - Don't Repeat Yourself)
+    const executeSearch = async (isFromScanner) => {
+        if (!isFromScanner && searchQuery.value.length < 2) {
+            products.value = [];
+            return;
+        }
+
+        try {
+            const res = await api.get(`/retail/products?search=${searchQuery.value}`);
+            const foundData = res.data.data || [];
+
+            if (isFromScanner) {
+                if (foundData.length > 0) {
+                    addToCart(foundData[0]); // Ambil hasil pertama
+                    Swal.fire({ 
+                        toast: true, 
+                        position: 'top-end', 
+                        icon: 'success', 
+                        title: `${foundData[0].nama_produk} ditambahkan!`, 
+                        showConfirmButton: false, 
+                        timer: 1500 
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Oops!',
+                        text: 'Barcode tidak terdaftar di Master Produk.',
+                        timer: 2000
+                    });
+                }
+                searchQuery.value = ''; // Reset input setelah scan
+                products.value = [];    // Bersihkan hasil dropdown
+            } else {
+                products.value = foundData;
+            }
+        } catch (err) { 
+            console.error("Gagal cari produk:", err);
+            products.value = [];
+        }
+    };
+
+    // 🚀 MASUKIN KE KERANJANG PENERIMAAN (LPB) DENGAN STRUKTUR 3 LAPIS
     const addToCart = (product) => {
         const existing = cartLPB.value.find(item => item.product_id === product.id);
+        
         if (existing) {
-            existing.qty_karton++;
+            existing.qty_besar++; // Default nambah kemasan paling besar
         } else {
+            // Kita bikin variabel penampung harga modal yang pinter
+            let defaultHargaModal = Number(product.harga_modal) || 0;
+            let hargaBeliInputDefault = defaultHargaModal;
+
+            // Kalau dia punya kemasan besar, default form LPB minta input harga 1 Dus/Slop
+            if (product.satuan_besar) {
+                hargaBeliInputDefault = defaultHargaModal * Number(product.isi_per_besar);
+            }
+
             cartLPB.value.push({
                 product_id: product.id,
                 nama_produk: product.nama_produk,
-                qty_karton: 1,
-                qty_eceran: 0,
+                
+                // Form Input Qty (Sekarang ada 3 kemungkinan)
+                qty_besar: 1,
+                qty_tengah: 0,
+                qty_dasar: 0, // Dulu qty_eceran
+                
+                // Variabel Keuangan
                 harga_jual_saat_ini: Number(product.harga_jual) || 0,
-                harga_modal_database: Number(product.harga_modal) || 0,
-                harga_beli_input: product.satuan_besar ? (Number(product.harga_modal) * Number(product.isi_per_besar)) : Number(product.harga_modal), 
+                harga_modal_database: defaultHargaModal,
+                harga_beli_input: hargaBeliInputDefault, // Modal per Faktur (1 Dus / 1 Slop)
+                
+                // 🚀 Data 3 Lapis dari Master
                 satuan_dasar: product.satuan_dasar || 'PCS',
+                has_satuan_besar: !!product.satuan_besar && Number(product.isi_per_besar) > 1,
                 satuan_besar: product.satuan_besar || null,
                 isi_per_besar: Number(product.isi_per_besar) || 1,
-                has_satuan_besar: !!product.satuan_besar && Number(product.isi_per_besar) > 1,
-                jenis_satuan: product.satuan_besar ? 'BESAR' : 'DASAR' 
+                
+                is_nested: product.is_nested_uom || false,
+                satuan_tengah: product.satuan_tengah || null,
+                isi_besar_ke_tengah: Number(product.isi_besar_ke_tengah) || 0,
+                isi_tengah_ke_dasar: Number(product.isi_tengah_ke_dasar) || 0
             });
         }
         searchQuery.value = '';
         products.value = [];
     };
 
+    // 🚀 RUMUS SILUMAN UNTUK NGITUNG TOTAL STOK DASAR DARI LPB
     const hitungTotalStok = (item) => {
-    // 🚀 INI RUMUS YANG BENER: (Karton * Isi) + Eceran
-    const karton = Number(item.qty_karton) || 0;
-    const eceran = Number(item.qty_eceran) || 0;
-    const isi = Number(item.isi_per_besar) || 1;
-    
-    return (karton * isi) + eceran;
-};
+        const qBesar = Number(item.qty_besar) || 0;
+        const qTengah = Number(item.qty_tengah) || 0;
+        const qDasar = Number(item.qty_dasar) || 0;
+
+        if (item.is_nested) {
+            // Mode 3 Lapis (Rokok: Slop -> Bungkus -> Batang)
+            const stokDariBesar = qBesar * item.isi_per_besar; // 1 Slop x 160 Batang
+            const stokDariTengah = qTengah * item.isi_tengah_ke_dasar; // 1 Bungkus x 16 Batang
+            return stokDariBesar + stokDariTengah + qDasar;
+        } else {
+            // Mode 2 Lapis (Indomie: Dus -> Pcs) atau Normal
+            const stokDariBesar = qBesar * item.isi_per_besar;
+            return stokDariBesar + qDasar;
+        }
+    };
 
     const hitungModalPerPcs = (item) => {
-        const totalPcsMasuk = hitungTotalStok(item);
-        const modalInputTotal = Number(item.harga_beli_input) || 0;
-        if (totalPcsMasuk === 0) return 0;
-        return Math.round(modalInputTotal / totalPcsMasuk);
+        const totalDasarMasuk = hitungTotalStok(item);
+        const modalInputFaktur = Number(item.harga_beli_input) || 0;
+        if (totalDasarMasuk === 0) return 0;
+        
+        // Modal Input di form LPB itu adalah modal kemasan paling besar (kalau dia punya kemasan besar)
+        if (item.has_satuan_besar) {
+            // Modal Faktur / Total Isi dari kemasan paling besarnya
+            // (Jadi kita dapetin HPP per satuan dasarnya)
+            return Math.round(modalInputFaktur / item.isi_per_besar);
+        }
+
+        // Kalau ga punya kemasan besar, berarti modal input faktur emang untuk satuan dasar
+        return Math.round(modalInputFaktur / totalDasarMasuk); 
     };
 
     const removeItem = (index) => cartLPB.value.splice(index, 1);
@@ -173,11 +214,12 @@ const executeSearch = async (isFromScanner) => {
             return Swal.fire('Oops!', 'Lengkapi data supplier & barang!', 'warning');
         }
 
+        // 🚀 Cek ada yang rugi ga modal sama harga jual ecerannya?
         const adaYangRugi = isOwner.value && cartLPB.value.some(item => hitungModalPerPcs(item) >= item.harga_jual_saat_ini);
         
         const result = await Swal.fire({
             title: 'Konfirmasi LPB',
-            text: adaYangRugi ? "⚠️ Peringatan: Ada modal barang yang lebih mahal dari harga jual! Tetap lanjutkan?" : "Simpan data penerimaan barang ke gudang?",
+            text: adaYangRugi ? "⚠️ Peringatan: Ada modal barang yang lebih mahal dari harga jual eceran! Tetap lanjutkan?" : "Simpan data penerimaan barang ke gudang?",
             icon: adaYangRugi ? 'warning' : 'question',
             showCancelButton: true,
             confirmButtonColor: adaYangRugi ? '#ef4444' : '#2563eb',
@@ -190,7 +232,7 @@ const executeSearch = async (isFromScanner) => {
         try {
             const payloadItems = cartLPB.value.map(item => ({
                 product_id: item.product_id,
-                qty_masuk: hitungTotalStok(item),
+                qty_masuk: hitungTotalStok(item), // Stok yang disuntik ke Master Produk = Total Satuan Dasar
                 harga_modal: hitungModalPerPcs(item) // Ini yang dikirim ke Backend untuk dirata-rata!
             }));
 

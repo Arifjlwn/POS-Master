@@ -9,7 +9,7 @@ import StockOpnameSummary from '../../components/stockopname/StockOpnameSummary.
 const {
     activeTab, soStep, notes, searchQuery, products, cartSO, cartKlaim, isSubmitting, showScanner, isOwner,
     isKlaimEligible, daysLeftKlaim,startScanner, stopScanner, searchProduct, addToCart, removeItem, 
-    proceedToReview, backToCounting, submitSOFinal, submitKlaimTemuan
+    proceedToReview, backToCounting, submitSOFinal, submitKlaimTemuan, hitungTotalFisik
 } = useStockOpname();
 </script>
 
@@ -41,7 +41,9 @@ const {
                         :cartSO="activeTab === 'SO' ? cartSO : cartKlaim"
                         :soStep="activeTab === 'SO' ? soStep : 'REVIEW'" 
                         :isOwner="isOwner"
-                        :activeTab="activeTab" @remove="removeItem"
+                        :activeTab="activeTab"
+                        :hitungTotalFisik="hitungTotalFisik" @remove="removeItem"
+                        
                     />
                 </div>
 

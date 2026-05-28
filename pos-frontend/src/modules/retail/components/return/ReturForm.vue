@@ -24,7 +24,7 @@ defineEmits(['update:searchProductQuery', 'update:form', 'start-scanner', 'selec
                 <div v-if="selectedProduct" class="flex items-center justify-between p-4 bg-rose-50 border-2 border-rose-200 rounded-2xl">
                     <div class="flex flex-col">
                         <span class="text-rose-900 font-black text-sm uppercase leading-tight truncate">{{ selectedProduct.nama_produk }}</span>
-                        <span class="text-[10px] font-bold text-rose-500 mt-0.5">Stok Tersedia: {{ selectedProduct.stok }}</span>
+                        <span class="text-[10px] font-bold text-rose-500 mt-0.5">Stok Tersedia: {{ selectedProduct.stok }} {{ selectedProduct.satuan_dasar }}</span>
                     </div>
                     <button type="button" @click="$emit('clear-product')" class="w-8 h-8 rounded-xl bg-white text-rose-400 hover:text-rose-600 hover:bg-rose-100 flex items-center justify-center transition-all shadow-sm">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -63,22 +63,43 @@ defineEmits(['update:searchProductQuery', 'update:form', 'start-scanner', 'selec
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Qty Buang</label>
-                    <input v-model="form.qty" type="number" min="1" required class="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-rose-500 focus:bg-white outline-none font-black text-rose-600 text-lg transition-all disabled:opacity-50" placeholder="1" :disabled="!selectedProduct">
-                </div>
+            <div v-if="selectedProduct" class="p-4 bg-slate-50 rounded-2xl border-2 border-slate-100">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-3 block text-center">Jumlah Barang Yang Diretur</label>
+                
+                <div class="flex flex-wrap items-center justify-center gap-2">
+                    <div v-if="selectedProduct.satuan_besar" class="flex flex-col items-center gap-1 w-20">
+                        <input v-model="form.qty_besar" type="number" min="0" class="w-full p-2 bg-white border-2 border-slate-200 rounded-xl text-center font-black text-rose-600 outline-none focus:border-rose-500 shadow-inner">
+                        <span class="text-[8px] font-black text-slate-400 uppercase">{{ selectedProduct.satuan_besar }}</span>
+                    </div>
 
-                <div>
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Alasan</label>
-                    <div class="relative">
-                        <select v-model="form.alasan" required class="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-rose-500 focus:bg-white outline-none font-bold text-slate-800 text-xs appearance-none cursor-pointer transition-all disabled:opacity-50" :disabled="!selectedProduct">
-                            <option value="" disabled selected hidden>Pilih...</option>
-                            <option v-for="opt in alasanOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-                        </select>
-                        <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                        </div>
+                    <span v-if="selectedProduct.is_nested_uom" class="font-bold text-slate-300 mb-4">+</span>
+                    <div v-if="selectedProduct.is_nested_uom" class="flex flex-col items-center gap-1 w-20">
+                        <input v-model="form.qty_tengah" type="number" min="0" class="w-full p-2 bg-white border-2 border-slate-200 rounded-xl text-center font-black text-rose-600 outline-none focus:border-rose-500 shadow-inner">
+                        <span class="text-[8px] font-black text-slate-400 uppercase">{{ selectedProduct.satuan_tengah }}</span>
+                    </div>
+
+                    <span v-if="selectedProduct.satuan_besar" class="font-bold text-slate-300 mb-4">+</span>
+                    <div class="flex flex-col items-center gap-1 w-20">
+                        <input v-model="form.qty_dasar" type="number" min="0" class="w-full p-2 bg-white border-2 border-slate-200 rounded-xl text-center font-black text-rose-600 outline-none focus:border-rose-500 shadow-inner">
+                        <span class="text-[8px] font-black text-slate-400 uppercase">{{ selectedProduct.satuan_dasar }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div v-else>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Qty Retur</label>
+                <input type="number" disabled class="w-full px-4 py-3.5 bg-slate-100 border-2 border-slate-100 rounded-2xl text-slate-400 font-black cursor-not-allowed" placeholder="Pilih barang dulu...">
+            </div>
+
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Alasan</label>
+                <div class="relative">
+                    <select v-model="form.alasan" required class="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-rose-500 focus:bg-white outline-none font-bold text-slate-800 text-xs appearance-none cursor-pointer transition-all disabled:opacity-50" :disabled="!selectedProduct">
+                        <option value="" disabled selected hidden>Pilih...</option>
+                        <option v-for="opt in alasanOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                    </select>
+                    <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
                     </div>
                 </div>
             </div>

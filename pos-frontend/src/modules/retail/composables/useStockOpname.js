@@ -1,7 +1,7 @@
 import { ref, onBeforeUnmount, onMounted } from 'vue';
 import api from '../../../api.js';
 import Swal from 'sweetalert2';
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 
 export function useStockOpname() {
     const activeTab = ref('SO'); 
@@ -25,34 +25,22 @@ export function useStockOpname() {
     const showScanner = ref(false);
     let html5QrCode = null;
 
-    // --- 🚀 LOGIKA CEK ELIGIBILITY KLAIM (7 HARI) ---
+    // --- 🚀 CEK ELIGIBILITY KLAIM (7 HARI) ---
     const checkKlaimEligibility = async () => {
         try {
             const res = await api.get('/retail/stock-opname/last-status');
-
-            // 🐛 RADAR DEBUGGING: Cek apa yang dikirim Backend
-            console.log("👉 DATA DARI BACKEND:", res.data);
 
             if (res.data && res.data.last_so_date) {
                 const lastSO = new Date(res.data.last_so_date);
                 const now = new Date();
                 
-                // Pake Math.abs biar aman dari selisih milidetik timezone
                 const diffTime = Math.abs(now - lastSO); 
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                // 🐛 RADAR DEBUGGING: Cek hasil hitungan
-                console.log("🗓️ Tanggal SO:", lastSO.toLocaleDateString());
-                console.log("🗓️ Tanggal Skrg:", now.toLocaleDateString());
-                console.log("⏳ Selisih Hari:", diffDays);
-
-                // Syarat: Selisih harus 7 hari atau kurang
                 if (diffDays <= 7) {
                     isKlaimEligible.value = true;
-                    // Kalau diff 0 (baru aja SO hari ini), berarti sisa 7 hari
                     daysLeftKlaim.value = diffDays === 0 ? 7 : (8 - diffDays); 
                 } else {
-                    console.log("❌ Backend ngirim null / gak ada tanggal");
                     isKlaimEligible.value = false;
                 }
             } else {
@@ -64,11 +52,11 @@ export function useStockOpname() {
         }
     };
 
-    // Jalankan pengecekan saat komponen dimuat
     onMounted(() => {
         checkKlaimEligibility();
     });
 
+    // --- 🚀 SCANNER ---
     const startScanner = async () => {
         showScanner.value = true;
         setTimeout(async () => {
@@ -76,7 +64,17 @@ export function useStockOpname() {
                 html5QrCode = new Html5Qrcode("reader-so");
                 await html5QrCode.start(
                     { facingMode: "environment" }, 
-                    { fps: 10, qrbox: { width: 250, height: 100 } }, 
+                    { 
+                        fps: 15, 
+                        qrbox: { width: 320, height: 150 },
+                        formatsToSupport: [
+                            Html5QrcodeSupportedFormats.EAN_13,
+                            Html5QrcodeSupportedFormats.EAN_8,
+                            Html5QrcodeSupportedFormats.UPC_A,
+                            Html5QrcodeSupportedFormats.UPC_E,
+                            Html5QrcodeSupportedFormats.CODE_128
+                        ]
+                    }, 
                     (decodedText) => {
                         searchQuery.value = decodedText; 
                         stopScanner();
@@ -100,6 +98,7 @@ export function useStockOpname() {
 
     onBeforeUnmount(() => { if (showScanner.value) stopScanner(); });
 
+    // --- 🚀 PENCARIAN & KERANJANG (DI-UPGRADE BUAT 3 LAPIS) ---
     let searchTimer = null;
     const searchProduct = (isFromScanner = false) => {
         clearTimeout(searchTimer);
@@ -116,7 +115,7 @@ export function useStockOpname() {
             if (isFromScanner) {
                 if (foundData.length > 0) {
                     addToCart(foundData[0]);
-                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `${foundData[0].nama_produk} ditambahkan!`, showConfirmButton: false, timer: 1500 });
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `${foundData[0].nama_produk} masuk daftar!`, showConfirmButton: false, timer: 1500 });
                 } else {
                     Swal.fire('Tidak Ditemukan!', 'Barcode ini tidak ada di Master.', 'error');
                 }
@@ -130,15 +129,31 @@ export function useStockOpname() {
         const existing = targetCart.value.find(item => item.product_id === product.id);
         
         if (existing) {
-            existing.actual_qty++;
+            // Default kalau di-scan ulang, nambah 1 ke kemasan eceran/dasarnya
+            existing.qty_dasar++;
         } else {
             targetCart.value.unshift({
                 product_id: product.id,
                 nama_produk: product.nama_produk,
                 sku: product.sku,
                 system_qty: product.stok,
-                actual_qty: activeTab.value === 'SO' ? 0 : 1, 
-                alasan: ''
+                alasan: '',
+                
+                // Form Input Qty (3 Lapis)
+                qty_besar: 0,
+                qty_tengah: 0,
+                qty_dasar: activeTab.value === 'SO' ? 0 : 1, // Kalo klaim default 1, SO default 0
+                
+                // Variabel Konversi dari Database
+                satuan_dasar: product.satuan_dasar || 'PCS',
+                has_satuan_besar: !!product.satuan_besar && Number(product.isi_per_besar) > 1,
+                satuan_besar: product.satuan_besar || null,
+                isi_per_besar: Number(product.isi_per_besar) || 1,
+                
+                is_nested: product.is_nested_uom || false,
+                satuan_tengah: product.satuan_tengah || null,
+                isi_besar_ke_tengah: Number(product.isi_besar_ke_tengah) || 0,
+                isi_tengah_ke_dasar: Number(product.isi_tengah_ke_dasar) || 0
             });
         }
         searchQuery.value = '';
@@ -149,11 +164,30 @@ export function useStockOpname() {
         activeTab.value === 'SO' ? cartSO.value.splice(index, 1) : cartKlaim.value.splice(index, 1);
     };
 
-    // 🚀 ALUR BARU: TARIK BARANG YANG GAK KE-SCAN
+    // 🚀 RUMUS SILUMAN UNTUK NGITUNG TOTAL FISIK (DI-EKSPORT BIAR BISA DIPAKAI DI UI)
+    const hitungTotalFisik = (item) => {
+        const qBesar = Number(item.qty_besar) || 0;
+        const qTengah = Number(item.qty_tengah) || 0;
+        const qDasar = Number(item.qty_dasar) || 0;
+
+        if (item.is_nested) {
+            // Mode 3 Lapis (Rokok)
+            const stokDariBesar = qBesar * item.isi_per_besar; 
+            const stokDariTengah = qTengah * item.isi_tengah_ke_dasar; 
+            return stokDariBesar + stokDariTengah + qDasar;
+        } else {
+            // Mode 2 Lapis (Indomie) atau Normal (Chitato)
+            const stokDariBesar = qBesar * item.isi_per_besar;
+            return stokDariBesar + qDasar;
+        }
+    };
+
+    // --- 🚀 ALUR REVIEW & FINALISASI SO ---
     const proceedToReview = async () => {
         if (cartSO.value.length === 0) return Swal.fire('Kosong', 'Belum ada barang yang dihitung!', 'warning');
         
-        const belumDihitung = cartSO.value.some(i => i.actual_qty === 0 && i.system_qty > 0);
+        // Cek pakai rumus siluman
+        const belumDihitung = cartSO.value.some(i => hitungTotalFisik(i) === 0 && i.system_qty > 0);
         if (belumDihitung) return Swal.fire('Perhatian', 'Pastikan semua angka fisik terisi, ada barang yang masih 0.', 'info');
 
         const confirm = await Swal.fire({
@@ -170,7 +204,7 @@ export function useStockOpname() {
         Swal.fire({ title: 'Mengkalkulasi Selisih...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         
         try {
-            const res = await api.get('/retail/products?limit=10000');
+            const res = await api.get(`/retail/products?limit=10000`);
             const allProducts = res.data.data || [];
 
             allProducts.forEach(p => {
@@ -181,8 +215,18 @@ export function useStockOpname() {
                         nama_produk: p.nama_produk,
                         sku: p.sku,
                         system_qty: p.stok,
-                        actual_qty: 0, // PAKSA JADI 0
-                        alasan: '' 
+                        alasan: '',
+                        
+                        qty_besar: 0, qty_tengah: 0, qty_dasar: 0, // Ditarik paksa dan diset 0
+                        
+                        satuan_dasar: p.satuan_dasar || 'PCS',
+                        has_satuan_besar: !!p.satuan_besar && Number(p.isi_per_besar) > 1,
+                        satuan_besar: p.satuan_besar || null,
+                        isi_per_besar: Number(p.isi_per_besar) || 1,
+                        is_nested: p.is_nested_uom || false,
+                        satuan_tengah: p.satuan_tengah || null,
+                        isi_besar_ke_tengah: Number(p.isi_besar_ke_tengah) || 0,
+                        isi_tengah_ke_dasar: Number(p.isi_tengah_ke_dasar) || 0
                     });
                 }
             });
@@ -208,22 +252,28 @@ export function useStockOpname() {
 
         isSubmitting.value = true;
         try {
-            await api.post('/retail/stock-opname', {
-                notes: notes.value,
-                items: cartSO.value.map(i => ({
+            // 🚀 TRANSLATE SEMUA QTY LAPISAN JADI 1 ACTUAL QTY BIAR GOLANG GAK PUSING
+            const payloadItems = cartSO.value.map(i => {
+                const totalFisik = hitungTotalFisik(i);
+                return {
                     product_id: i.product_id,
                     system_qty: i.system_qty,
-                    actual_qty: i.actual_qty,
-                    selisih: i.actual_qty - i.system_qty,
+                    actual_qty: totalFisik,
+                    selisih: totalFisik - i.system_qty,
                     alasan: i.alasan
-                })),
+                };
+            });
+
+            await api.post('/retail/stock-opname', {
+                notes: notes.value,
+                items: payloadItems,
                 status: isOwner ? 'APPROVED' : 'PENDING_APPROVAL'
             });
 
             Swal.fire('Selesai!', 'Data SO berhasil diproses.', 'success');
             cartSO.value = [];
             soStep.value = 'COUNTING';
-            checkKlaimEligibility(); // 🚀 Refresh status klaim setelah SO berhasil
+            checkKlaimEligibility();
         } catch (err) { Swal.fire('Gagal', 'Terjadi kesalahan sistem', 'error'); } 
         finally { isSubmitting.value = false; }
     };
@@ -231,15 +281,20 @@ export function useStockOpname() {
     const submitKlaimTemuan = async () => {
         if (cartKlaim.value.length === 0) return Swal.fire('Kosong', 'Keranjang klaim kosong', 'warning');
         
-        // Alasan wajib buat klaim barang nyempil
         const kosong = cartKlaim.value.some(i => !i.alasan);
         if (kosong) return Swal.fire('Wajib Diisi', 'Keterangan barang temuan wajib diisi!', 'warning');
 
         isSubmitting.value = true;
         try {
+            const payloadItems = cartKlaim.value.map(i => ({ 
+                product_id: i.product_id, 
+                qty: hitungTotalFisik(i), // Pakai rumus siluman
+                alasan: i.alasan 
+            }));
+
             await api.post('/retail/stock-adjustment/request', {
                 notes: 'Klaim Barang Nyempil',
-                items: cartKlaim.value.map(i => ({ product_id: i.product_id, qty: i.actual_qty, alasan: i.alasan }))
+                items: payloadItems
             });
             Swal.fire('Terkirim!', 'Klaim barang telah dikirim ke Owner untuk di-Approve.', 'success');
             cartKlaim.value = [];
@@ -249,8 +304,8 @@ export function useStockOpname() {
 
     return {
         activeTab, soStep, notes, searchQuery, products, cartSO, cartKlaim, isSubmitting, showScanner, isOwner,
-        isKlaimEligible, daysLeftKlaim, // 🚀 Wajib di-export ke komponen
-        startScanner, stopScanner, searchProduct, addToCart, removeItem, 
+        isKlaimEligible, daysLeftKlaim,
+        startScanner, stopScanner, searchProduct, addToCart, removeItem, hitungTotalFisik, // 🚀 Wajib Export Fungsi Ini
         proceedToReview, submitSOFinal, submitKlaimTemuan
     };
 }

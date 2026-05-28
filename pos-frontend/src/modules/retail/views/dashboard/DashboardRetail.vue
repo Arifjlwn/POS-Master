@@ -11,12 +11,18 @@ const {
     endDate,
     lineChartCanvas,
     pieChartCanvas,
+    profitMargin,
     formatRupiah,
     setQuickFilter,
     fetchData
 } = useDashboard();
 
 onMounted(fetchData);
+
+// Format number utility
+const formatNumber = (val) => {
+    return Number(val).toLocaleString('id-ID');
+};
 </script>
 
 <template>
@@ -43,10 +49,17 @@ onMounted(fetchData);
                         <span class="text-[10px] text-slate-300 font-black px-1">-</span>
                         <input type="date" v-model="endDate" class="text-xs font-bold text-slate-700 border-none focus:ring-0 bg-transparent cursor-pointer py-1 px-2 outline-none">
                     </div>
+                    
+                    <!-- 🚀 TOMBOL REFRESH SAKTI -->
+                    <button @click="fetchData" :disabled="isLoading" class="p-2.5 bg-white text-slate-500 rounded-xl shadow-sm border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all disabled:opacity-50 group" title="Refresh Data Analytics">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" :class="{'animate-spin text-indigo-600': isLoading, 'group-hover:rotate-180 transition-transform duration-500': !isLoading}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                    </button>
                 </div>
             </div>
 
-            <div window v-if="isLoading" class="py-32 flex flex-col items-center justify-center bg-white rounded-[24px] border border-slate-200 shadow-sm">
+            <div v-if="isLoading" class="py-32 flex flex-col items-center justify-center bg-white rounded-[24px] border border-slate-200 shadow-sm">
                 <div class="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
                 <p class="text-slate-400 font-bold text-xs uppercase tracking-widest animate-pulse">Menghubungkan Data Lapangan...</p>
             </div>
@@ -75,9 +88,14 @@ onMounted(fetchData);
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                             </div>
                         </div>
-                        <div class="relative z-10">
-                            <p class="text-2xl font-black text-emerald-600 tracking-tight">{{ formatRupiah(reportData?.summary?.total_laba) }}</p>
-                            <p class="text-[10px] font-bold text-slate-400 mt-1">Netto Bersih (Sebelum Loss)</p>
+                        <div class="relative z-10 flex items-end justify-between">
+                            <div>
+                                <p class="text-2xl font-black text-emerald-600 tracking-tight">{{ formatRupiah(reportData?.summary?.total_laba) }}</p>
+                                <p class="text-[10px] font-bold text-slate-400 mt-1">Netto Bersih (Sebelum Loss)</p>
+                            </div>
+                            <div class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-lg text-[10px] font-black tracking-widest border border-emerald-200">
+                                {{ profitMargin }}% MARGIN
+                            </div>
                         </div>
                     </div>
 
@@ -103,7 +121,7 @@ onMounted(fetchData);
                             </div>
                         </div>
                         <div>
-                            <p class="text-2xl font-black text-slate-900 tracking-tight">{{ reportData?.summary?.total_produk_terjual || 0 }} <span class="text-[12px] font-bold text-slate-400">Pcs</span></p>
+                            <p class="text-2xl font-black text-slate-900 tracking-tight">{{ formatNumber(reportData?.summary?.total_produk_terjual) }} <span class="text-[12px] font-bold text-slate-400">Total</span></p>
                             <p class="text-[10px] font-bold text-slate-400 mt-1">Produk Keluar Kasir</p>
                         </div>
                     </div>
@@ -118,7 +136,7 @@ onMounted(fetchData);
                         </div>
                         <div class="relative z-10">
                             <p class="text-2xl font-black text-rose-600 tracking-tight">{{ formatRupiah(reportData?.summary?.total_retur_loss) }}</p>
-                            <p class="text-[10px] font-bold text-slate-400 mt-1">Total: <span class="text-rose-500">{{ reportData?.summary?.total_retur_qty || 0 }} Pcs</span> Dibuang/Rusak</p>
+                            <p class="text-[10px] font-bold text-slate-400 mt-1">Total: <span class="text-rose-500">{{ formatNumber(reportData?.summary?.total_retur_qty) }}</span> Dibuang/Rusak</p>
                         </div>
                     </div>
 
@@ -132,7 +150,7 @@ onMounted(fetchData);
                         </div>
                         <div class="relative z-10">
                             <p class="text-2xl font-black text-purple-600 tracking-tight">{{ formatRupiah(reportData?.summary?.total_so_loss) }}</p>
-                            <p class="text-[10px] font-bold text-slate-400 mt-1">Total: <span class="text-purple-500">{{ reportData?.summary?.total_so_qty || 0 }} Pcs</span> Hilang/Minus</p>
+                            <p class="text-[10px] font-bold text-slate-400 mt-1">Total: <span class="text-purple-500">{{ formatNumber(reportData?.summary?.total_so_qty) }}</span> Hilang/Minus</p>
                         </div>
                     </div>
                 </div>
@@ -170,8 +188,8 @@ onMounted(fetchData);
                             <div class="h-[180px] relative w-full mb-4 flex justify-center">
                                 <canvas ref="pieChartCanvas"></canvas>
                                 <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                    <span class="text-2xl font-black text-slate-800">{{ reportData.summary.total_produk_terjual }}</span>
-                                    <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Total Qty</span>
+                                    <span class="text-2xl font-black text-slate-800">{{ formatNumber(reportData.summary.total_produk_terjual) }}</span>
+                                    <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Total Keseluruhan</span>
                                 </div>
                             </div>
                             <div class="space-y-1.5 mt-auto max-h-[110px] overflow-y-auto custom-scrollbar">
@@ -180,7 +198,7 @@ onMounted(fetchData);
                                         <span class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: ['#4f46e5', '#3b82f6', '#0ea5e9', '#10b981', '#f59e0b'][index] }"></span>
                                         <span class="truncate uppercase">{{ item.nama_produk }}</span>
                                     </div>
-                                    <span class="font-black text-slate-900 shrink-0">{{ item.qty_terjual }} Pcs</span>
+                                    <span class="font-black text-slate-900 shrink-0">{{ formatNumber(item.qty_terjual) }} {{ item.satuan_dasar || 'Pcs' }}</span>
                                 </div>
                             </div>
                         </div>
@@ -222,7 +240,9 @@ onMounted(fetchData);
                                         <div class="text-[9px] font-bold text-slate-400 tracking-widest mt-0.5">{{ item.sku || 'SKU-NA' }}</div>
                                     </td>
                                     <td class="px-6 py-3 text-center">
-                                        <span class="font-black text-slate-700 text-xs bg-slate-100 px-2.5 py-1 rounded-md">{{ item.qty_terjual }} Pcs</span>
+                                        <span class="font-black text-slate-700 text-xs bg-slate-100 px-2.5 py-1 rounded-md">
+                                            {{ formatNumber(item.qty_terjual) }} {{ item.satuan_dasar || 'Pcs' }}
+                                        </span>
                                     </td>
                                     <td class="px-6 py-3 text-right">
                                         <span class="font-black text-indigo-600 text-sm">{{ formatRupiah(item.total_omzet) }}</span>

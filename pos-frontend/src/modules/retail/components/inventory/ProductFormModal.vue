@@ -35,10 +35,43 @@ const filteredCategories = computed(() => {
     return props.categories.filter(c => c.toLowerCase().includes(q));
 });
 
-// 🚀 FUNGSI INI KETINGGALAN TADI BUAT PILIH KATEGORI DROPDOWN
 const selectCategory = (cat) => {
     props.form.category = cat;
     showCategoryDropdown.value = false;
+};
+
+// 🚀 FUNGSI FORMAT ANGKA (TITIK RIBUAN OTOMATIS)
+const formatNumber = (val) => {
+    if (val === null || val === undefined || val === '') return '';
+    return Number(val).toLocaleString('id-ID');
+};
+
+// 🚀 FUNGSI NANGKEP KETIKAN & NGASIH TITIK SECARA REALTIME (UNTUK FORM)
+const handleInputForm = (key, event) => {
+    let raw = event.target.value.replace(/\D/g, ''); 
+    let num = raw ? parseInt(raw, 10) : 0;
+    props.form[key] = num; 
+    event.target.value = raw ? num.toLocaleString('id-ID') : ''; 
+};
+
+// 🚀 FUNGSI NANGKEP KETIKAN & NGASIH TITIK SECARA REALTIME (UNTUK EMIT KE PARENT)
+const handleInputEmit = (emitName, event) => {
+    let raw = event.target.value.replace(/\D/g, '');
+    let num = raw ? parseInt(raw, 10) : 0;
+    emit(emitName, num);
+    event.target.value = raw ? num.toLocaleString('id-ID') : '';
+};
+
+// 🚀 FUNGSI TRIGGER KEMASAN BERLAPIS + AUTO-FILL DUNIA ECERAN (LITER/KG)
+const enableNestedUom = () => {
+    props.form.is_nested_uom = true;
+    if (props.form.satuan_dasar === 'ML') {
+        if (!props.form.satuan_tengah) props.form.satuan_tengah = 'LITER';
+        if (!props.form.isi_tengah_ke_dasar) props.form.isi_tengah_ke_dasar = 1000;
+    } else if (props.form.satuan_dasar === 'GRAM') {
+        if (!props.form.satuan_tengah) props.form.satuan_tengah = 'KG';
+        if (!props.form.isi_tengah_ke_dasar) props.form.isi_tengah_ke_dasar = 1000;
+    }
 };
 </script>
 
@@ -131,16 +164,18 @@ const selectCategory = (cat) => {
                             <h4 class="font-black text-[10px] uppercase tracking-[0.2em]">Konversi & Satuan Jual</h4>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label class="text-[8px] font-black text-slate-500 uppercase block mb-1">Satuan Dasar Jual</label>
+                                <label class="text-[8px] font-black text-slate-500 uppercase block mb-1">Satuan Dasar Jual Terkecil</label>
                                 <select v-model="form.satuan_dasar" class="w-full p-3.5 bg-slate-800 border border-slate-700 rounded-xl outline-none font-black text-xs uppercase cursor-pointer text-white">
                                     <option value="PCS">PCS</option>
+                                    <option value="POUCH">POUCH</option>
                                     <option value="KG">KG</option>
                                     <option value="GRAM">GRAM</option>
+                                    <option value="LITER">LITER</option>
+                                    <option value="ML">ML</option>
                                     <option value="PACK">PACK</option>
                                     <option value="BOX">BOX</option>
-                                    <option value="LITER">LITER</option>
                                     <option value="BOTOL">BOTOL</option>
                                     <option value="BATANG">BATANG</option>
                                     <option value="BUNGKUS">BUNGKUS</option>
@@ -154,59 +189,135 @@ const selectCategory = (cat) => {
                                     <div :class="form.has_satuan_besar ? 'bg-blue-500' : 'bg-slate-600'" class="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)] transition-colors"></div>
                                 </div>
                             </div>
+                        </div>
 
-                            <div v-if="form.has_satuan_besar" class="col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-800 mt-2">
-                                <div>
-                                    <label class="text-[8px] font-black text-blue-400 uppercase block mb-1">Sebutannya Apa?</label>
-                                    <input v-model="form.satuan_besar" type="text" placeholder="KARTON / BOX" class="w-full p-3 bg-slate-800 border border-blue-900 focus:border-blue-500 rounded-xl outline-none font-black text-xs uppercase text-white transition-all">
+                        <div v-if="form.has_satuan_besar" class="col-span-2 flex flex-col gap-4 pt-4 border-t border-slate-800 mt-2">
+                            
+                            <div>
+                                <label class="text-[8px] font-black text-blue-400 uppercase block mb-1">Sebutannya Apa? (Kemasan Paling Besar)</label>
+                                <input v-model="form.satuan_besar" type="text" placeholder="KARTON / SLOP / KARUNG / JERIGEN" class="w-full md:w-1/2 p-3 bg-slate-800 border border-blue-900 focus:border-blue-500 rounded-xl outline-none font-black text-xs uppercase text-white transition-all">
+                            </div>
+
+                            <div class="p-4 bg-slate-800/50 border border-slate-700 rounded-2xl flex flex-col gap-4">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                                    <span class="text-[9px] font-black text-amber-400 uppercase tracking-widest">Kalkulator Isi Otomatis</span>
                                 </div>
-                                <div>
-                                    <label class="text-[8px] font-black text-blue-400 uppercase block mb-1">1 {{ form.satuan_besar || 'KEMASAN' }} Isi Berapa {{ form.satuan_dasar }}?</label>
-                                    <input v-model.number="form.isi_per_besar" type="number" class="w-full p-3 bg-slate-800 border border-blue-900 focus:border-blue-500 rounded-xl outline-none font-black text-xs text-white transition-all">
+
+                                <!-- 🚀 MODE 1: KEMASAN BERLAPIS (YANG SUDAH DI-REVERSE & DINAMIS) -->
+                                <div v-if="form.is_nested_uom" class="flex flex-col gap-4">
+                                    
+                                    <!-- 1. ISI NAMA TENGAH DULU DI ATAS -->
+                                    <div>
+                                        <label class="text-[8px] font-black text-slate-400 uppercase block mb-1">Sebutannya Apa? (Kemasan Tengah)</label>
+                                        <input v-model="form.satuan_tengah" type="text" placeholder="Cth: BUNGKUS / RENTENG / LITER / KG" class="w-full md:w-1/2 p-3 bg-slate-900 border border-slate-700 focus:border-blue-500 rounded-xl outline-none font-black text-xs uppercase text-white transition-all">
+                                    </div>
+
+                                    <!-- 2. KOTAK ANGKA (DIKUNCI KALAU NAMA TENGAH KOSONG) -->
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 transition-all duration-300" :class="!form.satuan_tengah ? 'opacity-40 pointer-events-none grayscale-[50%]' : ''">
+                                        <div>
+                                            <label class="text-[8px] font-black text-slate-400 uppercase block mb-1">1 {{ form.satuan_besar || 'BESAR' }} isi berapa {{ form.satuan_tengah || 'KEMASAN TENGAH' }}?</label>
+                                            <input :value="formatNumber(form.isi_besar_ke_tengah)" @input="handleInputForm('isi_besar_ke_tengah', $event)" type="text" inputmode="numeric" placeholder="Contoh: 10" class="w-full p-3 bg-slate-900 border border-slate-700 focus:border-blue-500 rounded-xl outline-none font-black text-xs text-center text-white transition-all">
+                                        </div>
+                                        <div>
+                                            <label class="text-[8px] font-black text-slate-400 uppercase block mb-1">1 {{ form.satuan_tengah || 'TENGAH' }} isi berapa {{ form.satuan_dasar }}?</label>
+                                            <input :value="formatNumber(form.isi_tengah_ke_dasar)" @input="handleInputForm('isi_tengah_ke_dasar', $event)" type="text" inputmode="numeric" placeholder="Contoh: 16" class="w-full p-3 bg-slate-900 border border-slate-700 focus:border-blue-500 rounded-xl outline-none font-black text-xs text-center text-white transition-all">
+                                        </div>
+                                    </div>
+
+                                    <div class="text-[9px] font-black text-emerald-400 uppercase tracking-widest italic text-center mt-1 bg-emerald-900/20 py-2.5 rounded-lg border border-emerald-900/50">
+                                        <span v-if="form.isi_per_besar > 0">Sistem Menyimpan: 1 {{ form.satuan_besar || 'KEMASAN' }} = {{ formatNumber(form.isi_per_besar) }} {{ form.satuan_dasar }}</span>
+                                        <span v-else>Isi angka di atas untuk hitung otomatis...</span>
+                                    </div>
+                                    <button @click="form.is_nested_uom = false" class="text-[8px] font-black text-slate-500 hover:text-rose-400 uppercase tracking-widest mt-1 text-left flex items-center gap-1 w-max">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg> Batal pakai kemasan berlapis
+                                    </button>
                                 </div>
+
+                                <!-- 🚀 MODE 2: GULA (GRAM) ATAU MINYAK CURAH (ML) -->
+                                <div v-else-if="form.satuan_dasar === 'GRAM' || form.satuan_dasar === 'ML'" class="flex flex-col gap-2">
+                                    <label class="text-[8px] font-black text-slate-400 uppercase block">1 {{ form.satuan_besar || (form.satuan_dasar === 'GRAM' ? 'KARUNG' : 'JERIGEN') }} isinya berapa {{ form.satuan_dasar === 'GRAM' ? 'KG' : 'LITER' }}?</label>
+                                    <div class="flex items-center gap-3">
+                                        <input :value="formatNumber(form.input_kg)" @input="handleInputForm('input_kg', $event)" type="text" inputmode="numeric" :placeholder="form.satuan_dasar === 'GRAM' ? 'Contoh: 20' : 'Contoh: 18'" class="w-full md:w-1/3 p-3 bg-slate-900 border border-slate-700 focus:border-blue-500 rounded-xl outline-none font-black text-xs text-white transition-all text-center">
+                                        <span class="text-xs font-black text-slate-400">{{ form.satuan_dasar === 'GRAM' ? 'KG' : 'LITER' }}</span>
+                                    </div>
+                                    <div class="text-[9px] font-black text-emerald-400 mt-1 uppercase tracking-widest italic">
+                                        <span v-if="form.isi_per_besar > 0">Sistem Menyimpan Otomatis: 1 {{ form.satuan_besar || 'KEMASAN' }} = {{ formatNumber(form.isi_per_besar) }} {{ form.satuan_dasar }}</span>
+                                        <span v-else>Masukkan isi dalam {{ form.satuan_dasar === 'GRAM' ? 'KG' : 'LITER' }}</span>
+                                    </div>
+                                    <button @click="enableNestedUom" class="mt-2 text-[8px] font-black text-blue-400 hover:text-blue-300 uppercase tracking-widest text-left flex items-center gap-1 w-max">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                        Punya kemasan tengah? (Cth: Karung -> Pouch -> Gram)
+                                    </button>
+                                </div>
+
+                                <!-- 🚀 MODE 3: NORMAL (DUS -> PCS) -->
+                                <div v-else class="flex flex-col gap-2">
+                                    <label class="text-[8px] font-black text-slate-400 uppercase block">1 {{ form.satuan_besar || 'KEMASAN' }} isi berapa {{ form.satuan_dasar }}?</label>
+                                    <div class="flex gap-2 items-center">
+                                        <input :value="formatNumber(form.isi_per_besar)" @input="handleInputForm('isi_per_besar', $event)" type="text" inputmode="numeric" placeholder="Contoh: 24" class="w-full md:w-1/3 p-3 bg-slate-900 border border-slate-700 focus:border-blue-500 rounded-xl outline-none font-black text-xs text-center text-white transition-all">
+                                        <span class="text-xs font-black text-slate-400">{{ form.satuan_dasar }}</span>
+                                    </div>
+                                    <button @click="enableNestedUom" class="mt-2 text-[8px] font-black text-blue-400 hover:text-blue-300 uppercase tracking-widest text-left flex items-center gap-1 w-max">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                        Punya kemasan tengah? (Misal: Dus -> Renteng -> Pcs)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 pt-2">
                                 <div>
                                     <label class="text-[8px] font-black text-amber-400 uppercase block mb-1">Harga Beli 1 {{ form.satuan_besar || 'KEMASAN' }}</label>
-                                    <input v-model.number="form.harga_beli_besar" type="number" placeholder="Rp" class="w-full p-3 bg-amber-900/20 border border-amber-900 focus:border-amber-500 rounded-xl outline-none font-black text-xs text-amber-400 transition-all">
+                                    <input :value="formatNumber(form.harga_beli_besar)" @input="handleInputForm('harga_beli_besar', $event)" type="text" inputmode="numeric" placeholder="Rp" class="w-full p-3 bg-amber-900/20 border border-amber-900 focus:border-amber-500 rounded-xl outline-none font-black text-xs text-amber-400 transition-all">
                                 </div>
                                 <div>
                                     <label class="text-[8px] font-black text-emerald-400 uppercase block mb-1">Harga Jual 1 {{ form.satuan_besar || 'KEMASAN' }}</label>
-                                    <input v-model.number="form.harga_jual_besar" type="number" placeholder="Rp" class="w-full p-3 bg-emerald-900/20 border border-emerald-900 focus:border-emerald-500 rounded-xl outline-none font-black text-xs text-emerald-400 transition-all">
+                                    <input :value="formatNumber(form.harga_jual_besar)" @input="handleInputForm('harga_jual_besar', $event)" type="text" inputmode="numeric" placeholder="Rp" class="w-full p-3 bg-emerald-900/20 border border-emerald-900 focus:border-emerald-500 rounded-xl outline-none font-black text-xs text-emerald-400 transition-all">
                                 </div>
                             </div>
+
                         </div>
                     </div>
 
-                    <div class="p-5 border rounded-[28px] transition-all duration-300" :class="form.has_satuan_besar ? 'bg-slate-100/80 border-transparent' : 'bg-white border-slate-200'">
-                        <label class="text-[9px] font-black uppercase tracking-widest mb-3 block" :class="form.has_satuan_besar ? 'text-indigo-500' : 'text-slate-400'">Harga Modal Dasar ({{ form.satuan_dasar }})</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-xs font-black" :class="form.has_satuan_besar ? 'text-indigo-400' : 'text-slate-400'">Rp</span>
-                            <input v-model.number="form.cost_price" type="number" :disabled="form.has_satuan_besar" :class="form.has_satuan_besar ? 'text-indigo-600 font-black bg-slate-200/40 cursor-not-allowed border-transparent shadow-none' : 'text-slate-800 font-black bg-white border-slate-200 focus:border-blue-600 outline-none shadow-inner'" class="w-full pl-12 pr-4 py-4 rounded-2xl text-lg border-2">
+                    <div class="p-5 border rounded-[28px] transition-all duration-300 flex flex-col justify-between h-full" :class="form.has_satuan_besar ? 'bg-slate-100/80 border-transparent' : 'bg-white border-slate-200'">
+                        <div>
+                            <label class="text-[9px] font-black uppercase tracking-widest mb-3 block text-center" :class="form.has_satuan_besar ? 'text-indigo-500' : 'text-slate-400'">Harga Modal Dasar ({{ form.satuan_dasar }})</label>
                         </div>
-                        <div v-if="form.has_satuan_besar" class="mt-2.5 flex items-center justify-center gap-1.5">
-                            <span class="text-[8px] font-black text-indigo-500 uppercase tracking-widest italic">* Terkunci dari kalkulator grosir</span>
-                        </div>
-                    </div>
-
-                    <!-- 🚀 UI KALKULATOR ECERAN WARUNG MADURA -->
-                    <div class="p-5 bg-blue-50 border border-blue-100 rounded-[28px] shadow-sm">
-                        <label class="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-3 block">Patokan Harga Jual Eceran</label>
                         
-                        <div class="grid grid-cols-6 gap-2 items-center">
-                            <div class="col-span-3 relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-[10px] font-black text-blue-400">Rp</span>
-                                <input v-model.number="form.harga_eceran_tampil" type="number" placeholder="Harga..." class="w-full pl-9 pr-2 py-3.5 rounded-xl bg-white border border-blue-200 focus:border-blue-600 outline-none font-black text-sm text-blue-700 shadow-inner transition-all">
+                        <div class="relative w-full my-auto">
+                            <span class="absolute inset-y-0 left-0 pl-5 flex items-center text-sm font-black" :class="form.has_satuan_besar ? 'text-indigo-400' : 'text-slate-400'">Rp</span>
+                            <input :value="formatNumber(form.cost_price)" disabled type="text" :class="form.has_satuan_besar ? 'text-indigo-600 bg-slate-200/40 cursor-not-allowed border-transparent shadow-none' : 'text-slate-800 bg-white border-slate-200 focus:border-blue-600 outline-none shadow-inner'" class="w-full pl-12 pr-4 py-5 rounded-2xl text-3xl font-black text-center border-2 transition-all">
+                        </div>
+                        
+                        <div class="mt-4 flex items-center justify-center">
+                            <span v-if="form.has_satuan_besar" class="text-[8px] font-black text-indigo-500 uppercase tracking-widest italic">* Terkunci dari kalkulator grosir</span>
+                            <span v-else class="text-[8px] font-black text-transparent select-none uppercase tracking-widest italic">* Filler</span>
+                        </div>
+                    </div>
+
+                    <div class="p-5 bg-blue-50 border border-blue-100 rounded-[28px] shadow-sm flex flex-col justify-between h-full">
+                        <label class="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-3 block text-center">Patokan Harga Jual Eceran</label>
+                        
+                        <div class="flex flex-col gap-2 my-auto">
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-5 flex items-center text-sm font-black text-blue-400">Rp</span>
+                                <input :value="formatNumber(form.harga_eceran_tampil)" @input="handleInputForm('harga_eceran_tampil', $event)" type="text" inputmode="numeric" placeholder="Harga..." class="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-blue-200 focus:border-blue-600 outline-none font-black text-xl text-blue-700 shadow-inner transition-all text-center">
                             </div>
-                            <div class="col-span-1 text-center font-black text-[9px] text-blue-400 uppercase italic">UNTUK SETIAP</div>
-                            <div class="col-span-2 relative flex items-center gap-2">
-                                <input v-model.number="form.qty_eceran_tampil" type="number" class="w-full px-2 py-3.5 rounded-xl bg-white border border-blue-200 focus:border-blue-600 outline-none font-black text-sm text-blue-700 shadow-inner transition-all text-center">
-                                <span class="font-black text-[10px] text-blue-600 uppercase">{{ form.satuan_dasar }}</span>
+                            
+                            <div class="text-center font-black text-[9px] text-blue-400 uppercase italic py-1">
+                                UNTUK SETIAP
+                            </div>
+                            
+                            <div class="relative flex items-center">
+                                <input :value="formatNumber(form.qty_eceran_tampil)" @input="handleInputForm('qty_eceran_tampil', $event)" type="text" inputmode="numeric" class="w-full pl-4 pr-16 py-4 rounded-2xl bg-white border border-blue-200 focus:border-blue-600 outline-none font-black text-xl text-center text-blue-700 shadow-inner transition-all">
+                                <span class="absolute inset-y-0 right-0 pr-5 flex items-center font-black text-[10px] text-blue-600 uppercase">{{ form.satuan_dasar }}</span>
                             </div>
                         </div>
 
-                        <div class="mt-4 pt-3 border-t border-blue-200/50 flex justify-between items-center px-1">
-                            <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">*Disimpan di sistem: Rp {{ form.price }} / {{ form.satuan_dasar }}</p>
-                            <p class="text-[9px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-100/50 px-2 py-1 rounded-md">
-                                Profit: Rp {{ (form.price - form.cost_price) * form.qty_eceran_tampil }} / {{ form.qty_eceran_tampil }} {{ form.satuan_dasar }}
+                        <div class="mt-4 pt-4 border-t border-blue-200/50 flex flex-col gap-2 px-1">
+                            <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest italic text-center">*Disimpan di sistem: Rp {{ formatNumber(form.price) }} / {{ form.satuan_dasar }}</p>
+                            <p class="text-[9px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-100/50 px-2 py-2 rounded-lg text-center" :class="(form.price - form.cost_price) < 0 ? 'text-rose-600 bg-rose-100/50' : 'text-emerald-600 bg-emerald-100/50'">
+                                Profit: Rp {{ formatNumber((form.price - form.cost_price) * form.qty_eceran_tampil) }} / {{ formatNumber(form.qty_eceran_tampil) }} {{ form.satuan_dasar }}
                             </p>
                         </div>
                     </div>
@@ -216,28 +327,28 @@ const selectCategory = (cat) => {
                             <div>
                                 <label class="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-2 block">Jumlah {{ form.satuan_besar }}</label>
                                 <input 
-                                    :value="stokDalamKarton"
-                                    @input="emit('update:stokDalamKarton', Number($event.target.value))" 
-                                    type="number" min="0" placeholder="0" 
+                                    :value="formatNumber(stokDalamKarton)"
+                                    @input="handleInputEmit('update:stokDalamKarton', $event)" 
+                                    type="text" inputmode="numeric" placeholder="0" 
                                     class="w-full px-4 py-3.5 rounded-xl bg-white border border-slate-200 focus:border-indigo-600 outline-none font-black text-lg text-indigo-600 transition-all shadow-sm">
                             </div>
                             <div>
                                 <label class="text-[9px] font-black text-amber-600 uppercase tracking-widest mb-2 block">+ Lebih Eceran ({{ form.satuan_dasar }})</label>
                                 <input 
-                                    :value="eceranTambahan"
-                                    @input="emit('update:eceranTambahan', Number($event.target.value))"
-                                    type="number" min="0" placeholder="0"
+                                    :value="formatNumber(eceranTambahan)"
+                                    @input="handleInputEmit('update:eceranTambahan', $event)"
+                                    type="text" inputmode="numeric" placeholder="0"
                                     class="w-full px-4 py-3.5 rounded-xl bg-white border border-slate-200 focus:border-amber-600 outline-none font-black text-lg text-amber-600 transition-all shadow-sm"
                                 >
                             </div>
                             <div>
                                 <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Total Stok Akhir</label>
-                                <input :value="form.stock" type="number" disabled class="w-full px-4 py-3.5 rounded-xl bg-slate-100 border border-transparent font-black text-xl text-slate-500 text-center">
+                                <input :value="formatNumber(form.stock)" type="text" disabled class="w-full px-4 py-3.5 rounded-xl bg-slate-100 border border-transparent font-black text-xl text-slate-500 text-center">
                             </div>
                         </div>
                         <div v-else>
                             <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block text-center">Stok Awal Fisik (dalam {{ form.satuan_dasar }})</label>
-                            <input v-model.number="form.stock" type="number" min="0" placeholder="0" class="w-full px-4 py-4 rounded-2xl bg-white border-2 border-slate-200 focus:border-blue-600 outline-none font-black text-center text-2xl text-slate-800 transition-all">
+                            <input :value="formatNumber(form.stock)" @input="handleInputForm('stock', $event)" type="text" inputmode="numeric" placeholder="0" class="w-full px-4 py-4 rounded-2xl bg-white border-2 border-slate-200 focus:border-blue-600 outline-none font-black text-center text-2xl text-slate-800 transition-all">
                         </div>
                     </div>
 
@@ -265,7 +376,4 @@ const selectCategory = (cat) => {
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-input[type=number]::-webkit-inner-spin-button, 
-input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-input[type=number] { -moz-appearance: textfield; }
 </style>

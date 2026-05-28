@@ -1,6 +1,10 @@
 <script setup>
 defineProps({ cart: Array, isSubmitting: Boolean, getBadgeClass: Function });
 defineEmits(['remove', 'submit']);
+
+const formatNumber = (val) => {
+    return Number(val).toLocaleString('id-ID');
+};
 </script>
 
 <template>
@@ -20,17 +24,38 @@ defineEmits(['remove', 'submit']);
         </div>
 
         <div v-auto-animate class="flex-1 overflow-y-auto custom-scrollbar p-4 bg-slate-50/30 flex flex-col gap-3">
-            <div v-for="(item, index) in cart" :key="index" class="bg-white p-4 rounded-[20px] shadow-sm border border-slate-100 flex gap-3 relative group">
-                <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center font-black text-lg border border-rose-100 shrink-0">
-                    {{ item.qty }}
-                </div>
-                <div class="flex-1 pr-8">
-                    <div class="font-black text-slate-800 text-sm uppercase leading-tight">{{ item.nama_produk }}</div>
-                    <div class="mt-1 flex flex-wrap gap-1">
-                        <span class="inline-block px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border" :class="getBadgeClass(item.alasan)">{{ item.alasan }}</span>
+            <div v-for="(item, index) in cart" :key="index" class="bg-white p-4 rounded-[20px] shadow-sm border border-slate-100 flex flex-col gap-3 relative group">
+                
+                <div class="flex justify-between items-start pr-8">
+                    <div>
+                        <div class="font-black text-slate-800 text-sm uppercase leading-tight">{{ item.nama_produk }}</div>
+                        <div class="mt-1 flex flex-wrap gap-1">
+                            <span class="inline-block px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border" :class="getBadgeClass(item.alasan)">{{ item.alasan }}</span>
+                        </div>
                     </div>
-                    <p v-if="item.catatan" class="text-[10px] text-slate-500 mt-1.5 italic truncate">"{{ item.catatan }}"</p>
                 </div>
+
+                <div class="bg-slate-50 border border-slate-100 p-3 rounded-xl flex items-center justify-between">
+                    <div class="flex flex-wrap gap-x-3 gap-y-1">
+                        <span v-if="item.has_satuan_besar" class="text-[10px] font-bold text-slate-600 uppercase">
+                            <span class="font-black text-rose-600 text-xs">{{ item.qty_besar }}</span> {{ item.satuan_besar }}
+                        </span>
+                        <span v-if="item.is_nested" class="text-[10px] font-bold text-slate-600 uppercase">
+                            <span class="font-black text-rose-600 text-xs">{{ item.qty_tengah }}</span> {{ item.satuan_tengah }}
+                        </span>
+                        <span class="text-[10px] font-bold text-slate-600 uppercase">
+                            <span class="font-black text-rose-600 text-xs">{{ item.qty_dasar }}</span> {{ item.satuan_dasar }}
+                        </span>
+                    </div>
+                    
+                    <div class="bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm text-center">
+                        <div class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total Dibuang</div>
+                        <div class="text-sm font-black text-slate-800 leading-none">{{ formatNumber(item.qty) }} <span class="text-[10px]">{{ item.satuan_dasar }}</span></div>
+                    </div>
+                </div>
+
+                <p v-if="item.catatan" class="text-[10px] text-slate-500 italic">"{{ item.catatan }}"</p>
+                
                 <button @click="$emit('remove', index)" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-400 hover:text-white hover:bg-red-500 transition-colors opacity-100 xl:opacity-0 xl:group-hover:opacity-100">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                 </button>
@@ -51,3 +76,10 @@ defineEmits(['remove', 'submit']);
         </div>
     </div>
 </template>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+</style>

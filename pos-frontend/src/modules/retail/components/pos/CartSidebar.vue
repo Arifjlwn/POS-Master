@@ -22,7 +22,7 @@ const emit = defineEmits([
     'set-payment',
     'format-rupiah', 
     'checkout',
-    'toggle-uom' // 🚀 Didaftarin di sini
+    'toggle-uom' 
 ]);
 </script>
 
@@ -72,7 +72,7 @@ const emit = defineEmits([
                     <p class="text-slate-600 font-black text-xs md:text-sm uppercase tracking-widest">Keranjang Kosong</p>
                 </div>
 
-                <div v-for="item in cart" :key="item.id + '_' + item.selected_uom" class="flex flex-col mb-3 p-3 bg-slate-50/50 rounded-xl md:rounded-2xl border border-slate-100 shadow-sm hover:border-indigo-200 transition-colors">
+                <div v-for="item in cart" :key="item.id + '_' + item.selected_uom" class="flex flex-col mb-3 p-3 bg-slate-50/50 rounded-xl md:rounded-2xl border border-slate-100 shadow-sm hover:border-indigo-200 transition-colors relative group">
                     
                     <div class="flex justify-between items-start mb-2">
                         <div class="flex-1 pr-2">
@@ -80,12 +80,16 @@ const emit = defineEmits([
                             
                             <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
                                 <span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border"
-                                      :class="item.selected_uom === item.satuan_besar ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-indigo-50 border-indigo-200 text-indigo-600'">
+                                      :class="{
+                                          'bg-indigo-50 border-indigo-200 text-indigo-600': item.selected_uom === item.satuan_dasar,
+                                          'bg-emerald-50 border-emerald-200 text-emerald-600': item.selected_uom === item.satuan_tengah,
+                                          'bg-amber-100 border-amber-300 text-amber-700': item.selected_uom === item.satuan_besar
+                                      }">
                                     {{ item.selected_uom || 'PCS' }}
                                 </span>
                                 
                                 <button v-if="item.has_grosir" @click="emit('toggle-uom', item)" class="px-1.5 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-600 rounded text-[8px] font-black uppercase tracking-widest flex items-center justify-center gap-1 transition-colors" title="Ganti Satuan">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                                     Ubah
                                 </button>
                             </div>

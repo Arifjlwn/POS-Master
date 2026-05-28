@@ -8,6 +8,12 @@ defineProps({
     reportType: { type: String, default: 'SO' } // 🚀 TERIMA PROP TYPE DI SINI
 });
 defineEmits(['print', 'approve']);
+
+// Fungsi Format Angka Rupiah & Ribuan
+const formatNumber = (val) => {
+    if (val === null || val === undefined) return '0';
+    return Number(val).toLocaleString('id-ID');
+};
 </script>
 
 <template>
@@ -50,7 +56,7 @@ defineEmits(['print', 'approve']);
                     {{ reportType === 'SO' ? 'Estimasi Valuasi Selisih' : 'Total Valuasi Barang Temuan' }}
                 </h3>
                 <div class="text-3xl font-black text-center" :class="calculateLoss(detail.details) < 0 ? 'text-red-600' : 'text-emerald-600'">
-                    {{ calculateLoss(detail.details) < 0 ? '-' : '+' }} Rp {{ Math.abs(calculateLoss(detail.details)).toLocaleString('id-ID') }}
+                    {{ calculateLoss(detail.details) < 0 ? '-' : '+' }} Rp {{ formatNumber(Math.abs(calculateLoss(detail.details))) }}
                 </div>
                 <p class="text-[10px] font-bold text-center mt-2 uppercase tracking-widest" :class="calculateLoss(detail.details) < 0 ? 'text-red-400' : 'text-emerald-400'">
                     Catatan: {{ detail.notes }}
@@ -62,11 +68,11 @@ defineEmits(['print', 'approve']);
             </h4>
             
             <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
+                <table class="w-full text-left border-collapse min-w-[600px]">
                     
                     <thead>
                         <tr class="bg-slate-100/50 text-[9px] font-black text-slate-500 uppercase tracking-widest border-b-2 border-slate-200">
-                            <th class="p-3">Nama Barang</th>
+                            <th class="p-3 w-[40%]">Nama Barang</th>
                             <th class="p-3 text-center">Stok Sistem</th>
                             <th class="p-3 text-center">{{ reportType === 'SO' ? 'Fisik' : 'Fisik Ketemu' }}</th>
                             <th class="p-3 text-center">{{ reportType === 'SO' ? 'Selisih' : 'Total Stok' }}</th>
@@ -75,30 +81,36 @@ defineEmits(['print', 'approve']);
 
                     <tbody class="divide-y divide-slate-100">
                         <tr v-for="d in detail.details" :key="d.id" class="text-xs font-bold text-slate-700">
+                            
                             <td class="p-3">
                                 <div class="uppercase">{{ d.product?.nama_produk || 'Produk Terhapus' }}</div>
                                 <div v-if="d.alasan" class="text-[9px] text-amber-600 mt-1 flex items-center gap-1 font-bold">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                     {{ d.alasan }}
                                 </div>
                             </td>
                             
                             <td class="p-3 text-center text-slate-400">
-                                {{ reportType === 'SO' ? d.system_qty : (d.product?.stok ?? 0) }}
+                                {{ reportType === 'SO' ? formatNumber(d.system_qty) : formatNumber(d.product?.stok ?? 0) }} 
+                                <span class="text-[8px] ml-1">{{ d.product?.satuan_dasar || 'PCS' }}</span>
                             </td>
                             
                             <td class="p-3 text-center text-indigo-600 font-black">
-                                <span v-if="reportType === 'KLAIM'" class="text-amber-500">+</span>{{ reportType === 'SO' ? d.actual_qty : d.qty }}
+                                <span v-if="reportType === 'KLAIM'" class="text-amber-500">+</span>
+                                {{ reportType === 'SO' ? formatNumber(d.actual_qty) : formatNumber(d.qty) }}
+                                <span class="text-[8px] ml-1">{{ d.product?.satuan_dasar || 'PCS' }}</span>
                             </td>
                             
                             <td class="p-3 text-center font-black" :class="reportType === 'SO' ? (d.selisih < 0 ? 'text-red-600' : d.selisih > 0 ? 'text-emerald-600' : 'text-slate-300') : 'text-emerald-600'">
                                 <template v-if="reportType === 'SO'">
-                                    {{ d.selisih > 0 ? '+' : '' }}{{ d.selisih }}
+                                    {{ d.selisih > 0 ? '+' : '' }}{{ formatNumber(d.selisih) }}
                                 </template>
                                 <template v-else>
-                                    {{ (d.product?.stok ?? 0) + d.qty }}
+                                    {{ formatNumber((d.product?.stok ?? 0) + d.qty) }}
                                 </template>
+                                <span class="text-[8px] ml-1 text-slate-400">{{ d.product?.satuan_dasar || 'PCS' }}</span>
                             </td>
+
                         </tr>
                     </tbody>
 

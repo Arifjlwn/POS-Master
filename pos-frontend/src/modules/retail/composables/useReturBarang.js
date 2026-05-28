@@ -26,7 +26,12 @@ export function useReturBarang() {
 
     const form = ref({
         product_id: '',
-        qty: 1,
+        
+        // 🚀 FORM QTY SEKARANG 3 LAPIS
+        qty_besar: 0,
+        qty_tengah: 0,
+        qty_dasar: 1, // Default eceran 1
+        
         alasan: '',
         catatan: ''
     });
@@ -132,6 +137,12 @@ export function useReturBarang() {
     const selectProduct = (prod) => {
         selectedProduct.value = prod;
         form.value.product_id = prod.id;
+        
+        // Reset form qty setiap milih produk baru
+        form.value.qty_besar = 0;
+        form.value.qty_tengah = 0;
+        form.value.qty_dasar = 1; 
+
         searchProductQuery.value = ''; 
         isDropdownOpen.value = false;
     };
@@ -149,38 +160,80 @@ export function useReturBarang() {
     const clearSelectedProduct = () => {
         selectedProduct.value = null;
         form.value.product_id = '';
+        form.value.qty_besar = 0;
+        form.value.qty_tengah = 0;
+        form.value.qty_dasar = 1;
+    };
+
+    // 🚀 RUMUS SILUMAN: HITUNG TOTAL QTY DASAR
+    const hitungTotalFisik = (qty_besar, qty_tengah, qty_dasar, product) => {
+        const qBesar = Number(qty_besar) || 0;
+        const qTengah = Number(qty_tengah) || 0;
+        const qDasar = Number(qty_dasar) || 0;
+
+        if (product.is_nested_uom) {
+            const stokDariBesar = qBesar * Number(product.isi_per_besar); 
+            const stokDariTengah = qTengah * Number(product.isi_tengah_ke_dasar); 
+            return stokDariBesar + stokDariTengah + qDasar;
+        } else {
+            const stokDariBesar = qBesar * Number(product.isi_per_besar);
+            return stokDariBesar + qDasar;
+        }
     };
 
     // 🚀 KERANJANG LOGIC
     const addToCart = () => {
-        if (!form.value.product_id || !form.value.alasan || form.value.qty < 1) {
-            return Swal.fire('Data Kurang', 'Pilih produk, alasan, dan qty wajib diisi!', 'warning');
+        const totalQtyRetur = hitungTotalFisik(form.value.qty_besar, form.value.qty_tengah, form.value.qty_dasar, selectedProduct.value);
+
+        if (!form.value.product_id || !form.value.alasan || totalQtyRetur < 1) {
+            return Swal.fire('Data Kurang', 'Pilih produk, alasan, dan kuantitas retur wajib diisi!', 'warning');
         }
 
-        if (form.value.qty > selectedProduct.value.stok) {
-            return Swal.fire('Stok Tidak Cukup', `Sisa stok ${selectedProduct.value.nama_produk} hanya ${selectedProduct.value.stok}!`, 'error');
+        if (totalQtyRetur > selectedProduct.value.stok) {
+            return Swal.fire('Stok Tidak Cukup', `Sisa stok ${selectedProduct.value.nama_produk} di sistem hanya ${selectedProduct.value.stok}!`, 'error');
         }
 
         const existingIndex = cart.value.findIndex(item => item.product_id === form.value.product_id && item.alasan === form.value.alasan);
         
         if (existingIndex !== -1) {
-            if ((cart.value[existingIndex].qty + form.value.qty) > selectedProduct.value.stok) {
+            // Kalau udah ada di keranjang, kita tambahin total qty-nya
+            if ((cart.value[existingIndex].qty + totalQtyRetur) > selectedProduct.value.stok) {
                  return Swal.fire('Melebihi Stok', `Total di keranjang + input baru melebihi stok yang ada!`, 'error');
             }
-            cart.value[existingIndex].qty += form.value.qty;
+            cart.value[existingIndex].qty += totalQtyRetur;
+            
+            // Simpan juga data kemasannya biar gampang ditampilin di struk/tabel (opsional)
+            cart.value[existingIndex].qty_besar += Number(form.value.qty_besar);
+            cart.value[existingIndex].qty_tengah += Number(form.value.qty_tengah);
+            cart.value[existingIndex].qty_dasar += Number(form.value.qty_dasar);
+
         } else {
             cart.value.push({
                 product_id: form.value.product_id,
                 nama_produk: selectedProduct.value.nama_produk,
                 sku: selectedProduct.value.sku,
-                qty: form.value.qty,
+                
+                // Qty untuk dikirim ke Backend
+                qty: totalQtyRetur, 
+                
+                // Qty untuk ditampilin di UI/Struk
+                qty_besar: Number(form.value.qty_besar),
+                qty_tengah: Number(form.value.qty_tengah),
+                qty_dasar: Number(form.value.qty_dasar),
+                
+                // Data kemasan buat referensi label UI
+                satuan_dasar: selectedProduct.value.satuan_dasar,
+                has_satuan_besar: !!selectedProduct.value.satuan_besar && selectedProduct.value.isi_per_besar > 1,
+                satuan_besar: selectedProduct.value.satuan_besar,
+                is_nested: selectedProduct.value.is_nested_uom,
+                satuan_tengah: selectedProduct.value.satuan_tengah,
+
                 alasan: form.value.alasan,
                 catatan: form.value.catatan
             });
         }
 
         clearSelectedProduct();
-        form.value.qty = 1;
         form.value.alasan = '';
         form.value.catatan = '';
     };
@@ -210,7 +263,7 @@ export function useReturBarang() {
             const payload = {
                 items: cart.value.map(item => ({
                     product_id: item.product_id,
-                    qty: item.qty,
+                    qty: item.qty, // Ini total satuan dasar yang dipotong ke Golang
                     alasan: item.alasan,
                     catatan: item.catatan
                 }))
@@ -268,6 +321,6 @@ export function useReturBarang() {
         searchProductQuery, isDropdownOpen, selectedProduct, isScannerOpen,
         cameras, selectedCamera, form, alasanOptions, filteredProducts,
         startScanner, stopScanner, switchCamera, selectProduct, clearSelectedProduct,
-        addToCart, removeFromCart, submitBatchReturn, getBadgeClass
+        hitungTotalFisik, addToCart, removeFromCart, submitBatchReturn, getBadgeClass
     };
 }

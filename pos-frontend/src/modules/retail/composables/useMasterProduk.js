@@ -32,21 +32,18 @@ export function useMasterProduk() {
     const imagePreview = ref(null);
 
     const form = ref({
-        name: '',
-        sku: '',
-        category: '',
-        cost_price: 0,
-        price: 0,
-        stock: 0,
-        image: null,
-        satuan_dasar: 'PCS',
-        has_satuan_besar: false,
-        satuan_besar: '',
-        isi_per_besar: null,
-        harga_beli_besar: null,
-        harga_jual_besar: null,
-        harga_eceran_tampil: 0,
-        qty_eceran_tampil: 1
+        name: '', sku: '', category: '', 
+        cost_price: 0, price: 0, stock: 0, image: null,
+        satuan_dasar: 'PCS', has_satuan_besar: false, satuan_besar: '', 
+        isi_per_besar: null, harga_beli_besar: null, harga_jual_besar: null,
+        harga_eceran_tampil: 0, qty_eceran_tampil: 1,
+
+        // 🚀 AMUNISI KALKULATOR SILUMAN
+        input_kg: null,
+        is_nested_uom: false,
+        satuan_tengah: '',
+        isi_besar_ke_tengah: null,
+        isi_tengah_ke_dasar: null
     });
 
     // Barcode Scanner Kamera States
@@ -61,9 +58,7 @@ export function useMasterProduk() {
         try {
             const res = await productService.getCategories();
             categories.value = res.data.data;
-        } catch (error) {
-            console.error("Gagal ambil kategori:", error);
-        }
+        } catch (error) {}
     };
 
     const fetchProducts = async (page = 1) => {
@@ -80,7 +75,27 @@ export function useMasterProduk() {
         finally { isLoading.value = false; }
     };
 
-    // 🚀 KALKULATOR GROSIR
+    // 🚀 KALKULATOR SILUMAN: GULA (KG -> GRAM) & MINYAK (LITER -> ML)
+    watch(
+        () => form.value.input_kg, // Variabel input_kg dipake bareng buat LITER juga biar irit
+        (val) => {
+            if ((form.value.satuan_dasar === 'GRAM' || form.value.satuan_dasar === 'ML') && val > 0) {
+                form.value.isi_per_besar = val * 1000;
+            }
+        }
+    );
+
+    // 🚀 KALKULATOR SILUMAN: ROKOK / KEMASAN BERLAPIS (SLOP -> BUNGKUS -> BATANG)
+    watch(
+        () => [form.value.isi_besar_ke_tengah, form.value.isi_tengah_ke_dasar, form.value.is_nested_uom],
+        ([besarTengah, tengahDasar, isNested]) => {
+            if (isNested && besarTengah > 0 && tengahDasar > 0) {
+                form.value.isi_per_besar = besarTengah * tengahDasar;
+            }
+        }
+    );
+
+    // KALKULATOR GROSIR
     watch(
         () => [form.value.harga_beli_besar, form.value.isi_per_besar, form.value.has_satuan_besar, stok_dalam_karton.value, eceran_tambahan.value],
         ([hargaBesar, isiPerBesar, hasSatuanBesar, jmlKarton, jmlEceran]) => {
@@ -99,23 +114,22 @@ export function useMasterProduk() {
         }
     );
 
-    // 🚀 KALKULATOR PINTAR ECERAN WARUNG MADURA
+    // KALKULATOR PINTAR ECERAN WARUNG MADURA
     watch(
         () => [form.value.harga_eceran_tampil, form.value.qty_eceran_tampil],
         ([harga, qty]) => {
             if (qty > 0 && harga >= 0) {
-                // Otomatis ngebagi harga per satuan terkecil buat di save ke DB!
                 form.value.price = harga / qty;
             }
         }
     );
 
-    // 🚀 AUTO SWITCH QTY PATOKAN JIKA PILIH GRAM / LITER
+    // 🚀 AUTO SWITCH QTY PATOKAN JIKA PILIH GRAM / ML
     watch(
         () => form.value.satuan_dasar,
         (newVal) => {
-            if (newVal === 'GRAM' || newVal === 'LITER') {
-                form.value.qty_eceran_tampil = 1000; // Langsung arahin otak user ke 1 Kg / 1 Liter
+            if (newVal === 'GRAM' || newVal === 'ML') {
+                form.value.qty_eceran_tampil = 1000; // Otomatis nanya harga per 1000 Gram / 1000 ML
             } else {
                 form.value.qty_eceran_tampil = 1;
             }
@@ -188,7 +202,8 @@ export function useMasterProduk() {
             name: '', sku: '', category: '', cost_price: 0, price: 0, stock: 0, image: null,
             satuan_dasar: 'PCS', has_satuan_besar: false, satuan_besar: '', isi_per_besar: null, 
             harga_beli_besar: null, harga_jual_besar: null,
-            harga_eceran_tampil: 0, qty_eceran_tampil: 1 // 🚀 RESET
+            harga_eceran_tampil: 0, qty_eceran_tampil: 1,
+            input_kg: null, is_nested_uom: false, satuan_tengah: '', isi_besar_ke_tengah: null, isi_tengah_ke_dasar: null // 🚀 RESET
         };
         imagePreview.value = null;
         stok_dalam_karton.value = null;
@@ -200,8 +215,7 @@ export function useMasterProduk() {
         isEditing.value = true;
         editId.value = product.id;
         
-        // Cek dia tipe GRAM/LITER bukan
-        const isBulkType = product.satuan_dasar === 'GRAM' || product.satuan_dasar === 'LITER';
+        const isBulkType = product.satuan_dasar === 'GRAM' || product.satuan_dasar === 'ML';
         const acuanQty = isBulkType ? 1000 : 1;
 
         form.value = {
@@ -218,10 +232,12 @@ export function useMasterProduk() {
             isi_per_besar: product.isi_per_besar || null,
             harga_beli_besar: null,
             harga_jual_besar: product.harga_jual_besar || null,
-            
-            // 🚀 BALIKIN NILAI TAMPILAN BUAT WARUNG
             qty_eceran_tampil: acuanQty,
-            harga_eceran_tampil: (product.harga_jual || 0) * acuanQty
+            harga_eceran_tampil: (product.harga_jual || 0) * acuanQty,
+            
+            // 🚀 REVERSE ENGINEER: Kalau GRAM, kita bagi 1000 lagi pas mau nampilin ke kotak KG
+            input_kg: (isBulkType && product.isi_per_besar) ? (product.isi_per_besar / 1000) : null,
+            is_nested_uom: false, satuan_tengah: '', isi_besar_ke_tengah: null, isi_tengah_ke_dasar: null
         };
         
         imagePreview.value = getImageUrl(product.gambar);
@@ -239,12 +255,20 @@ export function useMasterProduk() {
         formData.append('sku', form.value.sku);
         formData.append('kategori', form.value.category);
         formData.append('harga_modal', Number(form.value.cost_price));
-        formData.append('harga_jual', Number(form.value.price)); // Yg dikirim tetap harga asli per-satuan!
+        formData.append('harga_jual', Number(form.value.price));
         formData.append('stok', Number(form.value.stock));
         formData.append('satuan_dasar', form.value.satuan_dasar);
         formData.append('satuan_besar', form.value.has_satuan_besar ? form.value.satuan_besar : '');
         formData.append('isi_per_besar', form.value.has_satuan_besar ? Number(form.value.isi_per_besar) : 0);
         formData.append('harga_jual_besar', form.value.has_satuan_besar ? Number(form.value.harga_jual_besar) : 0);
+
+        // 🚀 INI YANG KETINGGALAN BOSKU! DATA 3 LAPISNYA HARUS DIKIRIM
+        formData.append('is_nested_uom', form.value.is_nested_uom);
+        if (form.value.is_nested_uom) {
+            formData.append('satuan_tengah', form.value.satuan_tengah);
+            formData.append('isi_besar_ke_tengah', Number(form.value.isi_besar_ke_tengah));
+            formData.append('isi_tengah_ke_dasar', Number(form.value.isi_tengah_ke_dasar));
+        }
 
         if (form.value.image) formData.append('gambar', form.value.image);
 
@@ -328,7 +352,7 @@ export function useMasterProduk() {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'katalog_produk.csv';
+            a.download = 'master_produk.csv';
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -352,14 +376,8 @@ export function useMasterProduk() {
         return pages;
     });
 
-    onMounted(() => {
-        fetchProducts(1);
-        fetchCategories();
-    });
-
-    onBeforeUnmount(() => {
-        if (showScanner.value) stopScanner();
-    });
+    onMounted(() => { fetchProducts(1); fetchCategories(); });
+    onBeforeUnmount(() => { if (showScanner.value) stopScanner(); })
 
     return {
         products, categories, isLoading, isSubmitting, stok_dalam_karton, eceran_tambahan,
