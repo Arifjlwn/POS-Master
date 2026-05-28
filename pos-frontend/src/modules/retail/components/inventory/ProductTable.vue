@@ -15,14 +15,14 @@ const emit = defineEmits(['edit', 'delete', 'change-page']);
 <template>
     <div class="w-full bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden flex flex-col no-print">
         <div class="overflow-x-auto custom-scrollbar">
-            <table class="w-full text-left border-collapse whitespace-nowrap min-w-[800px]">
+            <table class="w-full text-left border-collapse whitespace-nowrap min-w-[900px]">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-100">
                         <th class="p-5 font-black uppercase tracking-widest text-[10px] text-slate-400">Produk & Detail</th>
-                        <th class="p-5 font-black uppercase tracking-widest text-[10px] text-slate-400">Kategori</th>
+                        <th class="p-5 font-black uppercase tracking-widest text-[10px] text-slate-400 text-center">Kategori</th>
                         <th class="p-5 font-black uppercase tracking-widest text-[10px] text-right text-slate-400">Modal Dasar</th>
                         <th class="p-5 font-black uppercase tracking-widest text-[10px] text-right text-slate-400">Harga Jual</th>
-                        <th class="p-5 font-black uppercase tracking-widest text-[10px] text-center text-slate-400">Stok</th>
+                        <th class="p-5 font-black uppercase tracking-widest text-[10px] text-center text-slate-400">Total Stok</th>
                         <th class="p-5 font-black uppercase tracking-widest text-[10px] text-center text-slate-400">Aksi</th>
                     </tr>
                 </thead>
@@ -34,6 +34,8 @@ const emit = defineEmits(['edit', 'delete', 'change-page']);
                         <td colspan="6" class="p-16 text-center text-slate-400 font-black text-xs uppercase tracking-widest opacity-50">Produk Tidak Ditemukan</td>
                     </tr>
                     <tr v-else v-for="product in products" :key="product.id" class="hover:bg-blue-50/30 transition-colors group">
+                        
+                        <!-- 1. PRODUK & DETAIL -->
                         <td class="p-5 flex items-center gap-4">
                             <div class="w-12 h-12 md:w-14 md:h-14 rounded-[16px] border-2 border-white shadow-sm bg-slate-50 flex items-center justify-center text-slate-300 overflow-hidden shrink-0 group-hover:border-blue-200 transition-colors">
                                 <img v-if="product.gambar" :src="getImageUrl(product.gambar)" class="w-full h-full object-cover">
@@ -41,38 +43,56 @@ const emit = defineEmits(['edit', 'delete', 'change-page']);
                             </div>
                             <div>
                                 <div class="font-black text-slate-800 text-xs md:text-sm uppercase">{{ product.nama_produk }}</div>
-                                <div class="flex items-center gap-2 mt-1.5">
+                                <div class="flex flex-wrap items-center gap-2 mt-1.5">
                                     <span class="text-[8px] md:text-[9px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded border border-slate-200 uppercase tracking-widest">{{ product.sku || 'NO-SKU' }}</span>
-                                    <span v-if="product.satuan_besar" class="text-[8px] md:text-[9px] font-black bg-purple-50 text-purple-600 px-2 py-0.5 rounded border border-purple-100 uppercase tracking-widest">{{ product.satuan_besar }} / {{ product.isi_per_besar }}</span>
+                                    <span v-if="product.satuan_besar" class="text-[8px] md:text-[9px] font-black bg-purple-50 text-purple-600 px-2 py-0.5 rounded border border-purple-100 uppercase tracking-widest" title="Isi Konversi">
+                                        1 {{ product.satuan_besar }} = {{ product.isi_per_besar }} {{ product.satuan_dasar }}
+                                    </span>
                                 </div>
                             </div>
                         </td>
-                        <td class="p-5">
+
+                        <!-- 2. KATEGORI -->
+                        <td class="p-5 text-center">
                             <span class="bg-blue-50 text-blue-600 border border-blue-100 px-3 py-1.5 rounded-lg font-black text-[9px] uppercase tracking-widest">{{ product.kategori || 'General' }}</span>
                         </td>
+
+                        <!-- 3. HARGA MODAL -->
                         <td class="p-5 text-right">
                             <div class="text-slate-500 font-black text-xs">Rp {{ (product.harga_modal || 0).toLocaleString('id-ID') }}</div>
                             <div class="text-[8px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">/ {{ product.satuan_dasar || 'PCS' }}</div>
                         </td>
+
+                        <!-- 4. HARGA JUAL (ECERAN & GROSIR) -->
                         <td class="p-5 text-right">
+                            <!-- Eceran -->
                             <div class="font-black text-slate-800 text-sm">Rp {{ (product.harga_jual || 0).toLocaleString('id-ID') }}</div>
-                            <div class="mt-1 flex justify-end">
-                                <span class="text-[9px] font-black px-2 py-0.5 rounded tracking-widest uppercase"
-                                    :class="{
-                                        'bg-red-100 text-red-600': ((product.harga_jual - product.harga_modal) / product.harga_jual * 100) < 5,
-                                        'bg-amber-100 text-amber-600': ((product.harga_jual - product.harga_modal) / product.harga_jual * 100) >= 5 && ((product.harga_jual - product.harga_modal) / product.harga_jual * 100) <= 15,
-                                        'bg-emerald-100 text-emerald-600': ((product.harga_jual - product.harga_modal) / product.harga_jual * 100) > 15
-                                    }">
-                                    +Rp {{ (product.harga_jual - product.harga_modal).toLocaleString('id-ID') }} 
-                                    ({{ Math.round(((product.harga_jual - product.harga_modal) / product.harga_jual) * 100) || 0 }}%)
-                                </span>
+                            <div class="text-[8px] font-bold text-slate-500 uppercase tracking-widest">/ {{ product.satuan_dasar || 'PCS' }}</div>
+                            
+                            <!-- Grosir (Muncul kalau ada) -->
+                            <div v-if="product.satuan_besar" class="mt-2 pt-2 border-t border-slate-200 border-dashed">
+                                <div class="font-black text-emerald-600 text-xs">Rp {{ (product.harga_jual_besar || 0).toLocaleString('id-ID') }}</div>
+                                <div class="text-[8px] font-bold text-emerald-500 uppercase tracking-widest">/ {{ product.satuan_besar }}</div>
                             </div>
                         </td>
+
+                        <!-- 5. STOK CERDAS (TRANSLATE KE BAHASA MANUSIA) -->
                         <td class="p-5 text-center">
-                            <span class="px-3 py-1.5 text-[10px] rounded-lg font-black tracking-widest shadow-sm inline-flex items-center gap-1" :class="(product.stok || 0) > 10 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-red-50 text-red-600 border border-red-100'">
-                                {{ product.stok || 0 }} <span class="uppercase text-[8px] opacity-70">{{ product.satuan_dasar || 'PCS' }}</span>
+                            <span class="px-3 py-1.5 text-[10px] rounded-lg font-black tracking-widest shadow-sm inline-flex items-center gap-1" :class="(product.stok || 0) > 10 ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-red-50 text-red-600 border border-red-100'">
+                                {{ (product.stok || 0).toLocaleString('id-ID') }} <span class="uppercase text-[8px] opacity-70">{{ product.satuan_dasar || 'PCS' }}</span>
                             </span>
+                            
+                            <!-- RUMUS TRANSLATE KONVERSI -->
+                            <div v-if="product.satuan_besar && product.isi_per_besar > 0" class="mt-2 flex flex-col items-center gap-0.5">
+                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest italic">Setara Dengan:</span>
+                                <div class="bg-slate-50 border border-slate-200 px-2 py-1 rounded text-[9px] font-black tracking-widest flex items-center gap-1">
+                                    <span class="text-indigo-600">📦 {{ Math.floor((product.stok || 0) / product.isi_per_besar).toLocaleString('id-ID') }} {{ product.satuan_besar }}</span>
+                                    <span v-if="(product.stok || 0) % product.isi_per_besar > 0" class="text-amber-500">+ {{ ((product.stok || 0) % product.isi_per_besar).toLocaleString('id-ID') }} {{ product.satuan_dasar }}</span>
+                                </div>
+                            </div>
                         </td>
+
+                        <!-- 6. AKSI -->
                         <td class="p-5 text-center">
                             <div class="flex justify-center gap-2">
                                 <button @click="emit('edit', product)" class="p-2.5 bg-slate-50 border border-slate-200 text-slate-400 rounded-xl hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-colors" title="Edit">
@@ -83,6 +103,7 @@ const emit = defineEmits(['edit', 'delete', 'change-page']);
                                 </button>
                             </div>
                         </td>
+
                     </tr>
                 </tbody>
             </table>

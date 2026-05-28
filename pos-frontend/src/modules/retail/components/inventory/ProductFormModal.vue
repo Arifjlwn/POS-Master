@@ -34,6 +34,12 @@ const filteredCategories = computed(() => {
     const q = props.form.category.toLowerCase();
     return props.categories.filter(c => c.toLowerCase().includes(q));
 });
+
+// 🚀 FUNGSI INI KETINGGALAN TADI BUAT PILIH KATEGORI DROPDOWN
+const selectCategory = (cat) => {
+    props.form.category = cat;
+    showCategoryDropdown.value = false;
+};
 </script>
 
 <template>
@@ -136,6 +142,8 @@ const filteredCategories = computed(() => {
                                     <option value="BOX">BOX</option>
                                     <option value="LITER">LITER</option>
                                     <option value="BOTOL">BOTOL</option>
+                                    <option value="BATANG">BATANG</option>
+                                    <option value="BUNGKUS">BUNGKUS</option>
                                 </select>
                             </div>
                             
@@ -147,7 +155,7 @@ const filteredCategories = computed(() => {
                                 </div>
                             </div>
 
-                            <div v-if="form.has_satuan_besar" class="col-span-2 grid grid-cols-3 gap-3 pt-4 border-t border-slate-800 mt-2">
+                            <div v-if="form.has_satuan_besar" class="col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-800 mt-2">
                                 <div>
                                     <label class="text-[8px] font-black text-blue-400 uppercase block mb-1">Sebutannya Apa?</label>
                                     <input v-model="form.satuan_besar" type="text" placeholder="KARTON / BOX" class="w-full p-3 bg-slate-800 border border-blue-900 focus:border-blue-500 rounded-xl outline-none font-black text-xs uppercase text-white transition-all">
@@ -159,6 +167,10 @@ const filteredCategories = computed(() => {
                                 <div>
                                     <label class="text-[8px] font-black text-amber-400 uppercase block mb-1">Harga Beli 1 {{ form.satuan_besar || 'KEMASAN' }}</label>
                                     <input v-model.number="form.harga_beli_besar" type="number" placeholder="Rp" class="w-full p-3 bg-amber-900/20 border border-amber-900 focus:border-amber-500 rounded-xl outline-none font-black text-xs text-amber-400 transition-all">
+                                </div>
+                                <div>
+                                    <label class="text-[8px] font-black text-emerald-400 uppercase block mb-1">Harga Jual 1 {{ form.satuan_besar || 'KEMASAN' }}</label>
+                                    <input v-model.number="form.harga_jual_besar" type="number" placeholder="Rp" class="w-full p-3 bg-emerald-900/20 border border-emerald-900 focus:border-emerald-500 rounded-xl outline-none font-black text-xs text-emerald-400 transition-all">
                                 </div>
                             </div>
                         </div>
@@ -175,15 +187,30 @@ const filteredCategories = computed(() => {
                         </div>
                     </div>
 
+                    <!-- 🚀 UI KALKULATOR ECERAN WARUNG MADURA -->
                     <div class="p-5 bg-blue-50 border border-blue-100 rounded-[28px] shadow-sm">
-                        <label class="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-3 block">Harga Jual Eceran</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-xs font-black text-blue-400">Rp</span>
-                            <input v-model.number="form.price" type="number" class="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-blue-200 focus:border-blue-600 outline-none font-black text-lg text-blue-700 shadow-inner transition-all">
+                        <label class="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-3 block">Patokan Harga Jual Eceran</label>
+                        
+                        <div class="grid grid-cols-6 gap-2 items-center">
+                            <div class="col-span-3 relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-[10px] font-black text-blue-400">Rp</span>
+                                <input v-model.number="form.harga_eceran_tampil" type="number" placeholder="Harga..." class="w-full pl-9 pr-2 py-3.5 rounded-xl bg-white border border-blue-200 focus:border-blue-600 outline-none font-black text-sm text-blue-700 shadow-inner transition-all">
+                            </div>
+                            <div class="col-span-1 text-center font-black text-[9px] text-blue-400 uppercase italic">UNTUK SETIAP</div>
+                            <div class="col-span-2 relative flex items-center gap-2">
+                                <input v-model.number="form.qty_eceran_tampil" type="number" class="w-full px-2 py-3.5 rounded-xl bg-white border border-blue-200 focus:border-blue-600 outline-none font-black text-sm text-blue-700 shadow-inner transition-all text-center">
+                                <span class="font-black text-[10px] text-blue-600 uppercase">{{ form.satuan_dasar }}</span>
+                            </div>
                         </div>
-                        <p class="text-[9px] font-black text-blue-500 mt-2 uppercase tracking-widest text-center">Profit: Rp {{ form.price - form.cost_price }} / {{ form.satuan_dasar }}</p>
-                    </div>
 
+                        <div class="mt-4 pt-3 border-t border-blue-200/50 flex justify-between items-center px-1">
+                            <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">*Disimpan di sistem: Rp {{ form.price }} / {{ form.satuan_dasar }}</p>
+                            <p class="text-[9px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-100/50 px-2 py-1 rounded-md">
+                                Profit: Rp {{ (form.price - form.cost_price) * form.qty_eceran_tampil }} / {{ form.qty_eceran_tampil }} {{ form.satuan_dasar }}
+                            </p>
+                        </div>
+                    </div>
+                    
                     <div class="md:col-span-2 grid grid-cols-1 gap-4 bg-slate-50 p-5 rounded-[24px] border border-slate-200">
                         <div v-if="form.has_satuan_besar" class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
                             <div>

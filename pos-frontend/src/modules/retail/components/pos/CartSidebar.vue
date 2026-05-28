@@ -1,5 +1,4 @@
 <script setup>
-
 defineProps({
     isMobileCartOpen: Boolean,
     cart: Array,
@@ -22,7 +21,8 @@ const emit = defineEmits([
     'validate-qty', 
     'set-payment',
     'format-rupiah', 
-    'checkout'
+    'checkout',
+    'toggle-uom' // 🚀 Didaftarin di sini
 ]);
 </script>
 
@@ -72,12 +72,31 @@ const emit = defineEmits([
                     <p class="text-slate-600 font-black text-xs md:text-sm uppercase tracking-widest">Keranjang Kosong</p>
                 </div>
 
-                <div v-for="item in cart" :key="item.id" class="flex flex-col mb-3 p-3 bg-slate-50/50 rounded-xl md:rounded-2xl border border-slate-100 shadow-sm hover:border-indigo-200 transition-colors">
+                <div v-for="item in cart" :key="item.id + '_' + item.selected_uom" class="flex flex-col mb-3 p-3 bg-slate-50/50 rounded-xl md:rounded-2xl border border-slate-100 shadow-sm hover:border-indigo-200 transition-colors">
+                    
                     <div class="flex justify-between items-start mb-2">
-                        <h3 class="font-bold text-[10px] md:text-[11px] text-slate-800 leading-tight pr-2 line-clamp-2 uppercase">{{ item.name }}</h3>
-                        <div class="font-black text-[11px] md:text-xs text-indigo-700 whitespace-nowrap">Rp {{ (item.price * item.qty).toLocaleString('id-ID') }}</div>
+                        <div class="flex-1 pr-2">
+                            <h3 class="font-bold text-[10px] md:text-[11px] text-slate-800 leading-tight line-clamp-2 uppercase">{{ item.name }}</h3>
+                            
+                            <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                <span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border"
+                                      :class="item.selected_uom === item.satuan_besar ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-indigo-50 border-indigo-200 text-indigo-600'">
+                                    {{ item.selected_uom || 'PCS' }}
+                                </span>
+                                
+                                <button v-if="item.has_grosir" @click="emit('toggle-uom', item)" class="px-1.5 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-600 rounded text-[8px] font-black uppercase tracking-widest flex items-center justify-center gap-1 transition-colors" title="Ganti Satuan">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                                    Ubah
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="font-black text-[11px] md:text-xs text-indigo-700 whitespace-nowrap text-right">
+                            Rp {{ (item.price * item.qty).toLocaleString('id-ID') }}
+                        </div>
                     </div>
-                    <div class="flex justify-between items-center">
+                    
+                    <div class="flex justify-between items-center mt-1">
                         <p class="text-[9px] md:text-[10px] font-bold text-slate-400">@ Rp {{ item.price.toLocaleString('id-ID') }}</p>
                         <div class="flex items-center bg-white rounded-lg md:rounded-xl p-1 border border-slate-200 shadow-sm">
                             <button @click="emit('decrease-qty', item)" class="w-6 h-6 md:w-7 md:h-7 flex items-center justify-center rounded-md md:rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 font-black transition-colors">

@@ -16,9 +16,10 @@ type Product struct {
     IsAvailable bool      `gorm:"default:true" json:"is_available"` // True = Menu Ada, False = Habis/Sembunyikan
     
     // 🚀 INI DIA 3 PASUKAN BARUNYA (LENGKAP DENGAN GORM & JSON)
-    SatuanDasar  string    `gorm:"type:varchar(20);default:'PCS'" json:"satuan_dasar"`
-    SatuanBesar  string    `gorm:"type:varchar(20)" json:"satuan_besar"`
-    IsiPerBesar  int       `gorm:"default:0" json:"isi_per_besar"`
+    SatuanDasar   string    `gorm:"type:varchar(20);default:'PCS'" json:"satuan_dasar"`
+    SatuanBesar   string    `gorm:"type:varchar(20)" json:"satuan_besar"`
+    IsiPerBesar   int       `gorm:"default:0" json:"isi_per_besar"`
+    HargaJualBesar float64  `gorm:"type:decimal(10,2);default:0" json:"harga_jual_besar"`
 
     CreatedAt    time.Time `json:"created_at"`
     UpdatedAt    time.Time `json:"updated_at"`

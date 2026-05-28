@@ -17,7 +17,7 @@ const {
     showReceiptClosing, lastClosingData, isMobileCartOpen, searchQuery, searchInput,
     showScanner, pecahan, filteredProducts, totalBelanja, kembalian, totalUangFisik,
     showClosingModal, isProcessingCheckout,
-    getImageUrl, startScanner, stopScanner, handleBarcodeScan, addToCart,
+    getImageUrl, startScanner, stopScanner, handleBarcodeScan, addToCart,toggleUom,
     decreaseQty, increaseQty, validateQty, clearCart, holdTransaction, resumeOrder,
     setPaymentMethod, executeCheckout, formatInputRupiah, processCheckout, handleClosing, logout
 } = usePos();
@@ -74,7 +74,7 @@ const goToDashboard = () => currentUser.value.role === 'owner' ? router.push('/r
                 @set-payment="setPaymentMethod"
                 @format-rupiah="formatInputRupiah"
                 @checkout="processCheckout"
-            />
+                @toggle-uom="toggleUom" />
         </div>
 
         <div v-if="cart.length > 0" class="lg:hidden fixed bottom-0 left-0 right-0 p-3 bg-white/90 backdrop-blur-sm border-t border-slate-200 z-40 shadow-md print:hidden">

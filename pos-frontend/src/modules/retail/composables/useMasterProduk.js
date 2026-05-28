@@ -43,7 +43,10 @@ export function useMasterProduk() {
         has_satuan_besar: false,
         satuan_besar: '',
         isi_per_besar: null,
-        harga_beli_besar: null 
+        harga_beli_besar: null,
+        harga_jual_besar: null,
+        harga_eceran_tampil: 0,
+        qty_eceran_tampil: 1
     });
 
     // Barcode Scanner Kamera States
@@ -66,55 +69,57 @@ export function useMasterProduk() {
     const fetchProducts = async (page = 1) => {
         isLoading.value = true;
         currentPage.value = page;
-        
         try {
             const res = await productService.getProducts({
-                page: page,
-                limit: limitPerPage.value,
-                search: searchQuery.value,
-                category: selectedCategory.value
+                page: page, limit: limitPerPage.value,
+                search: searchQuery.value, category: selectedCategory.value
             });
             products.value = res.data.data; 
             totalPages.value = Math.ceil(res.data.total_items / limitPerPage.value) || 1;
-        } catch (error) {
-            console.error("Gagal ambil produk:", error);
-        } finally {
-            isLoading.value = false;
-        }
+        } catch (error) {} 
+        finally { isLoading.value = false; }
     };
 
-    // --- LOGIKA KALKULATOR PINTAR HARGA MODAL & STOK CAMPURAN ---
+    // 🚀 KALKULATOR GROSIR
     watch(
-        () => [
-            form.value.harga_beli_besar, 
-            form.value.isi_per_besar, 
-            form.value.has_satuan_besar,
-            stok_dalam_karton.value,
-            eceran_tambahan.value
-        ],
+        () => [form.value.harga_beli_besar, form.value.isi_per_besar, form.value.has_satuan_besar, stok_dalam_karton.value, eceran_tambahan.value],
         ([hargaBesar, isiPerBesar, hasSatuanBesar, jmlKarton, jmlEceran]) => {
-            
-            // 1. Hitung Otomatis Harga Modal Eceran
             if (hasSatuanBesar && hargaBesar > 0 && isiPerBesar > 0) {
                 form.value.cost_price = Math.round(hargaBesar / isiPerBesar);
             }
-
-            // 2. Rumus Hitung Stok Campuran Grosir (Karton + Eceran Tambahan)
             if (hasSatuanBesar && isiPerBesar > 0) {
-                // 🚀 Bantai String Concatenation: Paksa semua data jadi INT / Number!
                 const karton = parseInt(jmlKarton) || 0;
                 const eceran = parseInt(jmlEceran) || 0;
                 const isi = parseInt(isiPerBesar) || 0;
-
-                const totalDariKarton = karton * isi;
-                
-                // Matematika mutlak: (Karton * Isi) + Eceran
-                form.value.stock = totalDariKarton + eceran;
-                
+                form.value.stock = (karton * isi) + eceran;
             } else if (!hasSatuanBesar) {
                 stok_dalam_karton.value = null;
                 eceran_tambahan.value = null;
             }
+        }
+    );
+
+    // 🚀 KALKULATOR PINTAR ECERAN WARUNG MADURA
+    watch(
+        () => [form.value.harga_eceran_tampil, form.value.qty_eceran_tampil],
+        ([harga, qty]) => {
+            if (qty > 0 && harga >= 0) {
+                // Otomatis ngebagi harga per satuan terkecil buat di save ke DB!
+                form.value.price = harga / qty;
+            }
+        }
+    );
+
+    // 🚀 AUTO SWITCH QTY PATOKAN JIKA PILIH GRAM / LITER
+    watch(
+        () => form.value.satuan_dasar,
+        (newVal) => {
+            if (newVal === 'GRAM' || newVal === 'LITER') {
+                form.value.qty_eceran_tampil = 1000; // Langsung arahin otak user ke 1 Kg / 1 Liter
+            } else {
+                form.value.qty_eceran_tampil = 1;
+            }
+            form.value.harga_eceran_tampil = form.value.price * form.value.qty_eceran_tampil;
         }
     );
 
@@ -166,10 +171,7 @@ export function useMasterProduk() {
     };
 
     // --- MANIPULASI DATA (CRUD ACTION HANDLERS) ---
-    const changePage = (newPage) => {
-        if (newPage < 1 || newPage > totalPages.value) return;
-        fetchProducts(newPage);
-    };
+    const changePage = (newPage) => { if (newPage >= 1 && newPage <= totalPages.value) fetchProducts(newPage); };
 
     const onFileChange = (e) => {
         const file = e.target.files[0];
@@ -184,7 +186,9 @@ export function useMasterProduk() {
         editId.value = null;
         form.value = { 
             name: '', sku: '', category: '', cost_price: 0, price: 0, stock: 0, image: null,
-            satuan_dasar: 'PCS', has_satuan_besar: false, satuan_besar: '', isi_per_besar: null, harga_beli_besar: null
+            satuan_dasar: 'PCS', has_satuan_besar: false, satuan_besar: '', isi_per_besar: null, 
+            harga_beli_besar: null, harga_jual_besar: null,
+            harga_eceran_tampil: 0, qty_eceran_tampil: 1 // 🚀 RESET
         };
         imagePreview.value = null;
         stok_dalam_karton.value = null;
@@ -195,6 +199,11 @@ export function useMasterProduk() {
     const editProduct = (product) => {
         isEditing.value = true;
         editId.value = product.id;
+        
+        // Cek dia tipe GRAM/LITER bukan
+        const isBulkType = product.satuan_dasar === 'GRAM' || product.satuan_dasar === 'LITER';
+        const acuanQty = isBulkType ? 1000 : 1;
+
         form.value = {
             name: product.nama_produk || '',
             sku: product.sku || '',
@@ -207,15 +216,21 @@ export function useMasterProduk() {
             has_satuan_besar: !!product.satuan_besar,
             satuan_besar: product.satuan_besar || '',
             isi_per_besar: product.isi_per_besar || null,
-            harga_beli_besar: null
+            harga_beli_besar: null,
+            harga_jual_besar: product.harga_jual_besar || null,
+            
+            // 🚀 BALIKIN NILAI TAMPILAN BUAT WARUNG
+            qty_eceran_tampil: acuanQty,
+            harga_eceran_tampil: (product.harga_jual || 0) * acuanQty
         };
+        
         imagePreview.value = getImageUrl(product.gambar);
         showFormModal.value = true;
     };
 
     const submitProduct = async () => {
-        if (form.value.has_satuan_besar && (!form.value.satuan_besar || !form.value.isi_per_besar)) {
-            return Swal.fire('Data Kurang!', 'Lengkapi detail satuan besar beserta isinya!', 'warning');
+        if (form.value.has_satuan_besar && (!form.value.satuan_besar || !form.value.isi_per_besar || !form.value.harga_jual_besar)) {
+            return Swal.fire('Data Kurang!', 'Lengkapi Nama, Isi, dan Harga Jual untuk satuan besar!', 'warning');
         }
 
         isSubmitting.value = true;
@@ -224,29 +239,20 @@ export function useMasterProduk() {
         formData.append('sku', form.value.sku);
         formData.append('kategori', form.value.category);
         formData.append('harga_modal', Number(form.value.cost_price));
-        formData.append('harga_jual', Number(form.value.price));
+        formData.append('harga_jual', Number(form.value.price)); // Yg dikirim tetap harga asli per-satuan!
         formData.append('stok', Number(form.value.stock));
         formData.append('satuan_dasar', form.value.satuan_dasar);
         formData.append('satuan_besar', form.value.has_satuan_besar ? form.value.satuan_besar : '');
         formData.append('isi_per_besar', form.value.has_satuan_besar ? Number(form.value.isi_per_besar) : 0);
+        formData.append('harga_jual_besar', form.value.has_satuan_besar ? Number(form.value.harga_jual_besar) : 0);
 
         if (form.value.image) formData.append('gambar', form.value.image);
 
         try {
-            if (isEditing.value) {
-                await productService.updateProduct(editId.value, formData);
-            } else {
-                await productService.createProduct(formData);
-            }
+            if (isEditing.value) await productService.updateProduct(editId.value, formData);
+            else await productService.createProduct(formData);
 
-            Swal.fire({
-                icon: 'success',
-                title: 'Berhasil!',
-                text: `Produk berhasil ${isEditing.value ? 'diperbarui' : 'ditambahkan'}!`,
-                timer: 2000,
-                showConfirmButton: false
-            });
-            
+            Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Sip, Data tersimpan!', timer: 2000, showConfirmButton: false });
             showFormModal.value = false;
             fetchProducts(currentPage.value);
             fetchCategories();

@@ -111,7 +111,11 @@ export function usePos() {
                 name: p.nama_produk,
                 price: p.harga_jual,
                 stock: p.stok,
-                image: p.gambar
+                image: p.gambar,
+                satuan_dasar: p.satuan_dasar || 'PCS',
+                satuan_besar: p.satuan_besar || null,
+                isi_per_besar: p.isi_per_besar || 0,
+                harga_jual_besar: p.harga_jual_besar || 0
             }));
         } catch (error) {
             console.error("Gagal narik produk:", error);
@@ -141,10 +145,7 @@ export function usePos() {
             addToCart(filteredProducts.value[0]);
             searchQuery.value = '';
         }
-
-        nextTick(() => {
-            if (searchInput.value) searchInput.value.focus();
-        });
+        nextTick(() => { if (searchInput.value) searchInput.value.focus(); });
     };
 
     // --- LOGIKA KERANJANG BELANJA ---
@@ -153,16 +154,36 @@ export function usePos() {
             Swal.fire({ icon: 'error', title: 'Stok Habis!', text: `Stok ${product.name} kosong` });
             return;
         }
-        const existingItem = cart.value.find(item => item.id === product.id);
+
+        const defaultUom = product.satuan_dasar;
+        const existingItem = cart.value.find(item => item.id === product.id && item.selected_uom === defaultUom);
+        
         if (existingItem) {
-            if (existingItem.qty < product.stock) {
+            // Cek stok berdasarkan multiplier (Kalau satuan dasar, multiplier = 1)
+            if ((existingItem.qty + 1) * existingItem.uom_multiplier <= product.stock) {
                 existingItem.qty++;
             } else {
                 Swal.fire({ icon: 'warning', title: 'Stok Terbatas', text: 'Kuantitas melebihi stok!' });
                 return;
             }
         } else {
-            cart.value.unshift({ id: product.id, name: product.name, price: product.price, qty: 1 });
+            // 🚀 Bikin properti canggih buat menampung status konversi di keranjang
+            cart.value.unshift({ 
+                id: product.id, 
+                name: product.name, 
+                price: product.price, // Harga aktif saat ini
+                qty: 1, 
+                
+                // Variabel Sistem Konversi
+                selected_uom: defaultUom, // Saat masuk pertama, selalu pakai eceran
+                uom_multiplier: 1, // Pengali potong stok
+                has_grosir: !!product.satuan_besar, 
+                satuan_dasar: product.satuan_dasar,
+                satuan_besar: product.satuan_besar,
+                isi_per_besar: product.isi_per_besar,
+                harga_jual_besar: product.harga_jual_besar,
+                harga_dasar: product.price
+            });
         }
         
         if (window.innerWidth < 1024 && !isMobileCartOpen.value) {
@@ -178,23 +199,49 @@ export function usePos() {
         }
     };
 
-    const decreaseQty = (product) => {
-        const existingItem = cart.value.find(item => item.id === product.id);
+    // 🚀 FUNGSI BARU: TOGGLE UBAH SATUAN ECERAN -> GROSIR
+    const toggleUom = (item) => {
+        if (!item.has_grosir) return; // Kalau ga punya satuan besar, cuekin aja
+        
+        const prodMaster = products.value.find(p => p.id === item.id);
+        
+        if (item.selected_uom === item.satuan_dasar) {
+            // Mau diubah ke GROSIR (Misal PCS -> KARTON)
+            // Cek dulu stoknya cukup ga buat 1 karton?
+            if ((item.qty * item.isi_per_besar) > prodMaster.stock) {
+                Swal.fire({ icon: 'error', title: 'Stok Tidak Cukup!', text: `Stok fisik tidak cukup untuk dijual dalam bentuk ${item.satuan_besar}` });
+                return;
+            }
+            item.selected_uom = item.satuan_besar;
+            item.uom_multiplier = item.isi_per_besar;
+            item.price = item.harga_jual_besar; // Pake harga spesial grosir
+        } else {
+            // Kembalikan ke ECERAN (Misal KARTON -> PCS)
+            item.selected_uom = item.satuan_dasar;
+            item.uom_multiplier = 1;
+            item.price = item.harga_dasar; // Pake harga normal
+        }
+    };
+
+    const decreaseQty = (item) => {
+        // Harus bener ngecek item spesifik beserta satuannya
+        const existingItem = cart.value.find(i => i.id === item.id && i.selected_uom === item.selected_uom);
         if (existingItem) {
             if (existingItem.qty > 1) {
                 existingItem.qty--;
             } else {
-                cart.value = cart.value.filter(item => item.id !== product.id);
+                cart.value = cart.value.filter(i => !(i.id === item.id && i.selected_uom === item.selected_uom));
                 if (cart.value.length === 0) isMobileCartOpen.value = false;
             }
         }
     };
 
-    const increaseQty = (product) => {
-        const existingItem = cart.value.find(item => item.id === product.id);
-        if (existingItem) {
-            const prodMaster = products.value.find(p => p.id === product.id);
-            if (prodMaster && existingItem.qty < prodMaster.stock) {
+    const increaseQty = (item) => {
+        const existingItem = cart.value.find(i => i.id === item.id && i.selected_uom === item.selected_uom);
+        const prodMaster = products.value.find(p => p.id === item.id);
+        if (existingItem && prodMaster) {
+            // Cek stok berdasarkan hitungan konversi (Misal 2 Slop * 192 Batang)
+            if ((existingItem.qty + 1) * existingItem.uom_multiplier <= prodMaster.stock) {
                 existingItem.qty++;
             } else {
                 Swal.fire({ icon: 'warning', title: 'Stok Terbatas', text: 'Kuantitas melebihi stok!' });
@@ -202,9 +249,16 @@ export function usePos() {
         }
     };
 
-    const validateQty = (product) => {
-        const existingItem = cart.value.find(item => item.id === product.id);
+    const validateQty = (item) => {
+        const existingItem = cart.value.find(i => i.id === item.id && i.selected_uom === item.selected_uom);
         if (existingItem && existingItem.qty < 1) existingItem.qty = 1;
+        
+        // Proteksi kalau input manualnya bablas
+        const prodMaster = products.value.find(p => p.id === item.id);
+        if (existingItem && prodMaster && (existingItem.qty * existingItem.uom_multiplier > prodMaster.stock)) {
+            Swal.fire({ icon: 'warning', title: 'Overstock!', text: 'Kuantitas dikembalikan ke batas stok' });
+            existingItem.qty = Math.floor(prodMaster.stock / existingItem.uom_multiplier);
+        }
     };
 
     const clearCart = () => {
@@ -285,7 +339,15 @@ export function usePos() {
         if (isProcessingCheckout.value) return;
 
         isProcessingCheckout.value = true;
-        const payloadItems = cart.value.map(item => ({ product_id: item.id, kuantitas: item.qty }));
+        
+        // 🚀 BAGIAN PALING KRUSIAL: Mapping stok yang dikirim ke Backend!
+        const payloadItems = cart.value.map(item => ({ 
+            product_id: item.id, 
+            // Kuantitas yang dikirim ke DB adalah TOTAL SATUAN DASAR! (Biar stok dipotong bener)
+            // Misal beli 1 Slop (isi 12) -> Kirim 12.
+            kuantitas: item.qty * item.uom_multiplier 
+        }));
+
         try {
             const response = await posService.checkout({
                 session_id: currentSession.value.id,
@@ -479,6 +541,7 @@ export function usePos() {
         formatInputRupiah,
         processCheckout, 
         handleClosing, 
-        logout            // 🟢 WAJIB ADA DI SINI JUGA!
+        logout,
+        toggleUom
     };
 }
