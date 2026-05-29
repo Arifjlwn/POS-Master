@@ -50,7 +50,6 @@ const formatNumber = (val) => {
                         <input type="date" v-model="endDate" class="text-xs font-bold text-slate-700 border-none focus:ring-0 bg-transparent cursor-pointer py-1 px-2 outline-none">
                     </div>
                     
-                    <!-- 🚀 TOMBOL REFRESH SAKTI -->
                     <button @click="fetchData" :disabled="isLoading" class="p-2.5 bg-white text-slate-500 rounded-xl shadow-sm border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all disabled:opacity-50 group" title="Refresh Data Analytics">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" :class="{'animate-spin text-indigo-600': isLoading, 'group-hover:rotate-180 transition-transform duration-500': !isLoading}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -142,15 +141,28 @@ const formatNumber = (val) => {
 
                     <div class="bg-white p-6 rounded-[24px] border border-slate-200 shadow-sm flex flex-col justify-between group hover:border-purple-300 transition-all relative overflow-hidden">
                         <div class="absolute right-0 top-0 w-16 h-16 bg-gradient-to-br from-purple-50 to-transparent opacity-80 rounded-bl-[100%]"></div>
-                        <div class="flex justify-between items-start mb-4 relative z-10">
-                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Selisih SO (Kehilangan)</p>
+                        
+                        <div class="flex justify-between items-start mb-2 relative z-10">
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Netto Selisih SO (Loss)</p>
                             <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                             </div>
                         </div>
-                        <div class="relative z-10">
-                            <p class="text-2xl font-black text-purple-600 tracking-tight">{{ formatRupiah(reportData?.summary?.total_so_loss) }}</p>
-                            <p class="text-[10px] font-bold text-slate-400 mt-1">Total: <span class="text-purple-500">{{ formatNumber(reportData?.summary?.total_so_qty) }}</span> Hilang/Minus</p>
+                        
+                        <div class="relative z-10 mb-3">
+                            <p class="text-2xl font-black text-purple-600 tracking-tight">{{ formatRupiah(reportData?.summary?.net_so_loss) }}</p>
+                            <p class="text-[10px] font-bold text-slate-400 mt-0.5">Total Akhir: <span class="text-purple-500">{{ formatNumber(reportData?.summary?.net_so_qty) }}</span> Item Hilang</p>
+                        </div>
+
+                        <div class="relative z-10 flex flex-col gap-1.5 pt-3 border-t border-slate-100">
+                            <div class="flex justify-between items-center text-[9px] font-bold">
+                                <span class="text-slate-400 uppercase tracking-widest">Rugi SO Awal</span>
+                                <span class="text-red-500">- {{ formatRupiah(reportData?.summary?.total_so_loss) }}</span>
+                            </div>
+                            <div class="flex justify-between items-center text-[9px] font-bold">
+                                <span class="text-slate-400 uppercase tracking-widest">Klaim Ketemu</span>
+                                <span class="text-emerald-500">+ {{ formatRupiah(reportData?.summary?.total_klaim_value) }}</span>
+                            </div>
                         </div>
                     </div>
                 </div>

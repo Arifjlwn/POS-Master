@@ -39,13 +39,13 @@ func (StockOpnameDetail) TableName() string { return "retail_stock_opname_detail
 // ==========================================
 
 type StockAdjustment struct {
-	ID        uint                    `gorm:"primaryKey" json:"id"`
-	StoreID   uint                    `gorm:"index;not null" json:"store_id"` // Biar aman per cabang toko
-	UserID    uint                    `json:"user_id"`                        // Siapa kasir/karyawan yang nemu
-	Notes     string                  `json:"notes"`                          // Default: "Klaim Barang Nyempil"
-	Status    string                  `gorm:"type:varchar(50);default:'PENDING_APPROVAL'" json:"status"` // Owner wajib approve dulu baru stok nambah
-	CreatedAt time.Time               `json:"current_time" json:"created_at"`
-	Details   []StockAdjustmentDetail `gorm:"foreignKey:AdjustmentID" json:"details"`
+    ID        uint                    `gorm:"primaryKey" json:"id"`
+    StoreID   uint                    `gorm:"index;not null" json:"store_id"` // Biar aman per cabang toko
+    UserID    uint                    `json:"user_id"`                        // Siapa kasir/karyawan yang nemu
+    Notes     string                  `json:"notes"`                          // Default: "Klaim Barang Nyempil"
+    Status    string                  `gorm:"type:varchar(50);default:'PENDING_APPROVAL'" json:"status"` // Owner wajib approve dulu baru stok nambah
+    CreatedAt time.Time               `json:"created_at"` // 🚀 INI UDAH DIBERSIHIN
+    Details   []StockAdjustmentDetail `gorm:"foreignKey:AdjustmentID" json:"details"`
 }
 
 func (StockAdjustment) TableName() string { return "retail_stock_adjustments" }

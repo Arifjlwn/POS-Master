@@ -14,6 +14,41 @@ const formatRupiah = (angka) => {
     return new Intl.NumberFormat('id-ID').format(angka);
 };
 
+const formatWA = (waNumber) => {
+    if (!waNumber) return '-';
+    const cleaned = waNumber.replace(/\D/g, '');
+    let localNumber = cleaned;
+    if (localNumber.startsWith('62')) {
+        localNumber = '0' + localNumber.slice(2);
+    }
+    const match = localNumber.match(/^(\d{4})(\d{4})(\d{4,5})$/);
+    if (match) {
+        return `${match[1]}-${match[2]}-${match[3]}`;
+    }
+    return localNumber;
+};
+
+// 🚀 FUNGSI SILUMAN PEMBACA KEMASAN (VERSI UPDATE UNTUK usePos.js)
+const formatKemasan = (item) => {
+    // 1. Kalo ini dari history laporan yang udah ada detail_notes dari Golang
+    if (item.detail_notes && item.detail_notes !== 'Transaksi Retail Toko') {
+        return item.detail_notes;
+    }
+
+    // 2. 🚀 BACA LANGSUNG DARI KERANJANG KASIR (selected_uom)
+    // Pas kasir nge-toggle grosir di CartSidebar, dia ngubah "item.selected_uom"
+    const satuanPilihan = item.selected_uom || item.satuan_terpilih || item.satuan || item.kemasan;
+    const qtyPilihan = item.qty || item.kuantitas || 0;
+    
+    if (satuanPilihan) {
+        return `${qtyPilihan} ${satuanPilihan}`;
+    }
+
+    // 3. Fallback (Kalau gak ada datanya sama sekali)
+    const product = item.product || item;
+    return `${qtyPilihan} ${product.satuan_dasar || 'pcs'}`;
+};
+
 const triggerPrint = () => {
     window.print();
 };
@@ -30,11 +65,11 @@ const triggerPrint = () => {
                     <h2 class="font-black text-sm uppercase tracking-tighter mb-1 italic">
                         {{ storeData?.NamaToko || storeData?.nama_toko || 'NEXA POS STORE' }}
                     </h2>
-                    <p class="text-[8px] font-bold uppercase tracking-widest opacity-80">
+                    <p class="text-[8px] font-black uppercase tracking-widest opacity-80 leading-tight px-1">
                         {{ storeData?.Alamat || storeData?.alamat || 'JAKARTA, INDONESIA' }}
                     </p>
-                    <p v-if="storeData?.Telepon || storeData?.telepon" class="text-[8px] font-bold uppercase tracking-widest opacity-80 mt-1">
-                        WA: {{ storeData?.Telepon || storeData?.telepon }}
+                    <p v-if="storeData?.Telepon || storeData?.telepon" class="text-[8px] font-black uppercase tracking-widest mt-1.5 border-t border-slate-600 pt-1 border-dotted inline-block">
+                        WA: {{ formatWA(storeData?.Telepon || storeData?.telepon) }}
                     </p>
                 </div>
                 
@@ -42,10 +77,10 @@ const triggerPrint = () => {
                     {{ invoiceData.created_at ? 'Invoice Reprint' : 'Struk Belanja' }}
                 </div>
                 
-                <div class="mb-3 text-[8px] font-bold font-mono uppercase space-y-0.5">
+                <div class="mb-3 text-[8px] font-black font-mono uppercase space-y-0.5">
                     <div class="flex justify-between">
                         <span>WAKTU:</span>
-                        <span>{{ invoiceData.date || (invoiceData.created_at ? new Date(invoiceData.created_at).toLocaleString('id-ID') : '-') }}</span>
+                        <span>{{ invoiceData.date || (invoiceData.created_at ? new Date(invoiceData.created_at).toLocaleString('id-ID', { year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-') }}</span>
                     </div>
                     <div class="flex justify-between">
                         <span>KASIR:</span>
@@ -57,8 +92,12 @@ const triggerPrint = () => {
                 
                 <div v-for="item in (invoiceData.cart || invoiceData.details)" :key="item.id" class="mb-2 font-bold font-mono text-[9px] leading-tight uppercase">
                     <div class="truncate w-full pr-2">{{ item.name || item.product?.nama_produk || 'Item Belanja' }}</div>
+                    
                     <div class="flex justify-between pl-2 text-[8px] mt-0.5">
-                        <span>{{ item.qty || item.kuantitas }} x {{ formatRupiah(item.price || item.harga_satuan) }}</span>
+                        <span class="text-black-600">
+                            {{ formatKemasan(item) }} 
+                            <span class="lowercase"> x {{ formatRupiah(item.price || item.harga_satuan) }}</span>
+                        </span>
                         <span class="font-black text-[9px]">{{ formatRupiah(item.sub_total || (item.price * item.qty)) }}</span>
                     </div>
                 </div>
@@ -85,7 +124,7 @@ const triggerPrint = () => {
                 <div class="mt-5 text-[7px] font-bold text-center border-t border-black border-dashed pt-2 font-mono uppercase space-y-1">
                     <p class="font-black">INV: {{ invoiceData.invoice || invoiceData.no_invoice }}</p>
                 </div>
-                <div class="text-center mt-4 font-black font-mono text-[8px] border-2 border-black p-1.5 uppercase">
+                <div class="text-center mt-4 font-black font-mono text-[8px] border-2 border-black p-1.5 uppercase leading-tight">
                     Terima Kasih!<br>Barang tidak dapat ditukar.
                 </div>
             </div>

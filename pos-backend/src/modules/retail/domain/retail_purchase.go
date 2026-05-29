@@ -34,4 +34,5 @@ type BestSeller struct {
 	SKU        string  `json:"sku"`
 	QtyTerjual int     `json:"qty_terjual"`
 	TotalOmzet float64 `json:"total_omzet"`
+	SatuanDasar string `json:"satuan_dasar"`
 }

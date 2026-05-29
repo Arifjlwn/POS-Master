@@ -45,8 +45,9 @@ const emit = defineEmits(['edit', 'delete', 'change-page']);
                                 <div class="font-black text-slate-800 text-xs md:text-sm uppercase">{{ product.nama_produk }}</div>
                                 <div class="flex flex-wrap items-center gap-2 mt-1.5">
                                     <span class="text-[8px] md:text-[9px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded border border-slate-200 uppercase tracking-widest">{{ product.sku || 'NO-SKU' }}</span>
+                                    
                                     <span v-if="product.satuan_besar" class="text-[8px] md:text-[9px] font-black bg-purple-50 text-purple-600 px-2 py-0.5 rounded border border-purple-100 uppercase tracking-widest" title="Isi Konversi">
-                                        1 {{ product.satuan_besar }} = {{ product.isi_per_besar }} {{ product.satuan_dasar }}
+                                        1 {{ product.satuan_besar }} = {{ Number(product.isi_per_besar || 0).toLocaleString('id-ID') }} {{ product.satuan_dasar || 'PCS' }}
                                     </span>
                                 </div>
                             </div>

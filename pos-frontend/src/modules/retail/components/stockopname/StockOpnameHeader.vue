@@ -43,31 +43,31 @@ defineEmits(['update:activeTab']);
                 </button>
                 
                 <button v-if="isKlaimEligible"
-                        @click="$emit('update:activeTab', 'KLAIM')" 
-                        :class="activeTab === 'KLAIM' 
-                            ? 'bg-amber-500 text-white shadow-lg shadow-amber-200 border-2 border-amber-500' 
-                            : 'text-slate-600 hover:text-amber-600 hover:bg-amber-50 border-2 border-transparent hover:border-amber-200'"
-                        class="px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2.5">
-                    
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                    </svg>
-                    
-                    Klaim Barang
-                    
-                    <span :class="activeTab === 'KLAIM' ? 'bg-amber-600 text-white shadow-inner' : 'bg-amber-100 text-amber-600'" 
-                          class="px-2.5 py-1 rounded-md text-[9px] font-black tracking-widest ml-1">
-                        SISA {{ daysLeftKlaim }} HARI
-                    </span>
-                </button>
+        @click="$emit('update:activeTab', 'KLAIM')" 
+        :class="activeTab === 'KLAIM' 
+            ? 'bg-amber-500 text-white shadow-lg shadow-amber-200 border-2 border-amber-500' 
+            : 'text-slate-600 hover:text-amber-600 hover:bg-amber-50 border-2 border-transparent hover:border-amber-200'"
+        class="px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2.5">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+    </svg>
+    
+    Klaim Barang
+    
+    <span :class="activeTab === 'KLAIM' ? 'bg-amber-600 text-white shadow-inner' : 'bg-amber-100 text-amber-600'" 
+            class="px-2.5 py-1 rounded-md text-[9px] font-black tracking-widest ml-1">
+        SISA {{ daysLeftKlaim }} HARI
+    </span>
+</button>
 
-                <button v-else
-                        disabled
-                        class="px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
-                        title="Hanya aktif dalam 7 hari setelah Audit SO dilakukan">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                    Klaim Terkunci
-                </button>
+<button v-else
+        disabled
+        class="px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
+        title="Klaim sudah dilakukan atau masa klaim 7 hari sudah lewat">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+    {{ isKlaimEligible ? 'Sudah Diklaim' : 'Klaim Terkunci' }}
+</button>
             </div>
         </div>
     </div>

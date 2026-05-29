@@ -1,4 +1,4 @@
-import { ref, onBeforeUnmount, onMounted } from 'vue';
+import { ref, onBeforeUnmount, onMounted, computed } from 'vue'; // 🚀 TAMBAHIN COMPUTED
 import api from '../../../api.js';
 import Swal from 'sweetalert2';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
@@ -11,9 +11,10 @@ export function useStockOpname() {
     const role = localStorage.getItem('role') || 'staff';
     const isOwner = role.toLowerCase() === 'owner';
 
-    // 🚀 STATE TIME-LOCK KLAIM BARANG
+    // 🚀 STATE TIME-LOCK KLAIM BARANG & GEMBOK SO BULANAN
     const isKlaimEligible = ref(false);
     const daysLeftKlaim = ref(0);
+    const isSOLockedThisMonth = ref(false); // 🚀 GEMBOK BARU
 
     const notes = ref(`Stock Opname ${new Date().toLocaleDateString('id-ID')}`);
     const searchQuery = ref('');
@@ -25,7 +26,7 @@ export function useStockOpname() {
     const showScanner = ref(false);
     let html5QrCode = null;
 
-    // --- 🚀 CEK ELIGIBILITY KLAIM (7 HARI) ---
+    // --- 🚀 CEK ELIGIBILITY KLAIM & GEMBOK SO BULAN INI ---
     const checkKlaimEligibility = async () => {
         try {
             const res = await api.get('/retail/stock-opname/last-status');
@@ -33,22 +34,35 @@ export function useStockOpname() {
             if (res.data && res.data.last_so_date) {
                 const lastSO = new Date(res.data.last_so_date);
                 const now = new Date();
+                const hasClaimed = res.data.has_claimed; // 🚀 NANGKEP STATUS KLAIM DARI GOLANG
                 
+                // 1. Cek Eligibility Klaim (7 Hari & Belum Pernah Klaim)
                 const diffTime = Math.abs(now - lastSO); 
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                if (diffDays <= 7) {
+                // 🚀 Kalau dalam 7 hari DAN belum pernah klaim, baru dibuka!
+                if (diffDays <= 7 && !hasClaimed) {
                     isKlaimEligible.value = true;
                     daysLeftKlaim.value = diffDays === 0 ? 7 : (8 - diffDays); 
                 } else {
                     isKlaimEligible.value = false;
                 }
+
+                // 2. Cek Gembok SO Bulanan
+                if (lastSO.getMonth() === now.getMonth() && lastSO.getFullYear() === now.getFullYear()) {
+                    isSOLockedThisMonth.value = true;
+                } else {
+                    isSOLockedThisMonth.value = false;
+                }
+
             } else {
                 isKlaimEligible.value = false;
+                isSOLockedThisMonth.value = false;
             }
         } catch (e) {
-            console.error("Gagal cek status Klaim:", e);
+            console.error("Gagal cek status Klaim/SO:", e);
             isKlaimEligible.value = false; 
+            isSOLockedThisMonth.value = false;
         }
     };
 
@@ -58,6 +72,9 @@ export function useStockOpname() {
 
     // --- 🚀 SCANNER ---
     const startScanner = async () => {
+        if (activeTab.value === 'SO' && isSOLockedThisMonth.value) {
+            return Swal.fire('Terkunci!', 'Stock Opname sudah dilakukan bulan ini.', 'warning');
+        }
         showScanner.value = true;
         setTimeout(async () => {
             try {
@@ -101,6 +118,11 @@ export function useStockOpname() {
     // --- 🚀 PENCARIAN & KERANJANG (DI-UPGRADE BUAT 3 LAPIS) ---
     let searchTimer = null;
     const searchProduct = (isFromScanner = false) => {
+        if (activeTab.value === 'SO' && isSOLockedThisMonth.value) {
+            Swal.fire('Terkunci!', 'Stock Opname sudah dilakukan bulan ini.', 'warning');
+            searchQuery.value = '';
+            return;
+        }
         clearTimeout(searchTimer);
         if (isFromScanner) return executeSearch(true);
         searchTimer = setTimeout(() => executeSearch(false), 300);
@@ -125,11 +147,15 @@ export function useStockOpname() {
     };
 
     const addToCart = (product) => {
+        if (activeTab.value === 'SO' && isSOLockedThisMonth.value) {
+            Swal.fire('Terkunci!', 'Stock Opname sudah dilakukan bulan ini.', 'warning');
+            return;
+        }
+
         const targetCart = activeTab.value === 'SO' ? cartSO : cartKlaim;
         const existing = targetCart.value.find(item => item.product_id === product.id);
         
         if (existing) {
-            // Default kalau di-scan ulang, nambah 1 ke kemasan eceran/dasarnya
             existing.qty_dasar++;
         } else {
             targetCart.value.unshift({
@@ -138,18 +164,13 @@ export function useStockOpname() {
                 sku: product.sku,
                 system_qty: product.stok,
                 alasan: '',
-                
-                // Form Input Qty (3 Lapis)
                 qty_besar: 0,
                 qty_tengah: 0,
-                qty_dasar: activeTab.value === 'SO' ? 0 : 1, // Kalo klaim default 1, SO default 0
-                
-                // Variabel Konversi dari Database
+                qty_dasar: activeTab.value === 'SO' ? 0 : 1, 
                 satuan_dasar: product.satuan_dasar || 'PCS',
                 has_satuan_besar: !!product.satuan_besar && Number(product.isi_per_besar) > 1,
                 satuan_besar: product.satuan_besar || null,
                 isi_per_besar: Number(product.isi_per_besar) || 1,
-                
                 is_nested: product.is_nested_uom || false,
                 satuan_tengah: product.satuan_tengah || null,
                 isi_besar_ke_tengah: Number(product.isi_besar_ke_tengah) || 0,
@@ -164,19 +185,16 @@ export function useStockOpname() {
         activeTab.value === 'SO' ? cartSO.value.splice(index, 1) : cartKlaim.value.splice(index, 1);
     };
 
-    // 🚀 RUMUS SILUMAN UNTUK NGITUNG TOTAL FISIK (DI-EKSPORT BIAR BISA DIPAKAI DI UI)
     const hitungTotalFisik = (item) => {
         const qBesar = Number(item.qty_besar) || 0;
         const qTengah = Number(item.qty_tengah) || 0;
         const qDasar = Number(item.qty_dasar) || 0;
 
         if (item.is_nested) {
-            // Mode 3 Lapis (Rokok)
             const stokDariBesar = qBesar * item.isi_per_besar; 
             const stokDariTengah = qTengah * item.isi_tengah_ke_dasar; 
             return stokDariBesar + stokDariTengah + qDasar;
         } else {
-            // Mode 2 Lapis (Indomie) atau Normal (Chitato)
             const stokDariBesar = qBesar * item.isi_per_besar;
             return stokDariBesar + qDasar;
         }
@@ -186,7 +204,6 @@ export function useStockOpname() {
     const proceedToReview = async () => {
         if (cartSO.value.length === 0) return Swal.fire('Kosong', 'Belum ada barang yang dihitung!', 'warning');
         
-        // Cek pakai rumus siluman
         const belumDihitung = cartSO.value.some(i => hitungTotalFisik(i) === 0 && i.system_qty > 0);
         if (belumDihitung) return Swal.fire('Perhatian', 'Pastikan semua angka fisik terisi, ada barang yang masih 0.', 'info');
 
@@ -216,9 +233,7 @@ export function useStockOpname() {
                         sku: p.sku,
                         system_qty: p.stok,
                         alasan: '',
-                        
-                        qty_besar: 0, qty_tengah: 0, qty_dasar: 0, // Ditarik paksa dan diset 0
-                        
+                        qty_besar: 0, qty_tengah: 0, qty_dasar: 0, 
                         satuan_dasar: p.satuan_dasar || 'PCS',
                         has_satuan_besar: !!p.satuan_besar && Number(p.isi_per_besar) > 1,
                         satuan_besar: p.satuan_besar || null,
@@ -240,6 +255,10 @@ export function useStockOpname() {
     };
 
     const submitSOFinal = async () => {
+        if (isSOLockedThisMonth.value) {
+            return Swal.fire('Sistem Terkunci!', 'Stock Opname hanya bisa dilakukan 1x dalam sebulan.', 'error');
+        }
+
         const confirm = await Swal.fire({
             title: isOwner ? 'Finalisasi & Kunci Stok?' : 'Kirim Pengajuan SO?',
             text: isOwner ? 'Stok akan langsung diperbarui permanen!' : 'Menunggu persetujuan Owner sebelum stok berubah.',
@@ -252,7 +271,6 @@ export function useStockOpname() {
 
         isSubmitting.value = true;
         try {
-            // 🚀 TRANSLATE SEMUA QTY LAPISAN JADI 1 ACTUAL QTY BIAR GOLANG GAK PUSING
             const payloadItems = cartSO.value.map(i => {
                 const totalFisik = hitungTotalFisik(i);
                 return {
@@ -273,8 +291,8 @@ export function useStockOpname() {
             Swal.fire('Selesai!', 'Data SO berhasil diproses.', 'success');
             cartSO.value = [];
             soStep.value = 'COUNTING';
-            checkKlaimEligibility();
-        } catch (err) { Swal.fire('Gagal', 'Terjadi kesalahan sistem', 'error'); } 
+            checkKlaimEligibility(); // Ini bakal otomatis nge-set isSOLockedThisMonth jadi true
+        } catch (err) { Swal.fire('Gagal', err.response?.data?.error || 'Terjadi kesalahan sistem', 'error'); } 
         finally { isSubmitting.value = false; }
     };
 
@@ -288,7 +306,7 @@ export function useStockOpname() {
         try {
             const payloadItems = cartKlaim.value.map(i => ({ 
                 product_id: i.product_id, 
-                qty: hitungTotalFisik(i), // Pakai rumus siluman
+                qty: hitungTotalFisik(i), 
                 alasan: i.alasan 
             }));
 
@@ -304,8 +322,8 @@ export function useStockOpname() {
 
     return {
         activeTab, soStep, notes, searchQuery, products, cartSO, cartKlaim, isSubmitting, showScanner, isOwner,
-        isKlaimEligible, daysLeftKlaim,
-        startScanner, stopScanner, searchProduct, addToCart, removeItem, hitungTotalFisik, // 🚀 Wajib Export Fungsi Ini
+        isKlaimEligible, daysLeftKlaim, isSOLockedThisMonth, // 🚀 EXPORT GEMBOKNYA
+        startScanner, stopScanner, searchProduct, addToCart, removeItem, hitungTotalFisik, 
         proceedToReview, submitSOFinal, submitKlaimTemuan
     };
 }

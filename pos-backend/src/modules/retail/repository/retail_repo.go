@@ -19,6 +19,7 @@ type RetailRepository interface {
 	CreateStockOpname(tx *gorm.DB, so *domain.StockOpname) error
 	CreateStockOpnameDetail(tx *gorm.DB, detail *domain.StockOpnameDetail) error
 	GetStockOpnameHistory(storeID uint) ([]domain.StockOpname, error)
+	CheckStockOpnameThisMonth(storeID uint, currentMonth int, currentYear int) bool
 
 	// Return
 	CreateProductReturns(tx *gorm.DB, returns []domain.ProductReturn) error
@@ -54,6 +55,7 @@ type RetailRepository interface {
 	GetDashboardLaba(storeID uint, start time.Time, end time.Time) (float64, error)
 	GetDashboardReturSummary(storeID uint, start time.Time, end time.Time) (float64, float64, error)
 	GetDashboardSOSummary(storeID uint, start time.Time, end time.Time) (float64, float64, error)
+	GetDashboardKlaimSummary(storeID uint, start time.Time, end time.Time) (float64, float64, error)
 	GetLowStockProducts(storeID uint, limitStock int) ([]models.Product, error)
 	GetDailySalesReport(storeID uint, tgl time.Time, tglEnd time.Time) (float64, float64, float64, error)
 	GetTopBestSellers(storeID uint, start time.Time, end time.Time) ([]domain.BestSeller, error)
@@ -179,6 +181,15 @@ func (r *retailRepo) CreateStockOpname(tx *gorm.DB, so *domain.StockOpname) erro
 	return tx.Create(so).Error
 }
 
+// 🚀 GEMBOK SILUMAN: Cek apakah bulan ini udah pernah SO
+func (r *retailRepo) CheckStockOpnameThisMonth(storeID uint, currentMonth int, currentYear int) bool {
+    var count int64
+    r.db.Model(&domain.StockOpname{}).
+        Where("store_id = ? AND EXTRACT(MONTH FROM created_at) = ? AND EXTRACT(YEAR FROM created_at) = ?", storeID, currentMonth, currentYear).
+        Count(&count)
+    return count > 0
+}
+
 func (r *retailRepo) CreateStockOpnameDetail(tx *gorm.DB, detail *domain.StockOpnameDetail) error {
 	return tx.Create(detail).Error
 }
@@ -294,6 +305,19 @@ func (r *retailRepo) GetDashboardReturSummary(storeID uint, start time.Time, end
 	err := r.db.Table("retail_product_returns").Select("COALESCE(SUM(retail_product_returns.qty), 0) as qty, COALESCE(SUM(retail_product_returns.qty * COALESCE(products.harga_modal, 0)), 0) as loss").Joins("LEFT JOIN products ON products.id = retail_product_returns.product_id").Where("retail_product_returns.store_id = ? AND retail_product_returns.created_at BETWEEN ? AND ?", storeID, start, end).Scan(&res).Error
 	return res.Qty, res.Loss, err
 }
+func (r *retailRepo) GetDashboardKlaimSummary(storeID uint, start time.Time, end time.Time) (float64, float64, error) {
+    var res struct { Qty float64; RecoveredValue float64 }
+    
+    // Asumsi nama tabelnya "retail_stock_adjustments" dan "retail_stock_adjustment_details"
+    err := r.db.Table("retail_stock_adjustment_details").
+        Select("COALESCE(SUM(retail_stock_adjustment_details.qty), 0) as qty, COALESCE(SUM(retail_stock_adjustment_details.qty * COALESCE(products.harga_modal, 0)), 0) as recovered_value").
+        Joins("JOIN retail_stock_adjustments ON retail_stock_adjustments.id = retail_stock_adjustment_details.adjustment_id").
+        Joins("LEFT JOIN products ON products.id = retail_stock_adjustment_details.product_id").
+        Where("retail_stock_adjustments.store_id = ? AND retail_stock_adjustments.status = 'APPROVED' AND retail_stock_adjustments.created_at BETWEEN ? AND ?", storeID, start, end).
+        Scan(&res).Error
+        
+    return res.Qty, res.RecoveredValue, err
+}
 func (r *retailRepo) GetDashboardSOSummary(storeID uint, start time.Time, end time.Time) (float64, float64, error) {
 	var res struct { Qty float64; Loss float64 }
 	err := r.db.Table("retail_stock_opname_details").Select("COALESCE(SUM(ABS(retail_stock_opname_details.selisih)), 0) as qty, COALESCE(SUM(ABS(retail_stock_opname_details.selisih) * COALESCE(products.harga_modal, 0)), 0) as loss").Joins("JOIN retail_stock_opnames ON retail_stock_opnames.id = retail_stock_opname_details.opname_id").Joins("LEFT JOIN products ON products.id = retail_stock_opname_details.product_id").Where("retail_stock_opnames.store_id = ? AND retail_stock_opname_details.selisih < 0 AND retail_stock_opnames.created_at BETWEEN ? AND ?", storeID, start, end).Scan(&res).Error
@@ -312,9 +336,21 @@ func (r *retailRepo) GetDailySalesReport(storeID uint, tgl time.Time, tglEnd tim
 	return sales.Omzet, sales.Laba, returLoss, nil
 }
 func (r *retailRepo) GetTopBestSellers(storeID uint, start time.Time, end time.Time) ([]domain.BestSeller, error) {
-	var list []domain.BestSeller
-	err := r.db.Table("transaction_details").Select("products.nama_produk, products.sku, SUM(transaction_details.kuantitas) as qty_terjual, SUM(transaction_details.sub_total) as total_omzet").Joins("JOIN transactions ON transactions.id = transaction_details.transaction_id").Joins("JOIN products ON products.id = transaction_details.product_id").Where("transactions.store_id = ? AND transactions.created_at BETWEEN ? AND ?", storeID, start, end).Group("products.nama_produk, products.sku").Order("qty_terjual DESC").Limit(5).Scan(&list).Error
-	return list, err
+    var list []domain.BestSeller
+    
+    err := r.db.Table("transaction_details").
+        // 🚀 1. SELIPIN products.satuan_dasar DI SINI
+        Select("products.nama_produk, products.sku, products.satuan_dasar, SUM(transaction_details.kuantitas) as qty_terjual, SUM(transaction_details.sub_total) as total_omzet").
+        Joins("JOIN transactions ON transactions.id = transaction_details.transaction_id").
+        Joins("JOIN products ON products.id = transaction_details.product_id").
+        Where("transactions.store_id = ? AND transactions.created_at BETWEEN ? AND ?", storeID, start, end).
+        // 🚀 2. SELIPIN products.satuan_dasar DI SINI JUGA BIAR GAK ERROR
+        Group("products.nama_produk, products.sku, products.satuan_dasar").
+        Order("qty_terjual DESC").
+        Limit(5).
+        Scan(&list).Error
+        
+    return list, err
 }
 
 func (r *retailRepo) GetScheduleByDate(tx *gorm.DB, userID uint, tanggal string) (*models.Schedule, error) {
