@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"pos-backend/src/core/config"
 	"pos-backend/models"
-	"pos-backend/utils" // 🚀 Pastikan utils.SendOTPEmail sudah Mas buat
+	"pos-backend/utils"
 	"strings"
 	"time"
 
@@ -118,7 +118,7 @@ type LoginInput struct {
 	Password   string `json:"password" binding:"required"`
 }
 
-// -- LOGIN DENGAN PROTEKSI --
+// -- LOGIN DENGAN PROTEKSI HYBRID --
 func Login(c *gin.Context) {
 	var input LoginInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -127,21 +127,26 @@ func Login(c *gin.Context) {
 	}
 
 	var user models.User
-	// 🚀 Cari User berdasarkan Email atau NIK
 	query := src.DB.Preload("Store")
+
+	// 🚀 DETEKTOR SILUMAN: EMAIL (OWNER) VS NO WA (KARYAWAN)
 	if strings.Contains(input.Identifier, "@") {
+		// Jalur VIP: Login via Email
 		query = query.Where("email = ?", input.Identifier)
 	} else {
-		query = query.Where("nik = ?", input.Identifier)
+		// Jalur Operasional: Bersihkan format no HP (08xxx jadi 628xxx)
+		cleanHP := utils.FormatPhoneNumber(input.Identifier)
+		query = query.Where("no_hp = ?", cleanHP)
 	}
 
+	// Cari kecocokan di database
 	if err := query.First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Identitas tidak ditemukan!"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Identitas tidak ditemukan! Pastikan Email atau No. WhatsApp benar."})
 		return
 	}
 
-	// 🚀 Proteksi OTP: Hanya untuk login via Email (Kecuali Akun KASIR!)
-	if strings.Contains(input.Identifier, "@") && !user.IsVerified && user.Role != "kasir" {
+	// 🚀 Proteksi OTP: HANYA untuk login via Email (Owner)
+	if strings.Contains(input.Identifier, "@") && !user.IsVerified {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error":      "Email Anda belum diverifikasi!",
 			"unverified": true,
@@ -183,7 +188,7 @@ func Login(c *gin.Context) {
 		"foto_url":        user.FotoURL,
 		"has_setup_store": storeID != 0,
 		"store_name":      user.Store.NamaToko,
-		"business_type": user.Store.BusinessType,
+		"business_type":   user.Store.BusinessType,
 	})
 }
 

@@ -8,14 +8,14 @@ type User struct {
 	
 	Name      string    `gorm:"type:varchar(100);not null" json:"name"`
 	Email     *string   `gorm:"type:varchar(100);uniqueIndex" json:"email"`
-	NIK       *string   `gorm:"type:varchar(20);uniqueIndex" json:"nik"`
+	NIK       *string   `gorm:"type:varchar(20)" json:"nik"`
 	Password  string    `gorm:"type:varchar(255);not null" json:"-"`
 	Role      string    `gorm:"type:varchar(20);default:'kasir'" json:"role"`
 
 	// --- 🚀 FIELD BARU UNTUK KARYAWAN & ABSENSI WAJAH ---
 	TempatLahir  string    `gorm:"type:varchar(100)" json:"tempat_lahir"`
-	TanggalLahir string    `gorm:"type:varchar(20)" json:"tanggal_lahir"`
-	NoHP         string    `gorm:"type:varchar(20)" json:"no_hp"`
+    TanggalLahir string    `gorm:"type:varchar(20)" json:"tanggal_lahir"`
+	NoHP         string    `gorm:"type:varchar(20);uniqueIndex" json:"no_hp"`
 	FotoURL      string    `gorm:"type:text" json:"foto_url"` 
 	BiometricURL      string    `gorm:"type:text" json:"biometric_url"` 
 	// ----------------------------------------------------

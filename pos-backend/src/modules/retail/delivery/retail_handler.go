@@ -16,6 +16,7 @@ import (
 
 	"pos-backend/src/modules/retail/domain"
 	"pos-backend/src/modules/retail/repository"
+	"pos-backend/utils"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -770,24 +771,33 @@ func (h *RetailHandler) CreateEmployee(c *gin.Context) {
 	noHP := c.PostForm("no_hp")
 	inputRole := c.PostForm("role") 
 
-	if name == "" || password == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Nama dan Password wajib diisi!"})
+	// 🚀 PERBAIKAN: Nomor HP sekarang WAJIB DIISI!
+	if name == "" || password == "" || noHP == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Nama, Nomor HP, dan Password wajib diisi!"})
 		return
 	}
 	if inputRole == "" { inputRole = "kasir" }
+
+	// 🚀 FORMAT NOMOR HP JADI 628xxx SEBELUM DISIMPAN
+	formattedHP := utils.FormatPhoneNumber(noHP)
 
 	currentYear := time.Now().Format("2006")
 	var newNIK string
 
 	lastEmployee, err := h.Repo.GetLastEmployeeNIK(storeID, currentYear)
 	if err != nil {
-		newNIK = fmt.Sprintf("%s%03d001", currentYear, storeID)
+		// 🚀 JIKA BELUM ADA, MULAI DARI TAHUN + 0001 (Contoh: 20260001)
+		newNIK = fmt.Sprintf("%s0001", currentYear)
 	} else {
 		lastNIK := *lastEmployee.NIK
 		
-		// 🚀 Ambil 3 digit paling belakang sebagai urutan karyawan
-		lastSequence, _ := strconv.Atoi(lastNIK[len(lastNIK)-3:])
-		newNIK = fmt.Sprintf("%s%03d%03d", currentYear, storeID, lastSequence+1)
+		// 🚀 AMBIL 4 DIGIT TERAKHIR UNTUK URUTAN (Bukan 3 digit lagi)
+		if len(lastNIK) >= 4 {
+			lastSequence, _ := strconv.Atoi(lastNIK[len(lastNIK)-4:])
+			newNIK = fmt.Sprintf("%s%04d", currentYear, lastSequence+1)
+		} else {
+			newNIK = fmt.Sprintf("%s0001", currentYear)
+		}
 	}
 
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -809,7 +819,7 @@ func (h *RetailHandler) CreateEmployee(c *gin.Context) {
 		Role:         inputRole,
 		TempatLahir:  tempatLahir,
 		TanggalLahir: tanggalLahir,
-		NoHP:         noHP,
+		NoHP:         formattedHP, // 🚀 MASUKIN NOMOR HP YANG UDAH DIBERSIHKAN
 		FotoURL:      fotoURL,
 	}
 
@@ -852,7 +862,11 @@ func (h *RetailHandler) UpdateEmployee(c *gin.Context) {
 	employee.Name = c.PostForm("name")
 	employee.TempatLahir = c.PostForm("tempat_lahir")
 	employee.TanggalLahir = c.PostForm("tanggal_lahir")
-	employee.NoHP = c.PostForm("no_hp")
+	
+	// 🚀 FORMAT NOMOR HP JUGA SAAT UPDATE
+	if inputHP := c.PostForm("no_hp"); inputHP != "" {
+		employee.NoHP = utils.FormatPhoneNumber(inputHP)
+	}
 	
 	if newRole := c.PostForm("role"); newRole != "" { employee.Role = newRole }
 	if password := c.PostForm("password"); password != "" {

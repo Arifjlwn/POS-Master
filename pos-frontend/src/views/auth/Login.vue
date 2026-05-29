@@ -128,7 +128,7 @@ const handleLogin = async () => {
 
         <form @submit.prevent="handleLogin" class="space-y-5">
           <div class="space-y-2">
-            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email / NIK</label>
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Owner / No. WA Kasir</label>
             <div class="relative group">
               <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -138,9 +138,8 @@ const handleLogin = async () => {
                 type="text" 
                 required 
                 class="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:bg-white focus:border-blue-600 font-bold text-slate-800 outline-none transition-all placeholder:text-slate-300 placeholder:font-medium"
-                placeholder="Email atau NIK"
-              >
-            </div>
+                placeholder="contoh@email.com / 08123456..." 
+              > </div>
           </div>
 
           <div class="space-y-2">

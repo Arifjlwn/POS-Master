@@ -98,8 +98,10 @@ watch(() => props.show, (newVal) => {
                             </div>
                         </div>
                         <div>
-                            <label class="block text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 md:mb-2">No. Handphone (WA)</label>
-                            <input v-model="form.no_hp" type="text" required class="w-full p-3.5 md:p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-blue-600 outline-none font-bold text-sm text-slate-800">
+                            <label class="block text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 md:mb-2">
+                                No. Handphone <span class="text-emerald-500">(AKSES LOGIN)</span>
+                            </label>
+                            <input v-model="form.no_hp" type="text" required placeholder="Contoh: 08123456789" class="w-full p-3.5 md:p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-blue-600 outline-none font-bold text-sm text-slate-800">
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 md:mb-2">Password <span v-if="isEditMode" class="text-amber-500 italic lowercase tracking-normal">(Kosongi jika tidak diubah)</span></label>

@@ -114,10 +114,12 @@ export function useManageKaryawan() {
 
         try {
             if (isEditMode.value) {
-                await api.put(`/retail/employees/${selectedId.value}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+                // 🚀 HAPUS HEADERS MANUAL! Biar Axios otomatis ngasih boundary
+                await api.put(`/retail/employees/${selectedId.value}`, formData);
                 Swal.fire('Berhasil!', 'Data karyawan telah diperbarui.', 'success');
             } else {
-                const response = await api.post('/retail/employees', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+                // 🚀 HAPUS JUGA DI SINI!
+                const response = await api.post('/retail/employees', formData);
                 Swal.fire('Berhasil!', `Karyawan dengan NIK: ${response.data.data.nik} berhasil dibuat.`, 'success');
             }
             closeModal();
