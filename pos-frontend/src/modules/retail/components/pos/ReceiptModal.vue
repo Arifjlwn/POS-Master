@@ -80,7 +80,24 @@ const triggerPrint = () => {
                 <div class="mb-3 text-[8px] font-black font-mono uppercase space-y-0.5">
                     <div class="flex justify-between">
                         <span>WAKTU:</span>
-                        <span>{{ invoiceData.date || (invoiceData.created_at ? new Date(invoiceData.created_at).toLocaleString('id-ID', { year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-') }}</span>
+                        <span>
+                            {{
+                                invoiceData.date || (
+                                    invoiceData.created_at
+                                        ? new Date(invoiceData.created_at)
+                                            .toLocaleString('id-ID', {
+                                                year: '2-digit',
+                                                month: '2-digit',
+                                                day: '2-digit',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                                hour12: false
+                                            })
+                                            .replace('.', ':')
+                                        : '-'
+                                )
+                            }}
+                        </span>
                     </div>
                     <div class="flex justify-between">
                         <span>KASIR:</span>

@@ -17,6 +17,7 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 	// Stock Opname
 	rg.POST("/stock-opname", h.CreateStockOpname)
 	rg.GET("/stock-opname/last-status", h.GetLastSOStatus)
+	rg.GET("/stock-opname/last-minus", h.GetLastSOMinusItems)
 	rg.GET("/stock-opname/history", h.GetStockOpnameHistory)
 	rg.PATCH("/stock-opname/:id/approve", h.ApproveStockOpname)
 	rg.POST("/stock-adjustment/request", h.SubmitKlaimBarang)

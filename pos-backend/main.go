@@ -10,7 +10,7 @@ import (
 	"pos-backend/models"
 	"time"
 
-	// 🚀 ALIAS DIBAWAH INI KUNCI BIAR GAK COLLISION / BENTROK KONTOL
+	// 🚀 ALIAS DIBAWAH INI KUNCI BIAR GAK COLLISION
 	fnbDelivery "pos-backend/src/modules/fnb/delivery"
 	fnbRepository "pos-backend/src/modules/fnb/repository"
 	

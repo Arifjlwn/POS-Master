@@ -16,6 +16,7 @@ type StockOpname struct {
 	Notes     string              `json:"notes"`   
 	Status    string              `gorm:"type:varchar(50);default:'PENDING_APPROVAL'" json:"status"` // PENDING_APPROVAL / APPROVED
 	CreatedAt time.Time           `json:"created_at"`
+	BuktiBar string `gorm:"column:bukti_bar;type:varchar(255)" json:"bukti_bar"`
 	Details   []StockOpnameDetail `gorm:"foreignKey:OpnameID" json:"details"`
 }
 
@@ -45,6 +46,7 @@ type StockAdjustment struct {
     Notes     string                  `json:"notes"`                          // Default: "Klaim Barang Nyempil"
     Status    string                  `gorm:"type:varchar(50);default:'PENDING_APPROVAL'" json:"status"` // Owner wajib approve dulu baru stok nambah
     CreatedAt time.Time               `json:"created_at"` // 🚀 INI UDAH DIBERSIHIN
+	BuktiBar string `gorm:"column:bukti_bar;type:varchar(255)" json:"bukti_bar"`
     Details   []StockAdjustmentDetail `gorm:"foreignKey:AdjustmentID" json:"details"`
 }
 

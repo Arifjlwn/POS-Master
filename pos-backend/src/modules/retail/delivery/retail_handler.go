@@ -128,62 +128,127 @@ func (h *RetailHandler) CreateStockOpname(c *gin.Context) {
 }
 
 func (h *RetailHandler) ApproveStockOpname(c *gin.Context) {
-    opnameID := c.Param("id") // Ambil ID dari URL /api/retail/stock-opname/:id/approve
-    
-    // Pastikan cuma Owner yang bisa akses
-    userRole := c.MustGet("role").(string)
-    if userRole != "owner" {
-        c.JSON(http.StatusForbidden, gin.H{"error": "Hanya Owner yang bisa menyetujui audit!"})
-        return
-    }
+	opnameID := c.Param("id") // Ambil ID dari URL /api/retail/stock-opname/:id/approve
+	
+	// Pastikan cuma Owner yang bisa akses
+	userRole := c.MustGet("role").(string)
+	if userRole != "owner" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Hanya Owner yang bisa menyetujui audit!"})
+		return
+	}
 
-    db := h.Repo.GetDB()
-    err := db.Transaction(func(tx *gorm.DB) error {
-        // 1. Ambil data SO dan item-itemnya
-        var so domain.StockOpname
-        if err := tx.Preload("Details").First(&so, opnameID).Error; err != nil {
-            return err
-        }
+	// 🚀 1. TANGKAP FILE PDF DARI VUE DULU
+	file, errFile := c.FormFile("bukti_bar")
+	var filePath string
+	
+	if errFile == nil { 
+		// Bikin nama unik
+		filename := fmt.Sprintf("BAR_SO_%s_%d.pdf", opnameID, time.Now().Unix())
+		filePath = "uploads/bar/" + filename
+		
+		// Simpan file fisik ke folder server (Pastikan folder 'uploads/bar' udah ada di root project lu)
+		if err := c.SaveUploadedFile(file, filePath); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan file PDF Berita Acara"})
+			return
+		}
+	} else {
+		// Tolak kalau owner nakal mau approve tanpa PDF
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File PDF Berita Acara (TTD) wajib diupload!"})
+		return
+	}
 
-        if so.Status == "APPROVED" {
-            return nil // Sudah pernah di-approve
-        }
+	db := h.Repo.GetDB()
+	
+	// 🚀 2. JALANKAN TRANSAKSI DATABASE LU YANG UDAH CAKEP INI
+	err := db.Transaction(func(tx *gorm.DB) error {
+		var so domain.StockOpname
+		if err := tx.Preload("Details").First(&so, opnameID).Error; err != nil {
+			return err
+		}
 
-        // 2. Update status SO jadi APPROVED
-        if err := tx.Model(&so).Update("status", "APPROVED").Error; err != nil {
-            return err
-        }
+		if so.Status == "APPROVED" {
+			return nil // Sudah pernah di-approve
+		}
 
-        // 3. Loop item dan update stok Master Product
-        for _, detail := range so.Details {
-            product, err := h.Repo.GetProductByID(tx, detail.ProductID, so.StoreID)
-            if err != nil { return err }
+		// Update status SO jadi APPROVED sekaligus simpan link PDF-nya
+		if err := tx.Model(&so).Updates(map[string]interface{}{
+			"status":    "APPROVED",
+			"bukti_bar": filePath, // 🚀 SIMPAN JEJAK PDF KE DATABASE
+		}).Error; err != nil {
+			return err
+		}
 
-            // Update stok master dengan hasil fisik (ActualQty)
-            product.Stok = detail.ActualQty
-            if err := h.Repo.SaveProduct(tx, product); err != nil {
-                return err
-            }
-        }
-        return nil
-    })
+		// Loop item dan update stok Master Product
+		for _, detail := range so.Details {
+			product, err := h.Repo.GetProductByID(tx, detail.ProductID, so.StoreID)
+			if err != nil { return err }
 
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal approve SO: " + err.Error()})
-        return
-    }
+			// Update stok master dengan hasil fisik (ActualQty) dari SO
+			product.Stok = detail.ActualQty
+			if err := h.Repo.SaveProduct(tx, product); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 
-    c.JSON(http.StatusOK, gin.H{"message": "Audit berhasil disetujui, stok master diupdate!"})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal approve SO: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Audit berhasil disetujui, stok master diupdate, & BAR tersimpan!"})
+}
+
+// 🚀 BIKIN STRUCT BARU BUAT NAMPUNG DATA JODOHAN (COMPARE)
+type AuditCompareResult struct {
+	SO    domain.StockOpname      `json:"so"`
+	Klaim *domain.StockAdjustment `json:"klaim"` // Pakai pointer (*) biar bisa bernilai null kalau belum ada klaim
 }
 
 func (h *RetailHandler) GetStockOpnameHistory(c *gin.Context) {
 	storeID := uint(c.MustGet("store_id").(float64))
-	history, err := h.Repo.GetStockOpnameHistory(storeID)
+	db := h.Repo.GetDB()
+
+	// 1. Tarik semua riwayat SO Asli
+	var soHistory []domain.StockOpname
+	err := db.Where("store_id = ?", storeID).
+		Preload("Details.Product").
+		Order("created_at desc").
+		Find(&soHistory).Error
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data riwayat opname"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": history})
+
+	// 2. Tarik semua riwayat Klaim Barang (Kalau ada)
+	var klaimHistory []domain.StockAdjustment
+	db.Where("store_id = ?", storeID).
+		Preload("Details.Product").
+		Find(&klaimHistory)
+
+	// 3. 🚀 PROSES KAWIN SILANG (COMPARE) BERDASARKAN BULAN & TAHUN
+	var results []AuditCompareResult
+	for _, so := range soHistory {
+		compare := AuditCompareResult{
+			SO: so,
+		}
+
+		// Cari klaim yang terjadi di bulan dan tahun yang sama dengan SO ini
+		for _, klaim := range klaimHistory {
+			if klaim.CreatedAt.Month() == so.CreatedAt.Month() && klaim.CreatedAt.Year() == so.CreatedAt.Year() {
+				klaimCopy := klaim
+				compare.Klaim = &klaimCopy
+				break // Langsung stop pencarian kalau udah ketemu jodohnya
+			}
+		}
+
+		results = append(results, compare)
+	}
+
+	// Balikin data yang udah digabung ke Vue!
+	c.JSON(http.StatusOK, gin.H{"data": results})
 }
 
 func (h *RetailHandler) GetLastSOStatus(c *gin.Context) {
@@ -213,6 +278,24 @@ func (h *RetailHandler) GetLastSOStatus(c *gin.Context) {
         "last_so_date": lastSO.CreatedAt,
         "has_claimed":  claimCount > 0, // True kalau udah pernah klaim
     })
+}
+
+// 🚀 ENDPOINT SAKTI: Narik barang yang minus di SO Terakhir
+func (h *RetailHandler) GetLastSOMinusItems(c *gin.Context) {
+	storeID := uint(c.MustGet("store_id").(float64))
+	db := h.Repo.GetDB()
+
+	var lastSO domain.StockOpname
+	if err := db.Where("store_id = ? AND status = ?", storeID, "APPROVED").Order("created_at desc").First(&lastSO).Error; err != nil {
+		c.JSON(http.StatusOK, gin.H{"data": []domain.StockOpnameDetail{}})
+		return
+	}
+
+	var minusDetails []domain.StockOpnameDetail
+	// Tarik detail yang selisihnya kurang dari 0 (Barang Hilang)
+	db.Where("opname_id = ? AND selisih < 0", lastSO.ID).Preload("Product").Find(&minusDetails)
+
+	c.JSON(http.StatusOK, gin.H{"data": minusDetails})
 }
 
 func (h *RetailHandler) SubmitKlaimBarang(c *gin.Context) {
@@ -280,55 +363,76 @@ func (h *RetailHandler) GetStockAdjustmentHistory(c *gin.Context) {
 
 // 2. Fungsi Owner Ngetok Palu Approve Klaim Barang
 func (h *RetailHandler) ApproveStockAdjustment(c *gin.Context) {
-    adjID := c.Param("id")
-    userRole := c.MustGet("role").(string)
-    
-    if userRole != "owner" {
-        c.JSON(http.StatusForbidden, gin.H{"error": "Hanya Owner yang berhak menyetujui klaim barang!"})
-        return
-    }
+	adjustmentID := c.Param("id") // Ambil ID dari URL
+	
+	// Pastikan cuma Owner yang bisa akses
+	userRole := c.MustGet("role").(string)
+	if userRole != "owner" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Hanya Owner yang bisa menyetujui klaim!"})
+		return
+	}
 
-    db := h.Repo.GetDB()
-    err := db.Transaction(func(tx *gorm.DB) error {
-        var adj domain.StockAdjustment
-        if err := tx.Preload("Details").First(&adj, adjID).Error; err != nil {
-            return err
-        }
+	// 🚀 1. TANGKAP FILE PDF DARI VUE (KHUSUS KLAIM)
+	file, errFile := c.FormFile("bukti_bar")
+	var filePath string
+	
+	if errFile == nil { 
+		// Bikin nama unik (Pake BAR_KLAIM biar beda sama SO awal)
+		filename := fmt.Sprintf("BAR_KLAIM_%s_%d.pdf", adjustmentID, time.Now().Unix())
+		filePath = "uploads/bar/" + filename
+		
+		// Simpan file fisik ke folder server
+		if err := c.SaveUploadedFile(file, filePath); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan file PDF Berita Acara Klaim"})
+			return
+		}
+	} else {
+		// Tolak kalau owner nakal mau approve tanpa PDF
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File PDF Berita Acara Klaim wajib diupload!"})
+		return
+	}
 
-        if adj.Status == "APPROVED" {
-            return nil // Sudah pernah di-approve sebelumnya
-        }
+	db := h.Repo.GetDB()
+	
+	// 🚀 2. JALANKAN TRANSAKSI DATABASE
+	err := db.Transaction(func(tx *gorm.DB) error {
+		var adjustment domain.StockAdjustment
+		if err := tx.Preload("Details").First(&adjustment, adjustmentID).Error; err != nil {
+			return err
+		}
 
-        // Update status induk jadi APPROVED
-        if err := tx.Model(&adj).Update("status", "APPROVED").Error; err != nil {
-            return err
-        }
+		if adjustment.Status == "APPROVED" {
+			return nil // Sudah pernah di-approve
+		}
 
-        // 🚀 LOGIC TAMBAH STOK SUPER AMAN (Pakai Repository Bawaan Lu)
-        for _, detail := range adj.Details {
-            // 1. Tarik dulu master produknya
-            product, err := h.Repo.GetProductByID(tx, detail.ProductID, adj.StoreID)
-            if err != nil { 
-                return err 
-            }
+		// Update status Klaim jadi APPROVED sekaligus simpan link PDF-nya
+		if err := tx.Model(&adjustment).UpdateColumns(map[string]interface{}{
+			"status":    "APPROVED",
+			"bukti_bar": filePath, // 🚀 SIMPAN JEJAK PDF KLAIM KE DATABASE
+		}).Error; err != nil {
+			return err
+		}
 
-            // 2. Tambah stoknya secara matematika Go murni
-            product.Stok = product.Stok + detail.Qty
+		// Loop item dan TAMBAH stok Master Product (Karena ini barang ketemu)
+		for _, detail := range adjustment.Details {
+			product, err := h.Repo.GetProductByID(tx, detail.ProductID, adjustment.StoreID)
+			if err != nil { return err }
 
-            // 3. Timpa/Save ulang ke database
-            if err := h.Repo.SaveProduct(tx, product); err != nil {
-                return err
-            }
-        }
-        return nil
-    })
+			// 🚀 KLAIM = BARANG KETEMU = STOK DITAMBAH
+			product.Stok += detail.Qty
+			if err := h.Repo.SaveProduct(tx, product); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyetujui klaim: " + err.Error()})
-        return
-    }
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal approve Klaim: " + err.Error()})
+		return
+	}
 
-    c.JSON(http.StatusOK, gin.H{"message": "Klaim disetujui, stok master otomatis bertambah!"})
+	c.JSON(http.StatusOK, gin.H{"message": "Klaim berhasil disetujui, stok bertambah, & BAR Klaim tersimpan!"})
 }
 
 // 🚀 RETUR HANDLERS

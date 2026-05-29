@@ -87,7 +87,15 @@ const {
                         <tr v-for="trx in filteredRiwayat" :key="trx.id" class="hover:bg-blue-50/40 transition-all group">
                             <td class="px-6 py-4 font-mono font-black text-sm text-slate-700 tracking-tighter">{{ trx.no_invoice }}</td>
                             <td class="px-6 py-4 text-xs font-bold text-slate-500 uppercase">
-                                {{ new Date(trx.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }}
+                                {{
+                                    new Date(trx.created_at)
+                                        .toLocaleTimeString('id-ID', {
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            hour12: false
+                                        })
+                                        .replace('.', ':')
+                                }}
                             </td>
                             <td class="px-6 py-4 text-xs font-black text-slate-700 uppercase">{{ trx.User?.name || 'KASIR' }}</td>
                             <td class="px-6 py-4">

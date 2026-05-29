@@ -34,36 +34,61 @@ export function useStockOpname() {
             if (res.data && res.data.last_so_date) {
                 const lastSO = new Date(res.data.last_so_date);
                 const now = new Date();
-                const hasClaimed = res.data.has_claimed; // 🚀 NANGKEP STATUS KLAIM DARI GOLANG
+                const hasClaimed = res.data.has_claimed; 
                 
-                // 1. Cek Eligibility Klaim (7 Hari & Belum Pernah Klaim)
                 const diffTime = Math.abs(now - lastSO); 
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                // 🚀 Kalau dalam 7 hari DAN belum pernah klaim, baru dibuka!
                 if (diffDays <= 7 && !hasClaimed) {
                     isKlaimEligible.value = true;
                     daysLeftKlaim.value = diffDays === 0 ? 7 : (8 - diffDays); 
+                    
+                    // 🚀 FETCH BARANG BURONAN OTOMATIS
+                    fetchMinusItems(); 
                 } else {
                     isKlaimEligible.value = false;
                 }
 
-                // 2. Cek Gembok SO Bulanan
                 if (lastSO.getMonth() === now.getMonth() && lastSO.getFullYear() === now.getFullYear()) {
                     isSOLockedThisMonth.value = true;
                 } else {
                     isSOLockedThisMonth.value = false;
                 }
-
             } else {
                 isKlaimEligible.value = false;
                 isSOLockedThisMonth.value = false;
             }
         } catch (e) {
             console.error("Gagal cek status Klaim/SO:", e);
-            isKlaimEligible.value = false; 
-            isSOLockedThisMonth.value = false;
         }
+    };
+
+    const fetchMinusItems = async () => {
+        try {
+            const res = await api.get('/retail/stock-opname/last-minus');
+            const minusData = res.data.data || [];
+            
+            cartKlaim.value = minusData.map(d => {
+                const p = d.product;
+                return {
+                    product_id: p.id,
+                    nama_produk: p.nama_produk,
+                    sku: p.sku,
+                    system_qty: p.stok,
+                    max_klaim: Math.abs(d.selisih), // 🚀 BATAS MAKSIMAL ANTI-MALING (Ubah minus jadi positif)
+                    alasan: '',
+                    qty_besar: 0, qty_tengah: 0, qty_dasar: 0, // Default 0
+                    satuan_dasar: p.satuan_dasar || 'PCS',
+                    has_satuan_besar: !!p.satuan_besar && Number(p.isi_per_besar) > 1,
+                    satuan_besar: p.satuan_besar || null,
+                    isi_per_besar: Number(p.isi_per_besar) || 1,
+                    is_nested: p.is_nested_uom || false,
+                    satuan_tengah: p.satuan_tengah || null,
+                    isi_besar_ke_tengah: Number(p.isi_besar_ke_tengah) || 0,
+                    isi_tengah_ke_dasar: Number(p.isi_tengah_ke_dasar) || 0
+                };
+            });
+        } catch (e) { console.error("Gagal tarik barang minus", e); }
     };
 
     onMounted(() => {
@@ -297,25 +322,37 @@ export function useStockOpname() {
     };
 
     const submitKlaimTemuan = async () => {
-        if (cartKlaim.value.length === 0) return Swal.fire('Kosong', 'Keranjang klaim kosong', 'warning');
+        if (cartKlaim.value.length === 0) return Swal.fire('Kosong', 'Tidak ada daftar barang hilang yang bisa diklaim', 'warning');
         
-        const kosong = cartKlaim.value.some(i => !i.alasan);
-        if (kosong) return Swal.fire('Wajib Diisi', 'Keterangan barang temuan wajib diisi!', 'warning');
+        // Cek Anti-Maling: Ada gak yang ngisi angka melebihi barang yang hilang?
+        const overclaim = cartKlaim.value.find(i => hitungTotalFisik(i) > i.max_klaim);
+        if (overclaim) {
+            return Swal.fire('Tolak!', `Barang ${overclaim.nama_produk} cuma hilang ${overclaim.max_klaim}, gak mungkin ketemunya ${hitungTotalFisik(overclaim)}!`, 'error');
+        }
 
-        isSubmitting.value = true;
-        try {
-            const payloadItems = cartKlaim.value.map(i => ({ 
+        // Filter: Cuma ambil barang yang diisi (Total Fisik > 0)
+        const payloadItems = cartKlaim.value
+            .filter(i => hitungTotalFisik(i) > 0)
+            .map(i => ({ 
                 product_id: i.product_id, 
                 qty: hitungTotalFisik(i), 
                 alasan: i.alasan 
             }));
 
+        if (payloadItems.length === 0) return Swal.fire('Info', 'Anda belum mengisi angka temuan fisik satupun!', 'info');
+
+        const kosong = payloadItems.some(i => !i.alasan);
+        if (kosong) return Swal.fire('Wajib Diisi', 'Keterangan lokasi barang temuan wajib diisi!', 'warning');
+
+        isSubmitting.value = true;
+        try {
             await api.post('/retail/stock-adjustment/request', {
                 notes: 'Klaim Barang Nyempil',
                 items: payloadItems
             });
             Swal.fire('Terkirim!', 'Klaim barang telah dikirim ke Owner untuk di-Approve.', 'success');
             cartKlaim.value = [];
+            checkKlaimEligibility(); // Kunci otomatis setelah submit
         } catch (err) { Swal.fire('Gagal', 'Sistem gagal memproses', 'error'); } 
         finally { isSubmitting.value = false; }
     };

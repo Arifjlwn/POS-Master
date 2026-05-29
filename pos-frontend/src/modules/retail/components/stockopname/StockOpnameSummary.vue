@@ -3,7 +3,7 @@ defineProps({
     notes: String,
     cartLength: Number,
     isSubmitting: Boolean,
-    isOwner: Boolean,
+    isOwner: Boolean, 
     soStep: String,
     activeTab: String
 });
@@ -31,10 +31,13 @@ defineEmits(['update:notes', 'submit', 'proceed', 'back']);
         </template>
 
         <template v-else>
-            <div v-if="isOwner || soStep === 'REVIEW'" class="flex flex-col gap-4">
-                <button @click="$emit('submit')" :disabled="isSubmitting" :class="isOwner ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-200' : 'bg-slate-900 hover:bg-slate-800 shadow-slate-200'" class="w-full text-white py-6 rounded-[30px] font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] shadow-xl transition-all active:scale-[0.98] flex justify-center items-center gap-2">
+            <div v-if="soStep === 'REVIEW'" class="flex flex-col gap-4">
+                <button @click="$emit('submit')" :disabled="isSubmitting" class="w-full bg-slate-900 hover:bg-slate-800 text-white py-6 rounded-[30px] font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] shadow-xl shadow-slate-200 transition-all active:scale-[0.98] flex justify-center items-center gap-2">
                     <div v-if="isSubmitting" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span v-else>{{ isOwner ? 'FINALISASI & KUNCI STOK' : 'KIRIM PENGAJUAN AUDIT' }}</span>
+                    <span v-else>KIRIM PENGAJUAN AUDIT</span>
+                </button>
+                <button @click="$emit('back')" class="w-full text-slate-400 py-3 font-black text-[9px] uppercase tracking-widest hover:text-slate-600 transition-all">
+                    Kembali Edit Data
                 </button>
             </div>
 

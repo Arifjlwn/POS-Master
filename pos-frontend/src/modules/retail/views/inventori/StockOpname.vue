@@ -40,8 +40,9 @@ const {
 
                     <div :class="{'opacity-40 pointer-events-none select-none grayscale-[30%]': activeTab === 'SO' && isSOLockedThisMonth}" class="space-y-6 transition-all duration-300">
                         <StockOpnameSearch 
-                            v-if="soStep === 'COUNTING' || activeTab === 'KLAIM'"
-                            v-model:searchQuery="searchQuery" 
+                            v-if="activeTab === 'SO' && soStep === 'COUNTING'"
+                            v-model:searchQuery="searchQuery"
+                            :disabled="isSOLockedThisMonth"
                             :products="products" 
                             @search="searchProduct(false)" 
                             @scan="startScanner" 
