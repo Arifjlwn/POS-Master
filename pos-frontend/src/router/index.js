@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import Swal from 'sweetalert2' // 🚀 WAJIB IMPORT INI BUAT POP-UP SATPAM
 
 // Import rute modular yang sudah kita pisah-pisah
 // import fnbRoutes from '@/modules/fnb/router/index.js'
@@ -54,15 +55,53 @@ const router = createRouter({
   ]
 })
 
-// Satpam Guard JWT bawaan lu tetep ditaruh di sini
+// 🛡️ SATPAM GLOBAL VUE ROUTER
+// 🛡️ SATPAM GLOBAL VUE ROUTER
 router.beforeEach((to, from) => {
-  const token = localStorage.getItem('token') // sesuaikan dengan cara simpan lu
+  const token = localStorage.getItem('token');
   
-  if (to.meta.requiresAuth && !token) {
-    return('/login')
-  } else {
-    return
+  // 🚀 1. LOGIKA ANTI-MUNDUR (GUEST GUARD)
+  // Daftar halaman yang HARAM dibuka kalau udah login
+  const guestRoutes = ['/login', '/register', '/select-verify', '/verify-otp', '/'];
+  
+  if (token && guestRoutes.includes(to.path)) {
+    // Kalau udah punya token tapi nekat buka halaman login, tendang ke POS!
+    return '/retail/pos'; 
   }
-})
+
+  // 🚀 2. CEK AUTENTIKASI (HARUS LOGIN)
+  if (to.meta.requiresAuth && !token) {
+    return '/login';
+  }
+
+  // 🚀 3. LOGIKA SATPAM SAAS (SISTEM KASTA LEVEL)
+  if (to.meta.minPlanLevel) {
+    const subPlan = localStorage.getItem('subscriptionPlan') || 'basic';
+
+    const getPlanLevel = (plan) => {
+      const p = plan.toLowerCase();
+      if (p === 'premium' || p === 'enterprise' || p === 'trial') return 3;
+      if (p === 'pro') return 2;
+      return 1; // Basic
+    };
+
+    const currentLevel = getPlanLevel(subPlan);
+
+    // Kalau kasta user kurang dari syarat halaman
+    if (currentLevel < to.meta.minPlanLevel) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Akses Ditolak 🛑',
+        text: 'Halaman ini eksklusif untuk paket langganan di atas Anda. Silakan hubungi Owner untuk melakukan upgrade.',
+        confirmButtonColor: '#ef4444',
+        customClass: { popup: 'rounded-[32px]' }
+      });
+      
+      return '/retail/pos'; 
+    }
+  }
+
+  return true;
+});
 
 export default router

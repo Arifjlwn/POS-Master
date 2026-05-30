@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"strings"
 
+	"pos-backend/models"
+	src "pos-backend/src/core/config"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -64,4 +67,62 @@ func RequireOwner(c *gin.Context) {
 
 	// Kalau dia beneran owner, silakan lewat Bosku!
 	c.Next()
+}
+
+// ========================================================
+// 🚀 SATPAM LAPIS 3: SAAS PLAN GATING (SISTEM KASTA LEVEL)
+// ========================================================
+func RequireSaaSLevel(minLevel int) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		storeIDRaw, exists := c.Get("store_id")
+		if !exists || storeIDRaw == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Akses ditolak! Data toko tidak ditemukan di sesi Anda."})
+			c.Abort()
+			return
+		}
+
+		var storeID uint
+		if val, ok := storeIDRaw.(float64); ok {
+			storeID = uint(val)
+		} else if val, ok := storeIDRaw.(uint); ok {
+			storeID = val
+		}
+
+		// 1. Tarik Data Kasta Langsung dari Database (Real-time Check)
+		var store models.Store
+		if err := src.DB.Select("subscription_plan", "subscription_status").First(&store, storeID).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memverifikasi status langganan toko."})
+			c.Abort()
+			return
+		}
+
+		// 2. Cek Apakah Langganan Mati / Nunggak Bayar
+		if store.SubscriptionStatus != "active" {
+			c.JSON(http.StatusPaymentRequired, gin.H{"error": "Akses dihentikan! Masa berlangganan Anda sudah berakhir. Silakan perpanjang."})
+			c.Abort()
+			return
+		}
+
+		// 3. Konversi Nama Paket ke Level Angka
+		currentLevel := 1 // Kasta Sudra (Basic)
+		plan := strings.ToLower(store.SubscriptionPlan)
+		
+		if plan == "premium" || plan == "enterprise" || plan == "trial" {
+			currentLevel = 3 // Kasta Dewa
+		} else if plan == "pro" {
+			currentLevel = 2 // Kasta Kesatria
+		}
+
+		// 4. Proses Eksekusi Gembok
+		if currentLevel < minLevel {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "Akses API Ditolak 🛑! Fitur ini membutuhkan upgrade paket langganan.",
+			})
+			c.Abort() // Tendang balik ke laut!
+			return
+		}
+
+		// Kasta mencukupi, silakan masuk ke Controller!
+		c.Next()
+	}
 }

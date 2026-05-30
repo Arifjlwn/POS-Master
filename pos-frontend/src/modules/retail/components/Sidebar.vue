@@ -1,9 +1,45 @@
 <script setup>
+import { ref } from 'vue';
 import { useSidebar } from '../composables/useSidebar.js';
+import Swal from 'sweetalert2';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 // Inject semua data dan fungsi dari layer composable
 const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar();
+
+// 🚀 BACA PAKET SAAS DARI LOCAL STORAGE
+const subPlan = localStorage.getItem('subscriptionPlan') || 'basic';
+
+// 🚀 SISTEM KASTA LEVEL PAKET
+const getPlanLevel = (plan) => {
+    const p = plan.toLowerCase();
+    if (p === 'premium' || p === 'enterprise' || p === 'trial') return 3;
+    if (p === 'pro') return 2;
+    return 1; // Basic
+};
+const planLevel = getPlanLevel(subPlan);
+
+// 🚀 FUNGSI POP-UP UPGRADE DINAMIS (Tanpa Emoji)
+const triggerUpgrade = (fiturName, minLevel) => {
+    sidebarOpen.value = false;
+    let targetPlan = minLevel === 2 ? 'PRO' : 'ENTERPRISE';
+    
+    Swal.fire({
+        icon: 'warning',
+        title: 'Fitur Terkunci',
+        html: `Fitur <b>${fiturName}</b> eksklusif untuk paket <b>${targetPlan}</b>.<br><br>Tingkatkan paket Anda sekarang untuk membuka potensi maksimal bisnis.`,
+        confirmButtonText: 'Upgrade Sekarang',
+        showCancelButton: true,
+        cancelButtonText: 'Nanti Dulu',
+        confirmButtonColor: '#4f46e5',
+        cancelButtonColor: '#94a3b8',
+        customClass: { popup: 'rounded-[32px]' }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire('Segera Hadir!', 'Halaman Pembayaran sedang disiapkan oleh Tim IT.', 'info');
+        }
+    });
+};
 </script>
 
 <template>
@@ -19,8 +55,13 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                 
                 <div class="flex flex-col justify-center">
                     <img v-if="user.storeLogo && user.storeLogo !== 'null' && user.storeLogo !== ''" :src="API_BASE_URL + user.storeLogo" class="h-11 sm:h-14 max-w-[200px] object-contain origin-left transition-all" alt="Logo Toko">
-                    <div v-else class="font-black text-lg sm:text-xl text-slate-900 tracking-tighter leading-none">
+                    <div v-else class="font-black text-lg sm:text-xl text-slate-900 tracking-tighter leading-none flex items-center gap-2">
                         <span class="text-indigo-600">{{ user.storeName }}</span>
+                        <!-- BADGE PLAN DI HEADER -->
+                        <span class="text-[8px] px-2 py-0.5 rounded-md font-black uppercase tracking-widest text-white shadow-sm"
+                              :class="planLevel === 3 ? 'bg-amber-500' : (planLevel === 2 ? 'bg-indigo-500' : 'bg-slate-400')">
+                            {{ subPlan }}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -50,9 +91,9 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                 <div class="flex flex-col">
                     <img v-if="user.storeLogo && user.storeLogo !== 'null' && user.storeLogo !== ''" :src="API_BASE_URL + user.storeLogo" class="h-16 sm:h-20 max-w-[240px] object-contain mb-2 origin-left" alt="Logo Toko">
                     <div v-else class="font-black text-xl sm:text-2xl text-slate-900 tracking-tighter leading-none">
-                        POS<span class="text-indigo-600">UMKM</span>
+                        NEXA<span class="text-indigo-600">POS</span>
                     </div>
-                    <span class="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-1">Management System</span>
+                    <span class="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-1">Enterprise System</span>
                 </div>
                 <button @click="sidebarOpen = false" class="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all shadow-sm active:scale-95">
                     <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -75,12 +116,28 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                             <span>Riwayat Transaksi</span>
                         </router-link>
 
-                        <router-link to="/retail/sdm/absensi" @click="sidebarOpen = false" class="nav-link group" :class="{ 'active': route.path === '/retail/sdm/absensi' }">
+                        <!-- GEMBOK ABSENSI -->
+                        <a v-if="planLevel < 2" href="#" @click.prevent="triggerUpgrade('Smart Attendance', 2)" class="nav-link-locked">
+                            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                            <span class="flex-1">Absensi Pegawai</span>
+                            <span class="text-amber-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            </span>
+                        </a>
+                        <router-link v-else to="/retail/sdm/absensi" @click="sidebarOpen = false" class="nav-link group" :class="{ 'active': route.path === '/retail/sdm/absensi' }">
                             <svg class="icon group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                            <span>Absensi</span>
+                            <span>Absensi Pegawai</span>
                         </router-link>
 
-                        <router-link to="/retail/sdm/schedule" @click="sidebarOpen = false" class="nav-link group" :class="{ 'active': route.path === '/retail/sdm/schedule' }">
+                        <!-- GEMBOK SHIFT -->
+                        <a v-if="planLevel < 2" href="#" @click.prevent="triggerUpgrade('Shift Management', 2)" class="nav-link-locked">
+                            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            <span class="flex-1">Jadwal Shift (TSM)</span>
+                            <span class="text-amber-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            </span>
+                        </a>
+                        <router-link v-else to="/retail/sdm/schedule" @click="sidebarOpen = false" class="nav-link group" :class="{ 'active': route.path === '/retail/sdm/schedule' }">
                             <svg class="icon group-hover:rotate-45" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                             <span>Jadwal Shift (TSM)</span>
                         </router-link>
@@ -100,10 +157,26 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                         <router-link to="/retail/produk/penerimaan-barang" @click="sidebarOpen = false" class="sub-link hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-500" :class="{ 'active-sub !text-emerald-700 !bg-emerald-50/80 !border-emerald-500': route.path === '/retail/produk/penerimaan-barang' }">
                             Terima Barang (PSB)
                         </router-link>
-                        <router-link to="/retail/stock-opname" @click="sidebarOpen = false" class="sub-link hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-500" :class="{ 'active-sub !text-emerald-700 !bg-emerald-50/80 !border-emerald-500': route.path === '/retail/stock-opname' }">
+
+                        <!-- GEMBOK STOCK OPNAME -->
+                        <a v-if="planLevel < 3" href="#" @click.prevent="triggerUpgrade('Stock Opname & Audit', 3)" class="sub-link-locked">
+                            <span class="flex-1">Stock Opname</span> 
+                            <span class="text-amber-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            </span>
+                        </a>
+                        <router-link v-else to="/retail/stock-opname" @click="sidebarOpen = false" class="sub-link hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-500" :class="{ 'active-sub !text-emerald-700 !bg-emerald-50/80 !border-emerald-500': route.path === '/retail/stock-opname' }">
                             Stock Opname
                         </router-link>
-                        <router-link to="/retail/produk/retur-barang" @click="sidebarOpen = false" class="sub-link hover:text-rose-600 hover:bg-rose-50 hover:border-rose-500" :class="{ 'active-sub !text-rose-700 !bg-rose-50/80 !border-rose-500': route.path.startsWith('/retail/produk/retur-barang') }">
+
+                        <!-- GEMBOK RETUR -->
+                        <a v-if="planLevel < 3" href="#" @click.prevent="triggerUpgrade('Manajemen Retur & Waste', 3)" class="sub-link-locked">
+                            <span class="flex-1">Waste & Retur</span> 
+                            <span class="text-amber-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            </span>
+                        </a>
+                        <router-link v-else to="/retail/produk/retur-barang" @click="sidebarOpen = false" class="sub-link hover:text-rose-600 hover:bg-rose-50 hover:border-rose-500" :class="{ 'active-sub !text-rose-700 !bg-rose-50/80 !border-rose-500': route.path.startsWith('/retail/produk/retur-barang') }">
                             Waste & Retur
                         </router-link>
                     </div>
@@ -117,17 +190,47 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                     
                     <div v-show="openGroups.admin" class="mt-2 space-y-1 ml-4 border-l-2 border-slate-100 pl-2">
                         <template v-if="user.role === 'owner'">
-                            <router-link to="/retail/dashboard" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/dashboard' }">
+                            <!-- GEMBOK DASHBOARD -->
+                            <a v-if="planLevel < 3" href="#" @click.prevent="triggerUpgrade('Dashboard Analitik', 3)" class="sub-link-locked">
+                                <span class="flex-1">Dashboard Analitik</span> 
+                                <span class="text-amber-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                </span>
+                            </a>
+                            <router-link v-else to="/retail/dashboard" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/dashboard' }">
                                 Dashboard Analitik
                             </router-link>
-                            <router-link to="/retail/sdm/karyawan" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/sdm/karyawan' }">
+
+                            <!-- GEMBOK KARYAWAN -->
+                            <a v-if="planLevel < 2" href="#" @click.prevent="triggerUpgrade('Manajemen Karyawan', 2)" class="sub-link-locked">
+                                <span class="flex-1">Manajemen Karyawan</span> 
+                                <span class="text-amber-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                </span>
+                            </a>
+                            <router-link v-else to="/retail/sdm/karyawan" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/sdm/karyawan' }">
                                 Manajemen Karyawan
                             </router-link>
                         </template>
-                        <router-link to="/retail/stock-opname/report" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/stock-opname/report' }">
+
+                        <!-- GEMBOK LAPORAN SO & RETUR -->
+                        <a v-if="planLevel < 3" href="#" @click.prevent="triggerUpgrade('Laporan Audit Lanjutan', 3)" class="sub-link-locked">
+                            <span class="flex-1">Laporan Hasil SO</span> 
+                            <span class="text-amber-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            </span>
+                        </a>
+                        <router-link v-else to="/retail/stock-opname/report" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/stock-opname/report' }">
                             Laporan Hasil SO
                         </router-link>
-                        <router-link to="/retail/produk/retur-barang/report" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/produk/retur-barang/report' }">
+
+                        <a v-if="planLevel < 3" href="#" @click.prevent="triggerUpgrade('Laporan Audit Lanjutan', 3)" class="sub-link-locked">
+                            <span class="flex-1">Laporan Retur Barang</span> 
+                            <span class="text-amber-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            </span>
+                        </a>
+                        <router-link v-else to="/retail/produk/retur-barang/report" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/produk/retur-barang/report' }">
                             Laporan Retur Barang
                         </router-link>
                     </div>
@@ -138,8 +241,7 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                         <span class="w-1.5 h-1.5 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.6)]"></span> Sistem & Akun
                     </div>
                     <div class="space-y-1.5">
-                        
-                        <router-link v-if="user.role === 'owner' || user.role === 'manager'" to="/retail/settings" @click="sidebarOpen = false" class="nav-link group" :class="{ 'active': route.path === '/retail/settings' }">
+                        <router-link v-if="user.role === 'owner'" to="/retail/settings" @click="sidebarOpen = false" class="nav-link group" :class="{ 'active': route.path === '/retail/settings' }">
                             <svg class="icon group-hover:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                             <span>Pengaturan Toko</span>
                         </router-link>
@@ -148,7 +250,6 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                             <svg class="icon group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                             <span>Akun Saya</span>
                         </router-link>
-
                     </div>
                 </div>
             </nav>
@@ -193,6 +294,16 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
 .nav-link.active .icon {
     @apply text-indigo-400;
 }
+
+/* STYLE KHUSUS MENU GEMBOK */
+.nav-link-locked {
+    @apply flex items-center gap-3.5 px-4 py-3.5 rounded-[16px] text-xs font-black tracking-tight border-2 border-transparent;
+    @apply text-slate-400 bg-slate-50/50 hover:bg-slate-100 cursor-not-allowed opacity-80;
+}
+.sub-link-locked {
+    @apply flex items-center gap-4 px-4 py-2.5 rounded-xl text-[11px] font-bold text-slate-400 border-l-[3px] border-transparent hover:bg-slate-50 cursor-not-allowed opacity-80;
+}
+
 .group-btn {
     @apply w-full flex items-center justify-between px-2 py-2 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] transition-colors;
 }

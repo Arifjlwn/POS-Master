@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"gorm.io/gorm"
 	"pos-backend/src/core/config"
 	"pos-backend/controllers/auth"
 	"pos-backend/src/core/middlewares"
@@ -87,85 +88,129 @@ func main() {
 		
 		// --- UPDATE INTEGRASI RUTE SETUP TOKO ---
 		api.POST("/setup", func(c *gin.Context) {
-			userIDRaw, exists := c.Get("user_id")
-			if !exists {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "User tidak valid"})
-				return
-			}
-			userID := uint(userIDRaw.(float64))
+            userIDRaw, exists := c.Get("user_id")
+            if !exists {
+                c.JSON(http.StatusUnauthorized, gin.H{"error": "User tidak valid"})
+                return
+            }
+            userID := uint(userIDRaw.(float64))
 
-			var input struct {
-				NamaToko      string   `json:"nama_toko" binding:"required"`
-				Business_type string   `json:"business_type" binding:"required"` 
-				AlamatJalan   string   `json:"alamat_toko"`                     
-				Provinsi      string   `json:"provinsi"`
-				Kota          string   `json:"kota"`
-				Kecamatan     string   `json:"kecamatan"`
-				Kelurahan     string   `json:"kelurahan"`
-				KodePos       string   `json:"kode_pos"`
-				Telepon       string   `json:"telepon"`
-				FiturOpsional []string `json:"fitur_aktif"`                    
-			}
-			
-			if err := c.ShouldBindJSON(&input); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Format data salah, pastikan form terisi lengkap"})
-				return
-			}
+            // 🚀 1. TANGKEP DATA DARI VUE TERMASUK INDUSTRY & PLAN SAAS
+            var input struct {
+                NamaToko      string   `json:"nama_toko" binding:"required"`
+                Telepon       string   `json:"telepon"`
+                Business_type string   `json:"business_type" binding:"required"` 
+                Industry      string   `json:"industry"` // Titipan Landing Page: retail/fnb/jasa
+                Plan          string   `json:"plan"`     // Titipan Landing Page: trial/basic/pro/premium
+                AlamatJalan   string   `json:"alamat_toko"`                     
+                Provinsi      string   `json:"provinsi"`
+                Kota          string   `json:"kota"`
+                Kecamatan     string   `json:"kecamatan"`
+                Kelurahan     string   `json:"kelurahan"`
+                KodePos       string   `json:"kode_pos"`
+            }
+            
+            if err := c.ShouldBindJSON(&input); err != nil {
+                c.JSON(http.StatusBadRequest, gin.H{"error": "Format data salah, pastikan form terisi lengkap"})
+                return
+            }
 
-			var fiturString string
-			for i, fitur := range input.FiturOpsional {
-				if i > 0 {
-					fiturString += ","
-				}
-				fiturString += fitur
-			}
+            var user models.User
+            if err := src.DB.First(&user, userID).Error; err != nil {
+                c.JSON(http.StatusNotFound, gin.H{"error": "User tidak ditemukan"})
+                return
+            }
+            if user.StoreID != nil {
+                c.JSON(http.StatusConflict, gin.H{"error": "Sistem mendeteksi Anda sudah memiliki toko yang terdaftar."})
+                return
+            }
 
-			newStore := models.Store{
-				NamaToko:     input.NamaToko,
-				BusinessType: input.Business_type,
-				Telepon:      input.Telepon,
-				FiturAktif:   fiturString,
-				Alamat:       input.AlamatJalan, 
-				Provinsi:     input.Provinsi, 
-				Kota:         input.Kota,
-				Kecamatan:    input.Kecamatan,
-				Kelurahan:    input.Kelurahan,
-				KodePos:      input.KodePos,
-			}
-			
-			if err := src.DB.Create(&newStore).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan infrastruktur toko baru"})
-				return
-			}
+            // 🚀 2. LOGIKA SUBSCRIPTION (SAAS)
+            subPlan := input.Plan
+            if subPlan == "" { subPlan = "trial" } // Proteksi
 
-			if err := src.DB.Model(&models.User{}).Where("id = ?", userID).Update("store_id", newStore.ID).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengaitkan otoritas toko ke akun owner"})
-				return
-			}
+            subIndustry := input.Industry
+            if subIndustry == "" { subIndustry = "retail" }
 
-			newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-				"user_id":  userID,
-				"store_id": newStore.ID,
-				"role":     "owner",
-				"exp":      time.Now().Add(time.Hour * 72).Unix(),
-			})
+            var subEnd time.Time
+            if subPlan == "trial" {
+                subEnd = time.Now().AddDate(0, 0, 14) // Trial 14 Hari
+            } else {
+                subEnd = time.Now().AddDate(0, 1, 0)  // Paket bayar 30 Hari
+            }
 
-			tokenString, err := newToken.SignedString([]byte("KUNCI_RAHASIA_SUPER_KUAT_123"))
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Toko sukses dibuat, namun gagal memperbarui token akses"})
-				return
-			}
+            // 🚀 3. SETTING FITUR APA AJA YANG KETEMBAK
+            fiturAktif := `["kasir"]` // Paket miskin (Basic)
+            if subPlan == "pro" {
+                fiturAktif = `["kasir", "absensi", "export_excel"]`
+            } else if subPlan == "premium" || subPlan == "trial" {
+                // Trial ngerasain fitur dewa
+                fiturAktif = `["kasir", "absensi", "export_excel", "multi_gudang", "ai_analyst", "whatsapp"]`
+            }
 
-			c.JSON(http.StatusOK, gin.H{
-				"message":       "Konfigurasi sistem siap! Selamat datang di platform POS SaaS.",
-				"store_id":      newStore.ID,
-				"token":         tokenString,
-				"data": gin.H{
-					"nama_toko":     newStore.NamaToko,
-					"business_type": newStore.BusinessType, 
-				},
-			})
-		})
+            // 🚀 4. SUSUN MODEL DATABASE TOKO BARU
+            newStore := models.Store{
+                NamaToko:     input.NamaToko,
+                Telepon:      input.Telepon,
+                BusinessType: input.Business_type,
+                
+                // DATA SAAS
+                Industry:           subIndustry,
+                SubscriptionPlan:   subPlan,
+                SubscriptionStatus: "active",
+                SubscriptionEnd:    subEnd,
+                FiturAktif:         fiturAktif,
+
+                // LOKASI (UDAH NORMALISASI)
+                Alamat:       input.AlamatJalan, 
+                Provinsi:     input.Provinsi, 
+                Kota:         input.Kota,
+                Kecamatan:    input.Kecamatan,
+                Kelurahan:    input.Kelurahan,
+                KodePos:      input.KodePos,
+            }
+            
+            // 🚀 5. TRANSAKSI DATABASE (Simpan Toko + Update ID di User)
+            errTx := src.DB.Transaction(func(tx *gorm.DB) error {
+                if err := tx.Create(&newStore).Error; err != nil {
+                    return err
+                }
+                if err := tx.Model(&models.User{}).Where("id = ?", userID).Update("store_id", newStore.ID).Error; err != nil {
+                    return err
+                }
+                return nil
+            })
+
+            if errTx != nil {
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan infrastruktur toko baru. Hubungi tim teknis."})
+                return
+            }
+
+            // 🚀 6. TERBITIN KARTU AKSES (JWT) BARU YANG UDAH ADA STORE ID-NYA
+            newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+                "user_id":  userID,
+                "store_id": newStore.ID,
+                "role":     "owner",
+                "exp":      time.Now().Add(time.Hour * 72).Unix(),
+            })
+
+            tokenString, err := newToken.SignedString([]byte("KUNCI_RAHASIA_SUPER_KUAT_123"))
+            if err != nil {
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "Toko sukses dibuat, namun gagal memperbarui token akses"})
+                return
+            }
+
+            // 🚀 7. RESPONSE KEMBALI KE VUE
+            c.JSON(http.StatusOK, gin.H{
+                "message":       "Konfigurasi sistem siap! Selamat datang di platform POS SaaS.",
+                "store_id":      newStore.ID,
+                "token":         tokenString,
+                "data": gin.H{
+                    "nama_toko":     newStore.NamaToko,
+                    "business_type": newStore.BusinessType, 
+                },
+            })
+        })
 
 		// ==========================================
 		// 🛒 RUTE KHUSUS RETAIL (VERSI BERSIH MODULAR)

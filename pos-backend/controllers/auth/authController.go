@@ -192,6 +192,8 @@ func Login(c *gin.Context) {
 		"store_name":      user.Store.NamaToko,
 		"store_logo":      user.Store.LogoURL,
 		"business_type":   user.Store.BusinessType,
+		"subscription_plan": user.Store.SubscriptionPlan,
+    	"fitur_aktif":       user.Store.FiturAktif,
 	})
 }
 
@@ -209,6 +211,7 @@ func GetMe(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"user_id":       user.ID,
 		"name":          user.Name,
+		"no_hp":		 user.NoHP,
 		"nik":           user.NIK,
 		"role":          user.Role,
 		"is_verified":   user.IsVerified,
@@ -219,6 +222,8 @@ func GetMe(c *gin.Context) {
 		"store_name":    user.Store.NamaToko,
 		"store_logo":    user.Store.LogoURL,
 		"business_type": user.Store.BusinessType,
+		"subscription_plan": user.Store.SubscriptionPlan,
+    	"fitur_aktif":       user.Store.FiturAktif,
 	})
 }
 

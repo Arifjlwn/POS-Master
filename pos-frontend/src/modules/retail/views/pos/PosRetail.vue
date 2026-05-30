@@ -1,6 +1,8 @@
 <script setup>
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { usePos } from '../../composables/usePos.js';
+import api from '../../../../api.js';
 
 // 🚀 IMPORT PASUKAN SUB-KOMPONEN BARU KITA BEB!
 import PosHeader from '../../components/pos/PosHeader.vue';
@@ -10,6 +12,19 @@ import ClosingModal from '../../components/pos/ClosingModal.vue';
 import ReceiptModal from '../../components/pos/ReceiptModal.vue';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+const storeData = ref({});
+
+onMounted(async () => {
+    try {
+        const res = await api.get('/retail/store/settings');
+        storeData.value = res.data.data;
+        // Simpen ke localStorage biar Sidebar/Header ikut update
+        localStorage.setItem('storeLogo', storeData.value.logo_url || '');
+    } catch (e) {
+        console.error("Gagal narik data toko:", e);
+    }
+});
 
 const router = useRouter();
 
@@ -21,7 +36,7 @@ const {
     showClosingModal, isProcessingCheckout,
     getImageUrl, startScanner, stopScanner, handleBarcodeScan, addToCart,toggleUom,
     decreaseQty, increaseQty, validateQty, clearCart, holdTransaction, resumeOrder,
-    setPaymentMethod, executeCheckout, formatInputRupiah, processCheckout, handleClosing, logout
+    setPaymentMethod, executeCheckout, formatInputRupiah, processCheckout, handleClosing, logout, setNominal
 } = usePos();
 
 // DOM Logic Print spesifik untuk view layer
@@ -75,6 +90,7 @@ const goToDashboard = () => currentUser.value.role === 'owner' ? router.push('/r
                 @validate-qty="validateQty"
                 @set-payment="setPaymentMethod"
                 @format-rupiah="formatInputRupiah"
+                @set-nominal="payAmount += $event"
                 @checkout="processCheckout"
                 @toggle-uom="toggleUom" />
         </div>
@@ -125,13 +141,13 @@ const goToDashboard = () => currentUser.value.role === 'owner' ? router.push('/r
                     <img v-if="storeData?.qris_image" 
                         :src="API_BASE_URL + storeData.qris_image" 
                         alt="QRIS Toko" 
-                        class="w-full h-full max-h-48 object-contain mx-auto rounded-xl">
-                    <div v-else class="text-slate-400 text-xs font-bold p-4 text-center">
+                        class="w-full aspect-square object-cover rounded-xl shadow-inner">
+                    <div v-else class="text-slate-400 text-xs font-bold p-10 text-center aspect-square flex items-center justify-center">
                         QRIS Belum Di-Setup.<br>Silakan upload di Pengaturan Toko.
                     </div>
                     
                     <p v-if="storeData?.qris_name" class="mt-3 font-bold text-[10px] text-slate-500 uppercase tracking-widest border-t border-slate-100 pt-2 w-full">
-                        A.N: {{ storeData.qris_name }}
+                        {{ storeData.qris_name }}
                     </p>
                 </div>
 

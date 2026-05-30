@@ -33,6 +33,8 @@ const handleLogin = async () => {
     localStorage.setItem('foto_url', data.foto_url || '');
     localStorage.setItem('qrisImage', data.qris_image || '');
     localStorage.setItem('qrisName', data.qris_name || '');
+    localStorage.setItem('subscriptionPlan', data.subscription_plan || 'basic');
+    localStorage.setItem('fiturAktif', data.fitur_aktif || '[]');
     
     if (data.business_type) {
         localStorage.setItem('businessType', data.business_type);

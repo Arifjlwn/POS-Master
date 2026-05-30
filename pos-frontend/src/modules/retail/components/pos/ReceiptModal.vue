@@ -112,6 +112,10 @@ const triggerPrint = () => {
                         <span>KASIR:</span>
                         <span>{{ cashierName || 'KASIR' }} / POS-{{ stationNumber || '01' }}</span>
                     </div>
+                    <div class="flex justify-between">
+                        <span>Inv:</span>
+                        <span>{{ invoiceData.invoice || invoiceData.no_invoice }}</span>
+                    </div>
                 </div>
                 
                 <div class="border-b border-black border-dashed mb-2"></div>
@@ -130,27 +134,24 @@ const triggerPrint = () => {
                 
                 <div class="border-t border-black border-dashed mt-2 pt-2"></div>
                 
-                <div class="flex justify-between font-black text-[11px] mb-2 font-mono uppercase italic">
-                    <span>TOTAL:</span>
-                    <span>Rp{{ formatRupiah(invoiceData.total !== undefined ? invoiceData.total : invoiceData.total_harga) }}</span>
+                <div class="flex justify-between font-black text-[10px] mb-2 font-mono uppercase italic">
+                    <span>TOTAL BELANJA:</span>
+                    <span>{{ formatRupiah(invoiceData.total !== undefined ? invoiceData.total : invoiceData.total_harga) }}</span>
                 </div>
                 
                 <div class="border-b border-black border-dashed mb-2"></div>
                 
-                <div class="flex justify-between mb-1 font-bold font-mono text-[8px] uppercase">
+                <div class="flex justify-between mb-1 font-bold font-mono text-[10px] uppercase">
                     <span>BAYAR ({{ invoiceData.method || invoiceData.metode_bayar || 'CASH' }}):</span>
-                    <span>Rp{{ formatRupiah(invoiceData.pay !== undefined ? invoiceData.pay : invoiceData.nominal_bayar) }}</span>
+                    <span>{{ formatRupiah(invoiceData.pay !== undefined ? invoiceData.pay : invoiceData.nominal_bayar) }}</span>
                 </div>
                 
-                <div class="flex justify-between font-black font-mono text-[9px] uppercase italic text-black">
+                <div class="flex justify-between font-black font-mono text-[10px] uppercase italic text-black">
                     <span>KEMBALI:</span>
                     <span>Rp{{ formatRupiah(invoiceData.total !== undefined ? invoiceData['return'] : invoiceData.kembalian) }}</span>
                 </div>
                 
-                <div class="mt-5 text-[7px] font-bold text-center border-t border-black border-dashed pt-2 font-mono uppercase space-y-1">
-                    <p class="font-black">INV: {{ invoiceData.invoice || invoiceData.no_invoice }}</p>
-                </div>
-                <div class="text-center mt-4 font-black font-mono text-[8px] border-2 border-black p-1.5 uppercase leading-tight">
+                <div class="text-center mt-4 font-black font-mono text-[10px] border-2 border-black p-1.5 uppercase leading-tight">
                     {{ storeData?.receipt_footer || 'TERIMA KASIH ATAS KUNJUNGAN ANDA!' }}
                 </div>
             </div>

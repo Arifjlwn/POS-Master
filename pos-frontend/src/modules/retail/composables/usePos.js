@@ -422,6 +422,12 @@ export function usePos() {
         }
     };
 
+    const setNominal = (amount) => {
+    // Kita langsung set payAmount nya
+    payAmount.value = amount;
+    
+};
+
     const formatInputRupiah = (event) => {
         let rawValue = event.target.value.replace(/\D/g, '');
         payAmount.value = rawValue ? parseInt(rawValue, 10) : 0;
@@ -542,6 +548,6 @@ export function usePos() {
         totalBelanja, kembalian, isProcessingCheckout, showClosingModal,
         getImageUrl, startScanner, stopScanner, handleBarcodeScan, addToCart, decreaseQty, 
         increaseQty, validateQty, clearCart, holdTransaction, resumeOrder,
-        setPaymentMethod, executeCheckout, formatInputRupiah, processCheckout, handleClosing, logout, toggleUom
+        setPaymentMethod, executeCheckout, formatInputRupiah, processCheckout, handleClosing, logout, toggleUom, setNominal
     };
 }

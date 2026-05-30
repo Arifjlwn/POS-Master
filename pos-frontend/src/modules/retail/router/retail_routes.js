@@ -1,104 +1,105 @@
 export default [
-  // === DASHBOARD ===
+  // === DASHBOARD (PREMIUM - LEVEL 3) ===
   {
     path: '/retail/dashboard',
     name: 'RetailDashboard',
-    // 🚀 Arahkan ke sub-folder views/dashboard/ tempat file DashboardRetail lu berada
     component: () => import('../views/dashboard/DashboardRetail.vue'), 
-    meta: { requiresAuth: true, role: 'owner' }
+    meta: { requiresAuth: true, role: 'owner', minPlanLevel: 3 }
   },
 
-  // === Stock Opname ===
+  // === Stock Opname (PREMIUM - LEVEL 3) ===
   {
     path: '/retail/stock-opname',
     name: 'StockOpname',
     component: () => import('../views/inventori/StockOpname.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, minPlanLevel: 3 }
   },
   {
     path: '/retail/stock-opname/report',
     name: 'StockOpnameReport',
     component: () => import('../views/inventori/StockOpnameReport.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, minPlanLevel: 3 }
   },
 
-  // === POS ===
+  // === POS (BASIC - LEVEL 1) ===
   {
     path: '/retail/pos',
     name: 'RetailPOS',
     component: () => import('../views/pos/PosRetail.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, minPlanLevel: 1 }
   },
   {
     path: '/retail/pos/buka-kasir',
     name: 'BukaKasir',
     component: () => import('../views/pos/BukaKasir.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, minPlanLevel: 1 }
   },
   {
     path: '/retail/pos/riwayat',
     name: 'Riwayat',
     component: () => import('../views/pos/Riwayat.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, minPlanLevel: 1 }
   },
 
-  // === MASTER PRODUK ===
+  // === MASTER PRODUK (BASIC - LEVEL 1) ===
   {
     path: '/retail/produk/master-produk',
     name: 'MasterProduk',
     component: () => import('../views/produk/MasterProduk.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, minPlanLevel: 1 }
   },
   {
     path: '/retail/produk/penerimaan-barang',
     name: 'PenerimaanBarang',
     component: () => import('../views/produk/PenerimaanBarang.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, minPlanLevel: 1 }
   },
+  
+  // === RETUR (PREMIUM - LEVEL 3) ===
   {
     path: '/retail/produk/retur-barang',
     name: 'ReturBarang',
     component: () => import('../views/produk/ReturBarang.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, minPlanLevel: 3 }
   },
   {
     path: '/retail/produk/retur-barang/report',
     name: 'ReportReturBarang',
     component: () => import('../views/produk/ReturReport.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, minPlanLevel: 3 }
   },
 
-  // === SDM ===
+  // === SDM (PRO - LEVEL 2) ===
   {
     path: '/retail/sdm/absensi',
     name: 'Absensi',
     component: () => import('../views/sdm/Absensi.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, minPlanLevel: 2 }
   },
   {
     path: '/retail/sdm/schedule',
     name: 'Schedule',
     component: () => import('../views/sdm/Schedule.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, minPlanLevel: 2 }
   },
   {
     path: '/retail/sdm/karyawan',
     name: 'Karyawan',
     component: () => import('../views/sdm/ManageEmployee.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, minPlanLevel: 2 }
   },
 
-  // === PENGATURAN TOKO ===
+  // === PENGATURAN TOKO (BASIC - LEVEL 1) ===
   {
     path: '/retail/settings',
     name: 'StoreSettings',
     component: () => import('../views/settings/StoreSetting.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, minPlanLevel: 1 }
   },
   {
     path: '/retail/account',
     name: 'AccountSettings',
     component: () => import('../views/settings/AccountSetting.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, minPlanLevel: 1 }
   }
 ]
