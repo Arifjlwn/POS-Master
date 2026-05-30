@@ -2,8 +2,8 @@ package delivery
 
 import "github.com/gin-gonic/gin"
 
+// Master Produk CRUD
 func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
-	// Master Produk CRUD
 	rg.POST("/products", h.CreateProduct)
 	rg.GET("/products", h.GetProducts)
 	rg.PUT("/products/:id", h.UpdateProduct)
@@ -44,16 +44,20 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 	// Dashboard Analytics Report Owner
 	rg.GET("/report/dashboard", h.GetDashboardReport)
 
-	// 📅 Jadwal Kerja / Rostering Karyawan
+	// Jadwal Kerja / Rostering Karyawan
 	rg.POST("/schedules/bulk", h.SaveSchedules)
 	rg.GET("/schedules", h.GetSchedules)
 
-	// 💵 Shift POS / Cashier Session (Open-Close Kasir)
+	// Shift POS / Cashier Session (Open-Close Kasir)
 	rg.POST("/pos/open-session", h.OpenSession)
 	rg.GET("/pos/check-session", h.CheckSessionStatus)
 	rg.POST("/pos/close-session/:id", h.CloseSession)
 
-	// 🛒 POS Checkout Transaksi & Struk Nota
+	// POS Checkout Transaksi & Struk Nota
 	rg.POST("/checkout", h.CreateTransaction)
 	rg.GET("/transactions", h.GetTransactions)
+
+	// Setting Toko
+	rg.GET("/store/settings", h.GetStoreSettings)
+	rg.PUT("/store/settings", h.UpdateStoreSettings)
 }

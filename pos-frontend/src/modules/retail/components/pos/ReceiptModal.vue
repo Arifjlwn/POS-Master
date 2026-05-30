@@ -1,4 +1,6 @@
 <script setup>
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 const props = defineProps({
     show: Boolean,
     invoiceData: Object,
@@ -62,18 +64,25 @@ const triggerPrint = () => {
             <div class="overflow-y-auto custom-scrollbar bg-white p-2 mx-auto print:overflow-visible print:mx-0 print:px-3 print:py-2" id="print-area" style="width: 58mm;">
                 
                 <div class="text-center mb-4 font-mono leading-none">
-                    <h2 class="font-black text-sm uppercase tracking-tighter mb-1 italic">
-                        {{ storeData?.NamaToko || storeData?.nama_toko || 'NEXA POS STORE' }}
-                    </h2>
-                    <p class="text-[8px] font-black uppercase tracking-widest opacity-80 leading-tight px-1">
-                        {{ storeData?.Alamat || storeData?.alamat || 'JAKARTA, INDONESIA' }}
+                    <div v-if="storeData?.logo_url && storeData.logo_url !== ''">
+                    <img :src="API_BASE_URL + storeData.logo_url" 
+                        class="w-20 h-20 object-contain mx-auto grayscale contrast-150" 
+                        alt="Logo Toko">
+                </div>
+                <h2 v-else class="font-black text-sm uppercase tracking-tighter mb-1 italic">
+                    {{ storeData?.nama_toko || 'NEXA POS STORE' }}
+                </h2>
+                    <p class="text-[9px] font-black uppercase tracking-widest opacity-100 leading-tight px-1">
+                        {{ storeData?.alamat || 'JAKARTA, INDONESIA' }}<br>
+                        {{ storeData?.kelurahan || 'KELURAHAN' }}, {{ storeData?.kecamatan || 'KECAMATAN' }}<br>
+                        {{ storeData?.kota || 'KOTA' }}, {{ storeData?.provinsi || 'PROVINSI' }} {{ storeData?.kode_pos || 'KODE POS' }}
                     </p>
-                    <p v-if="storeData?.Telepon || storeData?.telepon" class="text-[8px] font-black uppercase tracking-widest mt-1.5 border-t border-slate-600 pt-1 border-dotted inline-block">
+                    <p v-if="storeData?.Telepon || storeData?.telepon" class="text-[9px] font-black uppercase tracking-widest mt-1.5 border-t border-slate-600 pt-1 border-dotted inline-block">
                         WA: {{ formatWA(storeData?.Telepon || storeData?.telepon) }}
                     </p>
                 </div>
                 
-                <div class="border-y border-black py-1.5 text-center font-black mb-3 font-mono text-[9px] tracking-[0.2em] uppercase bg-slate-100">
+                <div class="border-y border-black py-1.5 text-center font-black mb-3 font-mono text-[9px] tracking-[0.2em] uppercase">
                     {{ invoiceData.created_at ? 'Invoice Reprint' : 'Struk Belanja' }}
                 </div>
                 
@@ -142,7 +151,7 @@ const triggerPrint = () => {
                     <p class="font-black">INV: {{ invoiceData.invoice || invoiceData.no_invoice }}</p>
                 </div>
                 <div class="text-center mt-4 font-black font-mono text-[8px] border-2 border-black p-1.5 uppercase leading-tight">
-                    Terima Kasih!<br>Barang tidak dapat ditukar.
+                    {{ storeData?.receipt_footer || 'TERIMA KASIH ATAS KUNJUNGAN ANDA!' }}
                 </div>
             </div>
             

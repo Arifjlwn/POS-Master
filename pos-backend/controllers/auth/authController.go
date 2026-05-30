@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"os"
+	"path/filepath"
 	"pos-backend/src/core/config"
 	"pos-backend/models"
 	"pos-backend/utils"
@@ -188,6 +190,7 @@ func Login(c *gin.Context) {
 		"foto_url":        user.FotoURL,
 		"has_setup_store": storeID != 0,
 		"store_name":      user.Store.NamaToko,
+		"store_logo":      user.Store.LogoURL,
 		"business_type":   user.Store.BusinessType,
 	})
 }
@@ -214,6 +217,98 @@ func GetMe(c *gin.Context) {
 		"tempat_lahir":  user.TempatLahir,
 		"tanggal_lahir": user.TanggalLahir,
 		"store_name":    user.Store.NamaToko,
+		"store_logo":    user.Store.LogoURL,
 		"business_type": user.Store.BusinessType,
 	})
+}
+
+// -- UPDATE PROFIL (Nama, WA, Foto) --
+func UpdateProfile(c *gin.Context) {
+	userIDRaw, _ := c.Get("user_id")
+	userID := uint(userIDRaw.(float64))
+
+	var user models.User
+	if err := src.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User tidak ditemukan!"})
+		return
+	}
+
+	// 1. Update Data Teks
+	if name := c.PostForm("name"); name != "" { user.Name = name }
+	if tempatLahir := c.PostForm("tempat_lahir"); tempatLahir != "" { user.TempatLahir = tempatLahir }
+	if tanggalLahir := c.PostForm("tanggal_lahir"); tanggalLahir != "" { user.TanggalLahir = tanggalLahir }
+	
+	// 🚀 FORMAT OTOMATIS JADI 628xxx BIAR RAPI!
+	if noHP := c.PostForm("no_hp"); noHP != "" {
+		user.NoHP = utils.FormatPhoneNumber(noHP)
+	}
+
+	// Buat prefix nama file dari NIK
+	nikClean := "user"
+	if user.NIK != nil && *user.NIK != "" { nikClean = *user.NIK }
+
+	// 2. Update Foto Profil
+	if file, err := c.FormFile("foto"); err == nil {
+		newFileName := fmt.Sprintf("%s_profil_%d%s", nikClean, time.Now().Unix(), filepath.Ext(file.Filename))
+		uploadPath := filepath.Join("uploads", newFileName)
+		if err := c.SaveUploadedFile(file, uploadPath); err == nil {
+            if user.FotoURL != "" { os.Remove("." + user.FotoURL) } // Hapus foto lama
+			user.FotoURL = "/uploads/" + newFileName
+		}
+	}
+
+	// 3. Update Foto Biometrik
+	if bioFile, errBio := c.FormFile("biometric_file"); errBio == nil {
+		newBioName := fmt.Sprintf("%s_bio_%d%s", nikClean, time.Now().Unix(), filepath.Ext(bioFile.Filename))
+		uploadBioPath := filepath.Join("uploads", newBioName)
+		if err := c.SaveUploadedFile(bioFile, uploadBioPath); err == nil {
+            if user.BiometricURL != "" { os.Remove("." + user.BiometricURL) } // Hapus bio lama
+			user.BiometricURL = "/uploads/" + newBioName
+		}
+	}
+
+	if err := src.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan perubahan"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Profil berhasil diperbarui!", "data": user})
+}
+
+// -- UPDATE PASSWORD --
+func UpdatePassword(c *gin.Context) {
+	userIDRaw, _ := c.Get("user_id")
+	userID := uint(userIDRaw.(float64))
+
+	var input struct {
+		OldPassword string `json:"old_password" binding:"required"`
+		NewPassword string `json:"new_password" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak lengkap!"})
+		return
+	}
+
+	var user models.User
+	if err := src.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User tidak ditemukan!"})
+		return
+	}
+
+	// Cek apakah password lama yang diketik itu Bener?
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.OldPassword)); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password lama salah!"})
+		return
+	}
+
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
+	user.Password = string(hashedPassword)
+
+	if err := src.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan password baru"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password berhasil diubah!"})
 }

@@ -82,6 +82,8 @@ func main() {
 	{
 		// --- RUTE SETUP TOKO (Global - Masih inline) ---
 		api.GET("/me", auth.GetMe)
+		api.PUT("/profile", auth.UpdateProfile)
+        api.PUT("/password", auth.UpdatePassword)
 		
 		// --- UPDATE INTEGRASI RUTE SETUP TOKO ---
 		api.POST("/setup", func(c *gin.Context) {
@@ -118,14 +120,12 @@ func main() {
 				fiturString += fitur
 			}
 
-			alamatLengkap := input.AlamatJalan + ", Kel. " + input.Kelurahan + ", Kec. " + input.Kecamatan + ", " + input.Kota + ", " + input.Provinsi + " " + input.KodePos
-
 			newStore := models.Store{
 				NamaToko:     input.NamaToko,
 				BusinessType: input.Business_type,
 				Telepon:      input.Telepon,
 				FiturAktif:   fiturString,
-				Alamat:       alamatLengkap, 
+				Alamat:       input.AlamatJalan, 
 				Provinsi:     input.Provinsi, 
 				Kota:         input.Kota,
 				Kecamatan:    input.Kecamatan,

@@ -87,4 +87,18 @@ export default [
     component: () => import('../views/sdm/ManageEmployee.vue'),
     meta: { requiresAuth: true }
   },
+
+  // === PENGATURAN TOKO ===
+  {
+    path: '/retail/settings',
+    name: 'StoreSettings',
+    component: () => import('../views/settings/StoreSetting.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/retail/account',
+    name: 'AccountSettings',
+    component: () => import('../views/settings/AccountSetting.vue'),
+    meta: { requiresAuth: true }
+  }
 ]

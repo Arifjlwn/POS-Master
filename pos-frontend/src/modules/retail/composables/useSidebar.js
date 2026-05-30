@@ -20,13 +20,26 @@ export function useSidebar() {
     const user = ref({
         name: localStorage.getItem('name') || 'User',
         role: localStorage.getItem('role') || 'staff',
-        storeName: localStorage.getItem('storeName') || 'POS UMKM'
+        storeName: localStorage.getItem('storeName') || 'POS UMKM',
+        storeLogo: localStorage.getItem('storeLogo') || '',
+        foto_url: localStorage.getItem('foto_url') || '', // 🚀 TAMBAHIN INI
     });
 
     onMounted(() => {
+        // Tarik data saat halaman pertama dimuat
         user.value.name = localStorage.getItem('name') || 'User';
         user.value.role = localStorage.getItem('role') || 'staff';
         user.value.storeName = localStorage.getItem('storeName') || 'POS UMKM';
+        user.value.storeLogo = localStorage.getItem('storeLogo') || ''; // 🚀 TAMBAHIN INI
+        user.value.foto_url = localStorage.getItem('foto_url') || '';   // 🚀 TAMBAHIN INI
+
+        // 🚀 EVENT LISTENER SAKTI
+        // Biar kalau lu update data di halaman Pengaturan/Akun, Sidebar auto ganti tanpa refresh!
+        window.addEventListener('storage', () => {
+            user.value.name = localStorage.getItem('name') || 'User';
+            user.value.storeLogo = localStorage.getItem('storeLogo') || '';
+            user.value.foto_url = localStorage.getItem('foto_url') || '';
+        });
     });
 
     const logout = () => {

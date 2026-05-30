@@ -9,6 +9,8 @@ import CartSidebar from '../../components/pos/CartSidebar.vue';
 import ClosingModal from '../../components/pos/ClosingModal.vue';
 import ReceiptModal from '../../components/pos/ReceiptModal.vue';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 const router = useRouter();
 
 const {
@@ -119,10 +121,23 @@ const goToDashboard = () => currentUser.value.role === 'owner' ? router.push('/r
         <div v-if="showQrisModal" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-[150] p-4 backdrop-blur-sm print:hidden">
             <div class="bg-white p-6 md:p-8 rounded-[32px] shadow-2xl w-full max-w-sm text-center flex flex-col border-t-8 border-indigo-600">
                 <h2 class="text-xl font-black text-slate-900 uppercase tracking-widest mb-1">Bayar via QRIS</h2>
-                <div class="bg-white p-3 rounded-2xl border border-slate-300 w-full mb-4 flex justify-center items-center min-h-[200px]">
-                    <img src="https://placehold.co/300x300?text=QRIS+TOKO" alt="QRIS Toko" class="w-full h-full max-h-48 object-contain mx-auto rounded-xl">
+                <div class="bg-white p-3 rounded-2xl border border-slate-300 w-full mb-4 flex flex-col justify-center items-center min-h-[200px]">
+                    <img v-if="storeData?.qris_image" 
+                        :src="API_BASE_URL + storeData.qris_image" 
+                        alt="QRIS Toko" 
+                        class="w-full h-full max-h-48 object-contain mx-auto rounded-xl">
+                    <div v-else class="text-slate-400 text-xs font-bold p-4 text-center">
+                        QRIS Belum Di-Setup.<br>Silakan upload di Pengaturan Toko.
+                    </div>
+                    
+                    <p v-if="storeData?.qris_name" class="mt-3 font-bold text-[10px] text-slate-500 uppercase tracking-widest border-t border-slate-100 pt-2 w-full">
+                        A.N: {{ storeData.qris_name }}
+                    </p>
                 </div>
-                <div class="bg-indigo-50 text-indigo-900 p-4 rounded-2xl mb-6 font-black text-2xl">Rp {{ totalBelanja.toLocaleString('id-ID') }}</div>
+
+                <div class="bg-indigo-50 text-indigo-900 p-4 rounded-2xl mb-6 font-black text-2xl">
+                    Rp {{ totalBelanja.toLocaleString('id-ID') }}
+                </div>
                 <div class="flex gap-3">
                     <button @click="showQrisModal = false" :disabled="isProcessingCheckout" class="flex-1 bg-slate-100 py-4 rounded-xl font-black text-[10px] uppercase text-slate-500">Batal</button>
                     <button @click="executeCheckout" :disabled="isProcessingCheckout" class="flex-1 bg-indigo-600 py-4 rounded-xl font-black text-[10px] uppercase text-white shadow-lg">{{ isProcessingCheckout ? 'Proses...' : 'Lunas' }}</button>

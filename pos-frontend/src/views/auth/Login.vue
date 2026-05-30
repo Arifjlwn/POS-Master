@@ -29,6 +29,10 @@ const handleLogin = async () => {
     localStorage.setItem('role', data.role.toLowerCase());
     localStorage.setItem('name', data.name || '');
     localStorage.setItem('storeName', data.store_name || 'Toko Belum Di-Setup');
+    localStorage.setItem('storeLogo', data.store_logo || '');
+    localStorage.setItem('foto_url', data.foto_url || '');
+    localStorage.setItem('qrisImage', data.qris_image || '');
+    localStorage.setItem('qrisName', data.qris_name || '');
     
     if (data.business_type) {
         localStorage.setItem('businessType', data.business_type);

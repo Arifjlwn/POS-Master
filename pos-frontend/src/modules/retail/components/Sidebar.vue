@@ -1,12 +1,13 @@
 <script setup>
 import { useSidebar } from '../composables/useSidebar.js';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 // Inject semua data dan fungsi dari layer composable
 const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar();
 </script>
 
 <template>
-    <div class="h-screen w-screen flex flex-col bg-[#F8FAFC] font-sans overflow-hidden relative selection:bg-indigo-100 selection:text-indigo-600">
+    <div class="h-screen w-screen flex flex-col bg-[#F8FAFC] font-sans overflow-hidden relative selection:bg-indigo-100 selection:text-indigo-600 print:hidden">
         
         <header class="bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-40 shadow-sm shrink-0 no-print">
             <div class="flex items-center gap-4 sm:gap-5">
@@ -15,8 +16,10 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                     <div class="w-6 h-0.5 bg-indigo-600 rounded-full"></div>
                     <div class="w-4 h-0.5 bg-indigo-600 rounded-full group-hover:w-6 transition-all"></div>
                 </button>
-                <div class="flex flex-col">
-                    <div class="font-black text-lg sm:text-xl text-slate-900 tracking-tighter leading-none">
+                
+                <div class="flex flex-col justify-center">
+                    <img v-if="user.storeLogo && user.storeLogo !== 'null' && user.storeLogo !== ''" :src="API_BASE_URL + user.storeLogo" class="h-11 sm:h-14 max-w-[200px] object-contain origin-left transition-all" alt="Logo Toko">
+                    <div v-else class="font-black text-lg sm:text-xl text-slate-900 tracking-tighter leading-none">
                         <span class="text-indigo-600">{{ user.storeName }}</span>
                     </div>
                 </div>
@@ -28,8 +31,10 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                         <div class="text-xs font-black text-slate-800 uppercase leading-none">{{ user.name.split(' ')[0] }}</div>
                         <span class="text-[9px] font-bold text-indigo-600 uppercase tracking-tighter bg-indigo-50 px-1.5 py-0.5 rounded-md mt-1 inline-block border border-indigo-100">{{ user.role }}</span>
                     </div>
-                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-[14px] bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center text-white text-xs sm:text-sm font-black shadow-md border-2 border-white ring-2 ring-slate-100">
-                        {{ user.name.substring(0, 2).toUpperCase() }}
+                    
+                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-[14px] bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center text-white text-xs sm:text-sm font-black shadow-md border-2 border-white ring-2 ring-slate-100 overflow-hidden">
+                        <img v-if="user.foto_url && user.foto_url !== 'null' && user.foto_url !== ''" :src="API_BASE_URL + user.foto_url" class="w-full h-full object-cover">
+                        <span v-else>{{ user.name.substring(0, 2).toUpperCase() }}</span>
                     </div>
                 </div>
             </div>
@@ -43,7 +48,8 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
             
             <div class="p-6 sm:p-8 flex items-center justify-between bg-slate-50/50 border-b border-slate-100 shrink-0">
                 <div class="flex flex-col">
-                    <div class="font-black text-xl sm:text-2xl text-slate-900 tracking-tighter leading-none">
+                    <img v-if="user.storeLogo && user.storeLogo !== 'null' && user.storeLogo !== ''" :src="API_BASE_URL + user.storeLogo" class="h-16 sm:h-20 max-w-[240px] object-contain mb-2 origin-left" alt="Logo Toko">
+                    <div v-else class="font-black text-xl sm:text-2xl text-slate-900 tracking-tighter leading-none">
                         POS<span class="text-indigo-600">UMKM</span>
                     </div>
                     <span class="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-1">Management System</span>
@@ -126,13 +132,33 @@ const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar
                         </router-link>
                     </div>
                 </div>
+
+                <div>
+                    <div class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] px-2 mb-4 mt-6 flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.6)]"></span> Sistem & Akun
+                    </div>
+                    <div class="space-y-1.5">
+                        
+                        <router-link v-if="user.role === 'owner' || user.role === 'manager'" to="/retail/settings" @click="sidebarOpen = false" class="nav-link group" :class="{ 'active': route.path === '/retail/settings' }">
+                            <svg class="icon group-hover:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            <span>Pengaturan Toko</span>
+                        </router-link>
+
+                        <router-link to="/retail/account" @click="sidebarOpen = false" class="nav-link group" :class="{ 'active': route.path === '/retail/account' }">
+                            <svg class="icon group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                            <span>Akun Saya</span>
+                        </router-link>
+
+                    </div>
+                </div>
             </nav>
 
             <div class="p-4 sm:p-6 bg-slate-50/80 border-t border-slate-100 shrink-0">
                 <div class="flex items-center justify-between p-3 sm:p-4 bg-white rounded-2xl shadow-sm border border-slate-100 hover:border-slate-200 transition-colors">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-[14px] bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md">
-                            {{ user.name.substring(0, 2).toUpperCase() }}
+                        <div class="w-10 h-10 rounded-[14px] bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md overflow-hidden">
+                            <img v-if="user.foto_url && user.foto_url !== 'null' && user.foto_url !== ''" :src="API_BASE_URL + user.foto_url" class="w-full h-full object-cover">
+                            <span v-else>{{ user.name.substring(0, 2).toUpperCase() }}</span>
                         </div>
                         <div class="flex flex-col max-w-[100px] sm:max-w-[120px]">
                             <div class="text-xs font-black text-slate-800 uppercase leading-none truncate">{{ user.name }}</div>

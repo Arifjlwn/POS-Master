@@ -9,14 +9,15 @@ import (
 	"encoding/csv"
 	"os"
 	"path/filepath"
-	"pos-backend/models"
 	"golang.org/x/crypto/bcrypt"
 	"math"
 	"strings"
 
+	"pos-backend/models"
+	"pos-backend/utils"
+	src "pos-backend/src/core/config"
 	"pos-backend/src/modules/retail/domain"
 	"pos-backend/src/modules/retail/repository"
-	"pos-backend/utils"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -1705,4 +1706,90 @@ func (h *RetailHandler) GetTransactions(c *gin.Context) {
 		"message": "Riwayat transaksi berhasil ditarik!",
 		"data":    transactions,
 	})
+}
+
+// ==========================================
+// ⚙️ PENGATURAN TOKO (STORE SETTINGS)
+// ==========================================
+
+func (h *RetailHandler) GetStoreSettings(c *gin.Context) {
+	// Ambil store_id dari token JWT
+	storeIDRaw, _ := c.Get("store_id")
+	storeID := uint(storeIDRaw.(float64))
+
+	var store models.Store
+	if err := src.DB.First(&store, storeID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Toko tidak ditemukan!"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": store})
+}
+
+func (h *RetailHandler) UpdateStoreSettings(c *gin.Context) {
+	// Proteksi: Hanya Owner & Manager yang bisa ubah settingan toko
+	roleOwner, _ := c.Get("role")
+	if roleOwner != "owner" && roleOwner != "manager" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Hanya Owner atau Manager yang bisa mengubah pengaturan toko!"})
+		return
+	}
+
+	storeIDRaw, _ := c.Get("store_id")
+	storeID := uint(storeIDRaw.(float64))
+
+	var store models.Store
+	if err := src.DB.First(&store, storeID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Toko tidak ditemukan!"})
+		return
+	}
+
+	// 1. Update Data Teks
+	if v := c.PostForm("nama_toko"); v != "" { store.NamaToko = v }
+	if v := c.PostForm("telepon"); v != "" { store.Telepon = utils.FormatPhoneNumber(v) }
+	if v := c.PostForm("alamat"); v != "" { store.Alamat = v }
+	if v := c.PostForm("provinsi"); v != "" { store.Provinsi = v }
+	if v := c.PostForm("kota"); v != "" { store.Kota = v }
+	if v := c.PostForm("kecamatan"); v != "" { store.Kecamatan = v }
+	if v := c.PostForm("kelurahan"); v != "" { store.Kelurahan = v }
+	if v := c.PostForm("kode_pos"); v != "" { store.KodePos = v }
+	if v := c.PostForm("qris_name"); v != "" { store.QrisName = v }
+	if v := c.PostForm("receipt_footer"); v != "" { store.ReceiptFooter = v }
+
+	// Toggle Pajak
+	if v := c.PostForm("is_tax_active"); v != "" {
+		store.IsTaxActive = (v == "true")
+	}
+	if v := c.PostForm("pajak_persen"); v != "" {
+		if parsed, err := strconv.ParseFloat(v, 64); err == nil {
+			store.PajakPersen = parsed
+		}
+	}
+
+	// 2. Update Logo Struk
+	if file, err := c.FormFile("logo"); err == nil {
+		newFileName := fmt.Sprintf("store_%d_logo_%d%s", storeID, time.Now().Unix(), filepath.Ext(file.Filename))
+		uploadPath := filepath.Join("uploads", newFileName)
+		if err := c.SaveUploadedFile(file, uploadPath); err == nil {
+			if store.LogoURL != "" { os.Remove("." + store.LogoURL) } // Hapus logo lama
+			store.LogoURL = "/uploads/" + newFileName
+		}
+	}
+
+	// 3. Update Barcode QRIS
+	if file, err := c.FormFile("qris"); err == nil {
+		newFileName := fmt.Sprintf("store_%d_qris_%d%s", storeID, time.Now().Unix(), filepath.Ext(file.Filename))
+		uploadPath := filepath.Join("uploads", newFileName)
+		if err := c.SaveUploadedFile(file, uploadPath); err == nil {
+			if store.QrisImage != "" { os.Remove("." + store.QrisImage) } // Hapus qris lama
+			store.QrisImage = "/uploads/" + newFileName
+		}
+	}
+
+	// Simpan ke Database
+	if err := src.DB.Save(&store).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan pengaturan toko"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Pengaturan toko berhasil diperbarui!", "data": store})
 }
