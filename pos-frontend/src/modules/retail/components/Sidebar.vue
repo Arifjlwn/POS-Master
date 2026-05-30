@@ -201,6 +201,16 @@ const triggerUpgrade = (fiturName, minLevel) => {
                                 Dashboard Analitik
                             </router-link>
 
+                            <a v-if="planLevel < 3" href="#" @click.prevent="triggerUpgrade('AI Business Analyst', 3)" class="sub-link-locked">
+                                <span class="flex-1">AI Business Analyst</span> 
+                                <span class="text-amber-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                </span>
+                            </a>
+                            <router-link v-else to="/retail/ai-analyst" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/ai-analyst' }">
+                                AI Business Analyst
+                            </router-link>
+
                             <!-- GEMBOK KARYAWAN -->
                             <a v-if="planLevel < 2" href="#" @click.prevent="triggerUpgrade('Manajemen Karyawan', 2)" class="sub-link-locked">
                                 <span class="flex-1">Manajemen Karyawan</span> 
@@ -241,6 +251,19 @@ const triggerUpgrade = (fiturName, minLevel) => {
                         <span class="w-1.5 h-1.5 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.6)]"></span> Sistem & Akun
                     </div>
                     <div class="space-y-1.5">
+                        <a v-if="planLevel < 3" href="#" @click.prevent="triggerUpgrade('Integrasi WhatsApp Notifier', 3)" class="nav-link-locked">
+                            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1" /></svg>
+                            <span class="flex-1">Integrasi WA</span>
+                            <span class="text-amber-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            </span>
+                        </a>
+                        <router-link v-else to="/retail/settings/whatsapp" @click="sidebarOpen = false" class="nav-link group" :class="{ 'active': route.path === '/retail/settings/whatsapp' }">
+                            <svg class="icon group-hover:rotate-12 group-hover:text-emerald-500 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1" /></svg>
+                            <span>Integrasi WA</span>
+                        </router-link>
+
+
                         <router-link v-if="user.role === 'owner'" to="/retail/settings" @click="sidebarOpen = false" class="nav-link group" :class="{ 'active': route.path === '/retail/settings' }">
                             <svg class="icon group-hover:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                             <span>Pengaturan Toko</span>
