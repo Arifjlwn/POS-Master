@@ -1854,7 +1854,7 @@ func (h *RetailHandler) CreateUpgradePayment(c *gin.Context) {
 	midtrans.Environment = midtrans.Sandbox
 
 	// 2. BIKIN KERANJANG TAGIHAN
-	orderID := fmt.Sprintf("UPGRADE-TOKO-%d-%d", storeID, time.Now().Unix())
+	orderID := fmt.Sprintf("UPGRADE-TOKO-%d-%s-%d", storeID, strings.ToUpper(input.PlanName), time.Now().Unix())
 	
 	req := &snap.Request{
 		TransactionDetails: midtrans.TransactionDetails{
@@ -1892,25 +1892,22 @@ func (h *RetailHandler) MidtransWebhook(c *gin.Context) {
 	orderID, _ := payload["order_id"].(string)
 	transactionStatus, _ := payload["transaction_status"].(string)
 
-	// Midtrans mengirim status "settlement" atau "capture" jika pembayaran sukses
 	if transactionStatus == "settlement" || transactionStatus == "capture" {
-		
-		// Membedah OrderID (Contoh: UPGRADE-TOKO-1-1717200000)
+		// Pecah Order ID: "UPGRADE-TOKO-1-ENTERPRISE-1717200000"
 		parts := strings.Split(orderID, "-")
-		if len(parts) >= 3 {
+		if len(parts) >= 5 && parts[0] == "UPGRADE" {
 			storeID := parts[2]
+			planName := parts[3] // Ini bakal dapet kata "ENTERPRISE" atau "PROFESSIONAL"
 			
-			// Update Database: Ubah status toko menjadi Premium / Enterprise
-			db := h.Repo.GetDB()
-			
-			// Deteksi nama paket dari struktur OrderID atau dari logic bisnis
-			// Untuk simpelnya, kita set langsung status berlangganan aktif
 			endDate := time.Now().AddDate(0, 1, 0) // Tambah 1 bulan dari sekarang
 			
-			db.Exec("UPDATE stores SET subscription_status = ?, subscription_end = ? WHERE id = ?", "active", endDate, storeID)
+			db := h.Repo.GetDB()
+			
+			// 🚀 UPDATE NAMA PAKET JUGA DI SINI BOSKU!
+			db.Exec("UPDATE stores SET subscription_status = ?, subscription_end = ?, subscription_plan = ? WHERE id = ?", 
+				"active", endDate, strings.ToLower(planName), storeID)
 		}
 	}
 
-	// Wajib mengembalikan status 200 OK agar Midtrans berhenti mengirim ulang pesan
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }

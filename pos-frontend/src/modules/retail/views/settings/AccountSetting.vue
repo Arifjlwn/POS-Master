@@ -74,8 +74,14 @@ const handleUpgrade = async (planName, price) => {
         // 2. 🚀 MUNCULIN POP-UP MIDTRANS
         window.snap.pay(snapToken, {
             onSuccess: function(result){
-                Swal.fire('Pembayaran Sukses!', 'Terima kasih, paket toko Anda sedang di-upgrade.', 'success');
-                // Nanti di sini lu bisa panggil API buat update status DB jadi "Premium"
+                Swal.fire(
+                    'Pembayaran Sukses!', 
+                    'Terima kasih, paket toko Anda sedang di-upgrade.', 
+                    'success'
+                ).then(() => {
+                    // 🚀 RELOAD HALAMAN BIAR DATA BARU DARI DATABASE MUNCUL
+                    window.location.reload(); 
+                });
             },
             onPending: function(result){
                 Swal.fire('Menunggu Pembayaran', 'Silakan selesaikan pembayaran Anda sebelum batas waktu habis.', 'info');
@@ -191,64 +197,115 @@ const handleUpgrade = async (planName, price) => {
                 </div>
 
                 <!-- Modal Body (Pricing Cards) -->
+                <!-- Modal Body (Pricing Cards) -->
                 <div class="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- 🚀 UBAH JADI 4 KOLOM (lg:grid-cols-4, md:grid-cols-2) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         
-                        <!-- PAKET BASIC -->
-                        <div class="bg-white rounded-[24px] p-6 md:p-8 border border-slate-200 flex flex-col">
-                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Starter</div>
-                            <h3 class="text-2xl font-black text-slate-800 uppercase mb-4">Basic</h3>
+                        <!-- PAKET TRIAL -->
+                        <div class="bg-white rounded-[24px] p-6 border border-slate-200 flex flex-col relative">
+                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Starter Trial</div>
+                            <h3 class="text-xl font-black text-slate-800 uppercase mb-3">Trial 14 Hari</h3>
+                            <p class="text-[11px] font-bold text-slate-500 mb-5 min-h-[35px] leading-relaxed">Validasi kesesuaian sistem dengan ekosistem bisnis Anda.</p>
+                            
                             <div class="flex items-baseline gap-1 mb-6">
-                                <span class="text-3xl font-black text-slate-800">Gratis</span>
+                                <span class="text-3xl font-black text-slate-800">Rp 0</span>
                             </div>
-                            <ul class="space-y-4 mb-8 flex-1">
-                                <li class="flex items-start gap-3 text-sm font-bold text-slate-500"><svg class="w-5 h-5 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> 1 Kasir (Point of Sale)</li>
-                                <li class="flex items-start gap-3 text-sm font-bold text-slate-500"><svg class="w-5 h-5 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Maks 100 Produk</li>
-                                <li class="flex items-start gap-3 text-sm font-bold text-slate-500"><svg class="w-5 h-5 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Laporan Harian Dasar</li>
+                            
+                            <ul class="space-y-3 mb-8 flex-1">
+                                <li class="flex items-start gap-2 text-xs font-bold text-slate-500"><svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> POS Kasir Retail</li>
+                                <li class="flex items-start gap-2 text-xs font-bold text-slate-500"><svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Master Data Produk</li>
+                                <li class="flex items-start gap-2 text-xs font-bold text-slate-500"><svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Scan Barcode Reader</li>
+                                <li class="flex items-start gap-2 text-xs font-bold text-slate-500"><svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Tanpa Kartu Kredit</li>
                             </ul>
-                            <button disabled class="w-full py-4 bg-slate-100 text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest cursor-not-allowed">
+                            
+                            <button v-if="subPlan?.toLowerCase() === 'trial'" disabled class="w-full py-3.5 bg-slate-100 text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest cursor-not-allowed">
                                 Paket Saat Ini
+                            </button>
+                            <button v-else disabled class="w-full py-3.5 bg-slate-50 border border-slate-200 text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest cursor-not-allowed opacity-70">
+                                Khusus Pengguna Baru
                             </button>
                         </div>
 
-                        <!-- PAKET PRO -->
-                        <div class="bg-white rounded-[24px] p-6 md:p-8 border-2 border-indigo-500 shadow-xl relative flex flex-col transform md:-translate-y-4">
-                            <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-indigo-500 text-white text-[9px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg">Paling Laris</div>
+                        <!-- PAKET BASIC -->
+                        <div class="bg-white rounded-[24px] p-6 border border-slate-200 flex flex-col">
+                            <div class="text-[10px] font-black text-sky-500 uppercase tracking-widest mb-1">Retail Basic</div>
+                            <h3 class="text-xl font-black text-slate-800 uppercase mb-3">Basic</h3>
+                            <p class="text-[11px] font-bold text-slate-500 mb-5 min-h-[35px] leading-relaxed">Solusi solid untuk toko kelontong dengan 1 titik kasir.</p>
                             
-                            <div class="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-2 mt-2">UMKM & Retail</div>
-                            <h3 class="text-2xl font-black text-slate-800 uppercase mb-4">Professional</h3>
                             <div class="flex items-baseline gap-1 mb-6">
                                 <span class="text-sm font-black text-slate-400">Rp</span>
-                                <span class="text-4xl font-black text-slate-800">149<span class="text-lg">.000</span></span>
-                                <span class="text-xs font-bold text-slate-400">/bln</span>
+                                <span class="text-4xl font-black text-slate-800">49<span class="text-base text-slate-500">k</span></span>
+                                <span class="text-[10px] font-bold text-slate-400">/Bulan</span>
                             </div>
-                            <ul class="space-y-4 mb-8 flex-1">
-                                <li class="flex items-start gap-3 text-sm font-bold text-slate-700"><svg class="w-5 h-5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Unlimited Produk & Kasir</li>
-                                <li class="flex items-start gap-3 text-sm font-bold text-slate-700"><svg class="w-5 h-5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Manajemen Multi Gudang</li>
-                                <li class="flex items-start gap-3 text-sm font-bold text-slate-700"><svg class="w-5 h-5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Laporan Finansial Lengkap</li>
-                                <li class="flex items-start gap-3 text-sm font-bold text-slate-700"><svg class="w-5 h-5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Cetak Struk Logo Toko</li>
+                            
+                            <ul class="space-y-3 mb-8 flex-1">
+                                <li class="flex items-start gap-2 text-xs font-bold text-slate-600"><svg class="w-4 h-4 text-sky-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Kasir Tanpa Batas</li>
+                                <li class="flex items-start gap-2 text-xs font-bold text-slate-600"><svg class="w-4 h-4 text-sky-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Manajemen Stok Dasar</li>
+                                <li class="flex items-start gap-2 text-xs font-bold text-slate-600"><svg class="w-4 h-4 text-sky-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Struk Thermal Bluetooth</li>
+                                <li class="flex items-start gap-2 text-xs font-bold text-slate-600"><svg class="w-4 h-4 text-sky-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Laporan Penjualan Harian</li>
                             </ul>
-                            <button @click="handleUpgrade('Professional', 149000)" class="w-full py-4 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-all active:scale-95">
+                            
+                            <button v-if="subPlan?.toLowerCase() === 'basic'" disabled class="w-full py-3.5 bg-slate-100 text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest cursor-not-allowed">
+                                Paket Saat Ini
+                            </button>
+                            <button v-else @click="handleUpgrade('Basic', 49000)" class="w-full py-3.5 bg-slate-800 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-slate-700 transition-all active:scale-95">
+                                Upgrade Basic
+                            </button>
+                        </div>
+
+                        <!-- PAKET PRO (PALING LARIS) -->
+                        <div class="bg-white rounded-[24px] p-6 border-2 border-indigo-500 shadow-xl relative flex flex-col transform lg:-translate-y-4">
+                            <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-indigo-500 text-white text-[9px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg whitespace-nowrap">Paling Laris</div>
+                            
+                            <div class="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1 mt-2">Retail Pro</div>
+                            <h3 class="text-xl font-black text-slate-800 uppercase mb-3">Pro</h3>
+                            <p class="text-[11px] font-bold text-slate-500 mb-5 min-h-[35px] leading-relaxed">Cocok untuk minimarket yang mulai mengelola karyawan.</p>
+                            
+                            <div class="flex items-baseline gap-1 mb-6">
+                                <span class="text-sm font-black text-slate-400">Rp</span>
+                                <span class="text-4xl font-black text-slate-800">149<span class="text-base text-slate-500">k</span></span>
+                                <span class="text-[10px] font-bold text-slate-400">/Bulan</span>
+                            </div>
+                            
+                            <ul class="space-y-3 mb-8 flex-1">
+                                <li class="flex items-start gap-2 text-xs font-bold text-slate-700"><svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Semua Fitur Basic</li>
+                                <li class="flex items-start gap-2 text-xs font-bold text-slate-700"><svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Manajemen Akses Kasir</li>
+                                <li class="flex items-start gap-2 text-xs font-bold text-slate-700"><svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Smart Attendance & Shift</li>
+                                <li class="flex items-start gap-2 text-xs font-bold text-slate-700"><svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Laporan Ekspor (Excel/PDF)</li>
+                            </ul>
+                            
+                            <button v-if="subPlan?.toLowerCase() === 'pro'" disabled class="w-full py-3.5 bg-slate-100 text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest cursor-not-allowed">
+                                Paket Saat Ini
+                            </button>
+                            <button v-else @click="handleUpgrade('Pro', 149000)" class="w-full py-3.5 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-all active:scale-95">
                                 Upgrade Pro
                             </button>
                         </div>
 
                         <!-- PAKET ENTERPRISE -->
-                        <div class="bg-slate-900 rounded-[24px] p-6 md:p-8 border border-slate-700 flex flex-col">
-                            <div class="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2">Franchise & Besar</div>
-                            <h3 class="text-2xl font-black text-white uppercase mb-4">Enterprise</h3>
+                        <div class="bg-slate-900 rounded-[24px] p-6 border border-slate-700 flex flex-col">
+                            <div class="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">Retail Enterprise</div>
+                            <h3 class="text-xl font-black text-white uppercase mb-3">Enterprise</h3>
+                            <p class="text-[11px] font-bold text-slate-400 mb-5 min-h-[35px] leading-relaxed">Kendali penuh untuk bisnis multi-cabang & gudang.</p>
+                            
                             <div class="flex items-baseline gap-1 mb-6">
                                 <span class="text-sm font-black text-slate-400">Rp</span>
-                                <span class="text-4xl font-black text-white">299<span class="text-lg text-slate-300">.000</span></span>
-                                <span class="text-xs font-bold text-slate-400">/bln</span>
+                                <span class="text-4xl font-black text-white">299<span class="text-base text-slate-400">k</span></span>
+                                <span class="text-[10px] font-bold text-slate-400">/Bulan</span>
                             </div>
-                            <ul class="space-y-4 mb-8 flex-1">
-                                <li class="flex items-start gap-3 text-sm font-bold text-slate-300"><svg class="w-5 h-5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Semua Fitur Professional</li>
-                                <li class="flex items-start gap-3 text-sm font-bold text-slate-300"><svg class="w-5 h-5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Integrasi WhatsApp Gateway</li>
-                                <li class="flex items-start gap-3 text-sm font-bold text-slate-300"><svg class="w-5 h-5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Custom Domain Bisnis</li>
-                                <li class="flex items-start gap-3 text-sm font-bold text-slate-300"><svg class="w-5 h-5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Prioritas Support 24/7</li>
+                            
+                            <ul class="space-y-3 mb-8 flex-1">
+                                <li class="flex items-start gap-2 text-xs font-bold text-slate-300"><svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Semua Fitur Pro</li>
+                                <li class="flex items-start gap-2 text-xs font-bold text-slate-300"><svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Sistem Multi-Cabang (HO)</li>
+                                <li class="flex items-start gap-2 text-xs font-bold text-slate-300"><svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Manajemen Multi-Gudang</li>
+                                <li class="flex items-start gap-2 text-xs font-bold text-slate-300"><svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Dedicated Support 24/7</li>
                             </ul>
-                            <button @click="handleUpgrade('Enterprise', 299000)" class="w-full py-4 bg-amber-500 text-slate-900 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-amber-500/20 hover:bg-amber-400 transition-all active:scale-95">
+                            
+                            <button v-if="['enterprise', 'premium'].includes(subPlan?.toLowerCase())" disabled class="w-full py-3.5 bg-slate-800 text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest cursor-not-allowed">
+                                Paket Saat Ini
+                            </button>
+                            <button v-else @click="handleUpgrade('Premium', 299000)" class="w-full py-3.5 bg-amber-500 text-slate-900 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-amber-500/20 hover:bg-amber-400 transition-all active:scale-95">
                                 Upgrade Enterprise
                             </button>
                         </div>
