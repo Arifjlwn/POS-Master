@@ -19,6 +19,7 @@
     'decrease-qty',
     'increase-qty',
     'validate-qty',
+    'set-nominal',
     'set-payment',
     'format-rupiah',
     'checkout',

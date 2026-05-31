@@ -201,16 +201,6 @@ const triggerUpgrade = (fiturName, minLevel) => {
                                 Dashboard Analitik
                             </router-link>
 
-                            <a v-if="planLevel < 3" href="#" @click.prevent="triggerUpgrade('AI Business Analyst', 3)" class="sub-link-locked">
-                                <span class="flex-1">AI Business Analyst</span> 
-                                <span class="text-amber-500">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                                </span>
-                            </a>
-                            <router-link v-else to="/retail/ai-analyst" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/ai-analyst' }">
-                                AI Business Analyst
-                            </router-link>
-
                             <!-- GEMBOK KARYAWAN -->
                             <a v-if="planLevel < 2" href="#" @click.prevent="triggerUpgrade('Manajemen Karyawan', 2)" class="sub-link-locked">
                                 <span class="flex-1">Manajemen Karyawan</span> 

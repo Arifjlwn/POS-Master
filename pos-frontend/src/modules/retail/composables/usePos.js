@@ -47,6 +47,7 @@ export function usePos() {
     const lastTransaction = ref(null);
     const showReceiptClosing = ref(false);
     const lastClosingData = ref(null);
+    const noHpPelanggan = ref('');
 
     // STATE KHUSUS UNTUK HP (MOBILE CART DRAWER)
     const isMobileCartOpen = ref(false);
@@ -383,15 +384,18 @@ export function usePos() {
         
         const payloadItems = cart.value.map(item => ({ 
             product_id: item.id, 
-            kuantitas: item.qty * item.uom_multiplier 
+            kuantitas: item.qty * item.uom_multiplier,
+            uom_label: `${item.qty} ${item.selected_uom}`, // 🚀 Kirim format "3 BUNGKUS"
+            harga_uom: item.price
         }));
 
         try {
             const response = await posService.checkout({
                 session_id: currentSession.value.id,
                 items: payloadItems,
-                nominal_bayar: payAmount.value,
-                metode_bayar: paymentMethod.value
+                nominal_bayar: Number(payAmount.value), 
+                metode_bayar: paymentMethod.value,
+                no_hp_pelanggan: noHpPelanggan.value ? String(noHpPelanggan.value) : "" 
             });
 
             lastTransaction.value = {
@@ -545,9 +549,9 @@ export function usePos() {
         showHeldModal, payAmount, paymentMethod, showReceipt, showQrisModal, lastTransaction,
         showReceiptClosing, lastClosingData, isMobileCartOpen, searchQuery, searchInput,
         showScanner, pecahan, totalUangFisik, filteredProducts, subTotalBelanja, nilaiPajak,
-        totalBelanja, kembalian, isProcessingCheckout, showClosingModal,
+        totalBelanja, kembalian, isProcessingCheckout, showClosingModal,noHpPelanggan,
         getImageUrl, startScanner, stopScanner, handleBarcodeScan, addToCart, decreaseQty, 
         increaseQty, validateQty, clearCart, holdTransaction, resumeOrder,
-        setPaymentMethod, executeCheckout, formatInputRupiah, processCheckout, handleClosing, logout, toggleUom, setNominal
+        setPaymentMethod, executeCheckout, formatInputRupiah, processCheckout, handleClosing, logout, toggleUom, setNominal, 
     };
 }

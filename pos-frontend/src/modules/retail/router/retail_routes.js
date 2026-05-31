@@ -105,12 +105,6 @@ export default [
 
   // === FITUR DEWA (PREMIUM - LEVEL 3) ===
   {
-    path: '/retail/ai-analyst',
-    name: 'AiAnalyst',
-    component: () => import('../views/dashboard/AiAnalyst.vue'), // Nanti tinggal lu bikin file Vue kosongnya
-    meta: { requiresAuth: true, role: 'owner', minPlanLevel: 3 }
-  },
-  {
     path: '/retail/settings/whatsapp',
     name: 'WhatsappSettings',
     component: () => import('../views/settings/WhatsappSetting.vue'), // Nanti tinggal lu bikin file Vue kosongnya

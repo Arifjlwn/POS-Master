@@ -77,6 +77,11 @@ func main() {
 	r.POST("/api/verify-otp", auth.VerifyOTP)
 	r.POST("/api/login", auth.Login)
 
+	// 1. TAMBAHKAN INI: Inisialisasi Retail Handler di sini (di luar rute terproteksi)
+    retailRepo := retailRepository.NewRetailRepo(src.DB)
+    retailHandler := retailDelivery.NewRetailHandler(retailRepo)
+	r.POST("/api/retail/midtrans/webhook", retailHandler.MidtransWebhook)
+
 	// -- Rute Terproteksi (Butuh Karcis JWT) --
 	api := r.Group("/api")
 	api.Use(middlewares.RequireAuth)
@@ -219,8 +224,8 @@ func main() {
 		{
 			// 🚀 KUNCI UTAMA: WIRING MODUL MODULAR RETAIL YANG BARU
 			// Ini bakal nge-handle: Schedule, Session Kasir, Checkout POS, Absensi, Retur, LPB, dan Dashboard SO!
-			retailRepo := retailRepository.NewRetailRepo(src.DB)
-			retailHandler := retailDelivery.NewRetailHandler(retailRepo)
+			// retailRepo := retailRepository.NewRetailRepo(src.DB)
+			// retailHandler := retailDelivery.NewRetailHandler(retailRepo)
 			retailDelivery.RegisterRetailInventoryRoutes(retailAPI, retailHandler)
 		}
 

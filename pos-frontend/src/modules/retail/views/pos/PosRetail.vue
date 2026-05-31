@@ -10,6 +10,7 @@ import ProductCatalog from '../../components/pos/ProductCatalog.vue';
 import CartSidebar from '../../components/pos/CartSidebar.vue';
 import ClosingModal from '../../components/pos/ClosingModal.vue';
 import ReceiptModal from '../../components/pos/ReceiptModal.vue';
+import WaPromptModal from '../../components/pos/WaPromptModal.vue'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
@@ -36,7 +37,7 @@ const {
     showClosingModal, isProcessingCheckout,
     getImageUrl, startScanner, stopScanner, handleBarcodeScan, addToCart,toggleUom,
     decreaseQty, increaseQty, validateQty, clearCart, holdTransaction, resumeOrder,
-    setPaymentMethod, executeCheckout, formatInputRupiah, processCheckout, handleClosing, logout, setNominal
+    setPaymentMethod, executeCheckout, formatInputRupiah, processCheckout, handleClosing, logout, setNominal, noHpPelanggan
 } = usePos();
 
 // DOM Logic Print spesifik untuk view layer
@@ -44,8 +45,60 @@ const printClosing = () => {
     window.print(); 
 };
 
-const finishClosing = () => router.push('/retail/absensi');
-const goToDashboard = () => currentUser.value.role === 'owner' ? router.push('/retail/dashboard') : router.push('/retail/absensi');
+const showWaModal = ref(false);
+
+// 🚀 1. FUNGSI BARU: Cegat pas tombol "Bayar" di sidebar di-klik
+const handleInitialCheckout = () => {
+    // Validasi Uang Kurang
+    if (payAmount.value < totalBelanja.value) {
+        Swal.fire({ icon: 'error', title: 'Uang Kurang!', text: `Kurang Rp ${(totalBelanja.value - payAmount.value).toLocaleString('id-ID')}` });
+        return;
+    }
+
+    if (paymentMethod.value === 'QRIS') {
+        showQrisModal.value = true; // Munculin QRIS dulu buat di-scan pelanggan
+    } else {
+        triggerCheckoutFlow(); // Kalau tunai, langsung cek mau kirim WA atau nggak
+    }
+};
+
+// 🚀 2. FUNGSI CEK WA (Dipanggil setelah Tunai, atau setelah klik Lunas di QRIS)
+const triggerCheckoutFlow = () => {
+    showQrisModal.value = false; // Tutup QRIS modal otomatis kalau asalnya dari tombol Lunas
+    
+    // Cek Kasta Level (Premium / Trial = 3)
+    const plan = localStorage.getItem('subscriptionPlan') || 'basic';
+    const isPremium = plan === 'premium' || plan === 'trial' || plan === 'enterprise';
+    
+    // Cek Validasi WA dari Backend (apakah udah masukin token Fonnte)
+    const hasWaToken = storeData.value?.wa_token && storeData.value.wa_token !== '';
+
+    // Logika Percabangan
+    if (isPremium && hasWaToken) {
+        showWaModal.value = true; // Munculin modal WA!
+    } else {
+        proceedToFinalCheckout(); // Langsung bayar tembak API (Basic)
+    }
+};
+
+// 🚀 3. FINAL EKSEKUSI (Nembak API)
+const proceedToFinalCheckout = async () => {
+    showWaModal.value = false;
+    await executeCheckout(); // Langsung eksekusi, gak perlu ngecek QRIS/Tunai lagi karena udah di-handle di awal
+};
+
+const handleWaSubmit = (phone) => {
+    noHpPelanggan.value = phone; // Set nomor hp ke state usePos
+    proceedToFinalCheckout();    // Lanjut eksekusi API Kasir
+};
+
+const handleWaSkip = () => {
+    noHpPelanggan.value = '';    // Kosongin nomor hp
+    proceedToFinalCheckout();    // Lanjut eksekusi API Kasir
+};
+
+const finishClosing = () => router.push('/retail/pos/riwayat');
+const goToRiwayat = () => router.push('/retail/pos/riwayat');
 </script>
 
 <template>
@@ -56,7 +109,7 @@ const goToDashboard = () => currentUser.value.role === 'owner' ? router.push('/r
             :currentUser="currentUser" 
             :currentSession="currentSession" 
             :currentTime="currentTime"
-            @go-dashboard="goToDashboard"
+            @go-dashboard="goToRiwayat"
             @logout="logout"
         />
 
@@ -74,6 +127,7 @@ const goToDashboard = () => currentUser.value.role === 'owner' ? router.push('/r
             />
 
             <CartSidebar 
+                v-model:noHpPelanggan="noHpPelanggan"
                 v-model:isMobileCartOpen="isMobileCartOpen"
                 :cart="cart"
                 :heldOrders="heldOrders"
@@ -91,7 +145,7 @@ const goToDashboard = () => currentUser.value.role === 'owner' ? router.push('/r
                 @set-payment="setPaymentMethod"
                 @format-rupiah="formatInputRupiah"
                 @set-nominal="payAmount += $event"
-                @checkout="processCheckout"
+                @checkout="handleInitialCheckout"
                 @toggle-uom="toggleUom" />
         </div>
 
@@ -156,10 +210,18 @@ const goToDashboard = () => currentUser.value.role === 'owner' ? router.push('/r
                 </div>
                 <div class="flex gap-3">
                     <button @click="showQrisModal = false" :disabled="isProcessingCheckout" class="flex-1 bg-slate-100 py-4 rounded-xl font-black text-[10px] uppercase text-slate-500">Batal</button>
-                    <button @click="executeCheckout" :disabled="isProcessingCheckout" class="flex-1 bg-indigo-600 py-4 rounded-xl font-black text-[10px] uppercase text-white shadow-lg">{{ isProcessingCheckout ? 'Proses...' : 'Lunas' }}</button>
+                    <button @click="triggerCheckoutFlow" :disabled="isProcessingCheckout" class="flex-1 bg-indigo-600 py-4 rounded-xl font-black text-[10px] uppercase text-white shadow-lg">{{ isProcessingCheckout ? 'Proses...' : 'Lunas' }}</button>
                 </div>
             </div>
         </div>
+
+        <WaPromptModal 
+            :show="showWaModal"
+            :totalBelanja="totalBelanja"
+            @submit="handleWaSubmit"
+            @skip="handleWaSkip"
+            @close="showWaModal = false"
+        />
 
         <ReceiptModal 
             :show="showReceipt"

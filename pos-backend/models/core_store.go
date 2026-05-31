@@ -36,6 +36,9 @@ type Store struct {
 	QrisName      string   `gorm:"type:varchar(100)" json:"qris_name"`
 	ReceiptFooter string `gorm:"type:text" json:"receipt_footer"`
 
+	// 🚀 TAMBAHAN SISTEM WA SAAS
+    WaToken       string `gorm:"type:varchar(255)" json:"wa_token"`
+
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }

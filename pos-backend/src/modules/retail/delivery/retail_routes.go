@@ -38,6 +38,7 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 	// Setting Toko & Akun
 	rg.GET("/store/settings", h.GetStoreSettings)
 	rg.PUT("/store/settings", h.UpdateStoreSettings)
+	rg.POST("/subscription/upgrade", h.CreateUpgradePayment)
 
 
 	// =====================================

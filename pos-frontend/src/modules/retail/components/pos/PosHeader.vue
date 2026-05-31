@@ -1,5 +1,4 @@
 <script setup>
-
 defineProps({
     currentUser: Object,
     currentSession: Object,
@@ -18,8 +17,8 @@ const emit = defineEmits(['go-dashboard', 'logout']);
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 md:w-8 md:h-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     NEXA POS
                 </div>
-                <div class="text-center text-[9px] md:text-[10px] uppercase mt-1 md:mt-2 tracking-widest font-black px-3 py-1 rounded-lg text-amber-400 bg-amber-400/10">
-                    {{ currentUser?.role === 'owner' ? 'Ke Dashboard' : '🟢 SHIFT AKTIF' }}
+                <div class="text-center text-[9px] md:text-[10px] uppercase mt-1 md:mt-2 tracking-widest font-black px-3 py-1 rounded-lg text-amber-400 bg-amber-400/10 hover:bg-amber-400/20 transition-colors">
+                    MENU UTAMA
                 </div>
             </div>
 
@@ -65,7 +64,6 @@ const emit = defineEmits(['go-dashboard', 'logout']);
 </template>
 
 <style scoped>
-/* Inject animasi marquee agar di level sub-komponen tetap berjalan ngebut */
 .animate-marquee {
     display: inline-block;
     padding-left: 100%;
