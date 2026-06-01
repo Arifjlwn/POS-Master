@@ -207,23 +207,30 @@ export function useAbsensi() {
     };
 
     onMounted(async () => {
-        updateTime();
-        timer = setInterval(updateTime, 1000);
+    updateTime();
+    timer = setInterval(updateTime, 1000);
+    
+    try {
+        const MODEL_URL = '/models'; // Pastikan folder models ada di root public
+        console.log("Loading AI Models...");
         
-        try {
-            await Promise.all([
-                faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
-                faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
-                faceapi.nets.faceRecognitionNet.loadFromUri('/models')
-            ]);
-            isAiLoading.value = false;
-            console.log("AI Models Loaded!");
-        } catch (e) {
-            console.error("Gagal load AI models. Pastikan folder /models ada di public folder Vue.", e);
-        }
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        console.log("TinyFaceDetector loaded!");
         
-        fetchData();
-    });
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        console.log("FaceLandmark loaded!");
+        
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+        console.log("FaceRecognition loaded!");
+        
+        isAiLoading.value = false;
+        console.log("AI Models Loaded Successfully!");
+    } catch (e) {
+        console.error("AI Load Failed. Check network tab for 404s:", e);
+    }
+    
+    fetchData();
+});
 
     onUnmounted(() => {
         clearInterval(timer);
