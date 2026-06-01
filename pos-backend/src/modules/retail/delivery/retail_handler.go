@@ -1,29 +1,29 @@
 package delivery
 
 import (
-	"fmt"
-	"net/http"
-	"strconv"
-	"time"
 	"bytes"
 	"encoding/csv"
+	"fmt"
+	"math"
+	"net/http"
 	"os"
 	"path/filepath"
-	"golang.org/x/crypto/bcrypt"
-	"math"
+	"strconv"
 	"strings"
-	
+	"time"
+
+	"golang.org/x/crypto/bcrypt"
 
 	"pos-backend/models"
-	"pos-backend/utils"
 	src "pos-backend/src/core/config"
 	"pos-backend/src/modules/retail/domain"
 	"pos-backend/src/modules/retail/repository"
+	"pos-backend/utils"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"github.com/midtrans/midtrans-go"
 	"github.com/midtrans/midtrans-go/snap"
+	"gorm.io/gorm"
 )
 
 type RetailHandler struct {
@@ -36,105 +36,107 @@ func NewRetailHandler(repo repository.RetailRepository) *RetailHandler {
 
 // 🚀 STOCK OPNAME HANDLERS
 type SOItemInput struct {
-    ProductID uint   `json:"product_id"`
-    SystemQty int    `json:"system_qty"`
-    ActualQty int    `json:"actual_qty"`
-    Selisih   int    `json:"selisih"`
-    Alasan    string `json:"alasan"`
+	ProductID uint   `json:"product_id"`
+	SystemQty int    `json:"system_qty"`
+	ActualQty int    `json:"actual_qty"`
+	Selisih   int    `json:"selisih"`
+	Alasan    string `json:"alasan"`
 }
 
 type StockOpnameInput struct {
-    Notes  string        `json:"notes"`
-    Status string        `json:"status"` // 'APPROVED' atau 'PENDING_APPROVAL'
-    Items  []SOItemInput `json:"items"`
+	Notes  string        `json:"notes"`
+	Status string        `json:"status"` // 'APPROVED' atau 'PENDING_APPROVAL'
+	Items  []SOItemInput `json:"items"`
 }
 
 type KlaimItemInput struct {
-    ProductID uint   `json:"product_id"`
-    Qty       int    `json:"qty"`
-    Alasan    string `json:"alasan"` // Alasan ketemunya di mana
+	ProductID uint   `json:"product_id"`
+	Qty       int    `json:"qty"`
+	Alasan    string `json:"alasan"` // Alasan ketemunya di mana
 }
 
 type KlaimRequest struct {
-    Notes string           `json:"notes"` // Misal: "Klaim Barang Nyempil"
-    Items []KlaimItemInput `json:"items"`
+	Notes string           `json:"notes"` // Misal: "Klaim Barang Nyempil"
+	Items []KlaimItemInput `json:"items"`
 }
 
 func (h *RetailHandler) CreateStockOpname(c *gin.Context) {
-    storeID := uint(c.MustGet("store_id").(float64))
-    userID := uint(c.MustGet("user_id").(float64))
-    userRole := c.MustGet("role").(string) 
+	storeID := uint(c.MustGet("store_id").(float64))
+	userID := uint(c.MustGet("user_id").(float64))
+	userRole := c.MustGet("role").(string)
 
-    var input StockOpnameInput
-    if err := c.ShouldBindJSON(&input); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Format data tidak valid!"})
-        return
-    }
+	var input StockOpnameInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data tidak valid!"})
+		return
+	}
 
-    // 🚀 LOGIKA GEMBOK 1 BULAN 1 KALI
-    now := time.Now()
-    isAlreadyDone := h.Repo.CheckStockOpnameThisMonth(storeID, int(now.Month()), now.Year())
-    if isAlreadyDone {
-        c.JSON(http.StatusForbidden, gin.H{"error": "Sistem Terkunci! Stock Opname / Audit hanya bisa dilakukan 1x dalam bulan yang sama."})
-        return
-    }
+	// 🚀 LOGIKA GEMBOK 1 BULAN 1 KALI
+	now := time.Now()
+	isAlreadyDone := h.Repo.CheckStockOpnameThisMonth(storeID, int(now.Month()), now.Year())
+	if isAlreadyDone {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Sistem Terkunci! Stock Opname / Audit hanya bisa dilakukan 1x dalam bulan yang sama."})
+		return
+	}
 
-    status := "PENDING_APPROVAL"
-    if userRole == "owner" {
-        status = "APPROVED"
-    }
+	status := "PENDING_APPROVAL"
+	if userRole == "owner" {
+		status = "APPROVED"
+	}
 
-    db := h.Repo.GetDB()
-    err := db.Transaction(func(tx *gorm.DB) error {
-        so := domain.StockOpname{
-            StoreID:   storeID,
-            UserID:    userID,
-            Notes:     input.Notes,
-            Status:    status, 
-            CreatedAt: time.Now(),
-        }
+	db := h.Repo.GetDB()
+	err := db.Transaction(func(tx *gorm.DB) error {
+		so := domain.StockOpname{
+			StoreID:   storeID,
+			UserID:    userID,
+			Notes:     input.Notes,
+			Status:    status,
+			CreatedAt: time.Now(),
+		}
 
-        if err := h.Repo.CreateStockOpname(tx, &so); err != nil {
-            return err
-        }
+		if err := h.Repo.CreateStockOpname(tx, &so); err != nil {
+			return err
+		}
 
-        for _, item := range input.Items {
-            detail := domain.StockOpnameDetail{
-                OpnameID:  so.ID,
-                ProductID: item.ProductID,
-                SystemQty: item.SystemQty,
-                ActualQty: item.ActualQty,
-                Selisih:   item.Selisih,
-                Alasan:    item.Alasan, 
-            }
+		for _, item := range input.Items {
+			detail := domain.StockOpnameDetail{
+				OpnameID:  so.ID,
+				ProductID: item.ProductID,
+				SystemQty: item.SystemQty,
+				ActualQty: item.ActualQty,
+				Selisih:   item.Selisih,
+				Alasan:    item.Alasan,
+			}
 
-            if err := h.Repo.CreateStockOpnameDetail(tx, &detail); err != nil {
-                return err
-            }
+			if err := h.Repo.CreateStockOpnameDetail(tx, &detail); err != nil {
+				return err
+			}
 
-            if status == "APPROVED" {
-                product, err := h.Repo.GetProductByID(tx, item.ProductID, storeID)
-                if err != nil { return err }
-                
-                product.Stok = item.ActualQty
-                if err := h.Repo.SaveProduct(tx, product); err != nil {
-                    return err
-                }
-            }
-        }
-        return nil
-    })
+			if status == "APPROVED" {
+				product, err := h.Repo.GetProductByID(tx, item.ProductID, storeID)
+				if err != nil {
+					return err
+				}
 
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal proses SO: " + err.Error()})
-        return
-    }
-    c.JSON(http.StatusOK, gin.H{"message": "Audit berhasil diajukan"})
+				product.Stok = item.ActualQty
+				if err := h.Repo.SaveProduct(tx, product); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal proses SO: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Audit berhasil diajukan"})
 }
 
 func (h *RetailHandler) ApproveStockOpname(c *gin.Context) {
 	opnameID := c.Param("id") // Ambil ID dari URL /api/retail/stock-opname/:id/approve
-	
+
 	// Pastikan cuma Owner yang bisa akses
 	userRole := c.MustGet("role").(string)
 	if userRole != "owner" {
@@ -145,12 +147,12 @@ func (h *RetailHandler) ApproveStockOpname(c *gin.Context) {
 	// 🚀 1. TANGKAP FILE PDF DARI VUE DULU
 	file, errFile := c.FormFile("bukti_bar")
 	var filePath string
-	
-	if errFile == nil { 
+
+	if errFile == nil {
 		// Bikin nama unik
 		filename := fmt.Sprintf("BAR_SO_%s_%d.pdf", opnameID, time.Now().Unix())
 		filePath = "uploads/bar/" + filename
-		
+
 		// Simpan file fisik ke folder server (Pastikan folder 'uploads/bar' udah ada di root project lu)
 		if err := c.SaveUploadedFile(file, filePath); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan file PDF Berita Acara"})
@@ -163,7 +165,7 @@ func (h *RetailHandler) ApproveStockOpname(c *gin.Context) {
 	}
 
 	db := h.Repo.GetDB()
-	
+
 	// 🚀 2. JALANKAN TRANSAKSI DATABASE LU YANG UDAH CAKEP INI
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var so domain.StockOpname
@@ -186,7 +188,9 @@ func (h *RetailHandler) ApproveStockOpname(c *gin.Context) {
 		// Loop item dan update stok Master Product
 		for _, detail := range so.Details {
 			product, err := h.Repo.GetProductByID(tx, detail.ProductID, so.StoreID)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 
 			// Update stok master dengan hasil fisik (ActualQty) dari SO
 			product.Stok = detail.ActualQty
@@ -257,32 +261,32 @@ func (h *RetailHandler) GetStockOpnameHistory(c *gin.Context) {
 }
 
 func (h *RetailHandler) GetLastSOStatus(c *gin.Context) {
-    storeID := uint(c.MustGet("store_id").(float64)) // 🚀 Filter by Toko
-    
-    var lastSO domain.StockOpname
-    db := h.Repo.GetDB()
-    
-    // Cari SO terakhir di toko ini yang statusnya APPROVED
-    result := db.Where("store_id = ? AND status = ?", storeID, "APPROVED").
-        Order("created_at desc").
-        First(&lastSO)
-    
-    if result.Error != nil {
-        c.JSON(http.StatusOK, gin.H{"last_so_date": nil, "has_claimed": false})
-        return
-    }
+	storeID := uint(c.MustGet("store_id").(float64)) // 🚀 Filter by Toko
 
-    // 🚀 CEK APAKAH SUDAH ADA KLAIM SETELAH SO INI
-    var claimCount int64
-    db.Model(&domain.StockAdjustment{}).
-        Where("store_id = ? AND created_at >= ?", storeID, lastSO.CreatedAt).
-        Count(&claimCount)
+	var lastSO domain.StockOpname
+	db := h.Repo.GetDB()
 
-    // Balikin tanggal SO dan status jatah klaimnya
-    c.JSON(http.StatusOK, gin.H{
-        "last_so_date": lastSO.CreatedAt,
-        "has_claimed":  claimCount > 0, // True kalau udah pernah klaim
-    })
+	// Cari SO terakhir di toko ini yang statusnya APPROVED
+	result := db.Where("store_id = ? AND status = ?", storeID, "APPROVED").
+		Order("created_at desc").
+		First(&lastSO)
+
+	if result.Error != nil {
+		c.JSON(http.StatusOK, gin.H{"last_so_date": nil, "has_claimed": false})
+		return
+	}
+
+	// 🚀 CEK APAKAH SUDAH ADA KLAIM SETELAH SO INI
+	var claimCount int64
+	db.Model(&domain.StockAdjustment{}).
+		Where("store_id = ? AND created_at >= ?", storeID, lastSO.CreatedAt).
+		Count(&claimCount)
+
+	// Balikin tanggal SO dan status jatah klaimnya
+	c.JSON(http.StatusOK, gin.H{
+		"last_so_date": lastSO.CreatedAt,
+		"has_claimed":  claimCount > 0, // True kalau udah pernah klaim
+	})
 }
 
 // 🚀 ENDPOINT SAKTI: Narik barang yang minus di SO Terakhir
@@ -304,72 +308,72 @@ func (h *RetailHandler) GetLastSOMinusItems(c *gin.Context) {
 }
 
 func (h *RetailHandler) SubmitKlaimBarang(c *gin.Context) {
-    storeID := uint(c.MustGet("store_id").(float64))
+	storeID := uint(c.MustGet("store_id").(float64))
 	userID := uint(c.MustGet("user_id").(float64))
-    
-    var req KlaimRequest
-    // 🚀 Karena gak ada foto, tetep pake ShouldBindJSON (Sangat simpel!)
-    if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Format data tidak valid"})
-        return
-    }
 
-    db := h.Repo.GetDB()
-    tx := db.Begin()
+	var req KlaimRequest
+	// 🚀 Karena gak ada foto, tetep pake ShouldBindJSON (Sangat simpel!)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data tidak valid"})
+		return
+	}
 
-    // Simpan ke tabel adjustment dengan status PENDING_APPROVAL
-    adj := domain.StockAdjustment{
-        StoreID:   storeID,
+	db := h.Repo.GetDB()
+	tx := db.Begin()
+
+	// Simpan ke tabel adjustment dengan status PENDING_APPROVAL
+	adj := domain.StockAdjustment{
+		StoreID:   storeID,
 		UserID:    userID,
-        Notes:     req.Notes,
-        Status:    "PENDING_APPROVAL",
-        CreatedAt: time.Now(),
-    }
-    
-    if err := tx.Create(&adj).Error; err != nil {
-        tx.Rollback()
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal simpan klaim"})
-        return
-    }
+		Notes:     req.Notes,
+		Status:    "PENDING_APPROVAL",
+		CreatedAt: time.Now(),
+	}
 
-    for _, item := range req.Items {
-        adjItem := domain.StockAdjustmentDetail{
-            AdjustmentID: adj.ID,
-            ProductID:    item.ProductID,
-            Qty:          item.Qty,
-            Alasan:       item.Alasan,
-        }
-        tx.Create(&adjItem)
-    }
+	if err := tx.Create(&adj).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal simpan klaim"})
+		return
+	}
 
-    tx.Commit()
-    c.JSON(http.StatusOK, gin.H{"message": "Klaim barang temuan berhasil diajukan ke Owner!"})
+	for _, item := range req.Items {
+		adjItem := domain.StockAdjustmentDetail{
+			AdjustmentID: adj.ID,
+			ProductID:    item.ProductID,
+			Qty:          item.Qty,
+			Alasan:       item.Alasan,
+		}
+		tx.Create(&adjItem)
+	}
+
+	tx.Commit()
+	c.JSON(http.StatusOK, gin.H{"message": "Klaim barang temuan berhasil diajukan ke Owner!"})
 }
 
 func (h *RetailHandler) GetStockAdjustmentHistory(c *gin.Context) {
-    storeID := uint(c.MustGet("store_id").(float64))
-    
-    var history []domain.StockAdjustment
-    db := h.Repo.GetDB()
-    
-    // Tarik data klaim, preload detail barang dan data produknya
-    err := db.Where("store_id = ?", storeID).
-        Preload("Details.Product").
-        Order("created_at desc").
-        Find(&history).Error
-        
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil riwayat klaim"})
-        return
-    }
-    
-    c.JSON(http.StatusOK, gin.H{"data": history})
+	storeID := uint(c.MustGet("store_id").(float64))
+
+	var history []domain.StockAdjustment
+	db := h.Repo.GetDB()
+
+	// Tarik data klaim, preload detail barang dan data produknya
+	err := db.Where("store_id = ?", storeID).
+		Preload("Details.Product").
+		Order("created_at desc").
+		Find(&history).Error
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil riwayat klaim"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": history})
 }
 
 // 2. Fungsi Owner Ngetok Palu Approve Klaim Barang
 func (h *RetailHandler) ApproveStockAdjustment(c *gin.Context) {
 	adjustmentID := c.Param("id") // Ambil ID dari URL
-	
+
 	// Pastikan cuma Owner yang bisa akses
 	userRole := c.MustGet("role").(string)
 	if userRole != "owner" {
@@ -380,12 +384,12 @@ func (h *RetailHandler) ApproveStockAdjustment(c *gin.Context) {
 	// 🚀 1. TANGKAP FILE PDF DARI VUE (KHUSUS KLAIM)
 	file, errFile := c.FormFile("bukti_bar")
 	var filePath string
-	
-	if errFile == nil { 
+
+	if errFile == nil {
 		// Bikin nama unik (Pake BAR_KLAIM biar beda sama SO awal)
 		filename := fmt.Sprintf("BAR_KLAIM_%s_%d.pdf", adjustmentID, time.Now().Unix())
 		filePath = "uploads/bar/" + filename
-		
+
 		// Simpan file fisik ke folder server
 		if err := c.SaveUploadedFile(file, filePath); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan file PDF Berita Acara Klaim"})
@@ -398,7 +402,7 @@ func (h *RetailHandler) ApproveStockAdjustment(c *gin.Context) {
 	}
 
 	db := h.Repo.GetDB()
-	
+
 	// 🚀 2. JALANKAN TRANSAKSI DATABASE
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var adjustment domain.StockAdjustment
@@ -421,7 +425,9 @@ func (h *RetailHandler) ApproveStockAdjustment(c *gin.Context) {
 		// Loop item dan TAMBAH stok Master Product (Karena ini barang ketemu)
 		for _, detail := range adjustment.Details {
 			product, err := h.Repo.GetProductByID(tx, detail.ProductID, adjustment.StoreID)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 
 			// 🚀 KLAIM = BARANG KETEMU = STOK DITAMBAH
 			product.Stok += detail.Qty
@@ -601,8 +607,8 @@ func (h *RetailHandler) CreateLPB(c *gin.Context) {
 
 type AbsenInput struct {
 	UserID uint   `json:"user_id" binding:"required"`
-	Jenis  string `json:"jenis" binding:"required"` 
-	Foto   string `json:"foto" binding:"required"`  
+	Jenis  string `json:"jenis" binding:"required"`
+	Foto   string `json:"foto" binding:"required"`
 }
 
 func (h *RetailHandler) StoreAttendance(c *gin.Context) {
@@ -611,9 +617,13 @@ func (h *RetailHandler) StoreAttendance(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Toko tidak terdeteksi! Pastikan akun sudah terhubung."})
 		return
 	}
-	
+
 	var storeID uint
-	if val, ok := storeIDRaw.(float64); ok { storeID = uint(val) } else if val, ok := storeIDRaw.(uint); ok { storeID = val }
+	if val, ok := storeIDRaw.(float64); ok {
+		storeID = uint(val)
+	} else if val, ok := storeIDRaw.(uint); ok {
+		storeID = val
+	}
 
 	var input AbsenInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -676,11 +686,15 @@ func (h *RetailHandler) StoreAttendance(c *gin.Context) {
 func (h *RetailHandler) GetAttendance(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	if val, ok := storeIDRaw.(float64); ok { storeID = uint(val) } else if val, ok := storeIDRaw.(uint); ok { storeID = val }
+	if val, ok := storeIDRaw.(float64); ok {
+		storeID = uint(val)
+	} else if val, ok := storeIDRaw.(uint); ok {
+		storeID = val
+	}
 
-	tanggal := c.Query("tanggal") 
-	bulan := c.Query("bulan")     
-	tahun := c.Query("tahun")     
+	tanggal := c.Query("tanggal")
+	bulan := c.Query("bulan")
+	tahun := c.Query("tahun")
 
 	loc, _ := time.LoadLocation("Asia/Jakarta")
 	now := time.Now().In(loc)
@@ -706,7 +720,7 @@ func (h *RetailHandler) GetAttendance(c *gin.Context) {
 				riwayat[i].Status = "Lupa Absen Pulang"
 				db.Model(&riwayat[i]).Update("status", "Lupa Absen Pulang")
 			} else {
-				riwayat[i].Status = "Hadir" 
+				riwayat[i].Status = "Hadir"
 			}
 		}
 	}
@@ -737,10 +751,14 @@ func (h *RetailHandler) ExportAttendance(c *gin.Context) {
 
 	for _, logData := range riwayat {
 		nik := "-"
-		if logData.User.NIK != nil { nik = *logData.User.NIK }
+		if logData.User.NIK != nil {
+			nik = *logData.User.NIK
+		}
 
 		jamPulang := logData.JamPulang
-		if jamPulang == "" { jamPulang = "Belum Pulang" }
+		if jamPulang == "" {
+			jamPulang = "Belum Pulang"
+		}
 
 		w.Write([]string{
 			logData.Tanggal,
@@ -773,14 +791,16 @@ func (h *RetailHandler) CreateEmployee(c *gin.Context) {
 	tempatLahir := c.PostForm("tempat_lahir")
 	tanggalLahir := c.PostForm("tanggal_lahir")
 	noHP := c.PostForm("no_hp")
-	inputRole := c.PostForm("role") 
+	inputRole := c.PostForm("role")
 
 	// 🚀 PERBAIKAN: Nomor HP sekarang WAJIB DIISI!
 	if name == "" || password == "" || noHP == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Nama, Nomor HP, dan Password wajib diisi!"})
 		return
 	}
-	if inputRole == "" { inputRole = "kasir" }
+	if inputRole == "" {
+		inputRole = "kasir"
+	}
 
 	// 🚀 FORMAT NOMOR HP JADI 628xxx SEBELUM DISIMPAN
 	formattedHP := utils.FormatPhoneNumber(noHP)
@@ -794,7 +814,7 @@ func (h *RetailHandler) CreateEmployee(c *gin.Context) {
 		newNIK = fmt.Sprintf("%s0001", currentYear)
 	} else {
 		lastNIK := *lastEmployee.NIK
-		
+
 		// 🚀 AMBIL 4 DIGIT TERAKHIR UNTUK URUTAN (Bukan 3 digit lagi)
 		if len(lastNIK) >= 4 {
 			lastSequence, _ := strconv.Atoi(lastNIK[len(lastNIK)-4:])
@@ -834,7 +854,7 @@ func (h *RetailHandler) CreateEmployee(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "Karyawan baru berhasil didaftarkan! 🤝",
-		"data": gin.H{"nama": employee.Name, "nik": newNIK, "jabatan": employee.Role},
+		"data":    gin.H{"nama": employee.Name, "nik": newNIK, "jabatan": employee.Role},
 	})
 }
 
@@ -866,26 +886,32 @@ func (h *RetailHandler) UpdateEmployee(c *gin.Context) {
 	employee.Name = c.PostForm("name")
 	employee.TempatLahir = c.PostForm("tempat_lahir")
 	employee.TanggalLahir = c.PostForm("tanggal_lahir")
-	
+
 	// 🚀 FORMAT NOMOR HP JUGA SAAT UPDATE
 	if inputHP := c.PostForm("no_hp"); inputHP != "" {
 		employee.NoHP = utils.FormatPhoneNumber(inputHP)
 	}
-	
-	if newRole := c.PostForm("role"); newRole != "" { employee.Role = newRole }
+
+	if newRole := c.PostForm("role"); newRole != "" {
+		employee.Role = newRole
+	}
 	if password := c.PostForm("password"); password != "" {
 		hashed, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		employee.Password = string(hashed)
 	}
 
 	nikClean := "karyawan"
-	if employee.NIK != nil { nikClean = *employee.NIK }
+	if employee.NIK != nil {
+		nikClean = *employee.NIK
+	}
 
 	if file, err := c.FormFile("foto"); err == nil {
 		newFileName := fmt.Sprintf("%s_%d%s", nikClean, time.Now().Unix(), filepath.Ext(file.Filename))
 		uploadPath := filepath.Join("uploads", newFileName)
 		if err := c.SaveUploadedFile(file, uploadPath); err == nil {
-			if employee.FotoURL != "" { os.Remove("." + employee.FotoURL) }
+			if employee.FotoURL != "" {
+				os.Remove("." + employee.FotoURL)
+			}
 			employee.FotoURL = "/uploads/" + newFileName
 		}
 	}
@@ -894,7 +920,9 @@ func (h *RetailHandler) UpdateEmployee(c *gin.Context) {
 		newBioName := fmt.Sprintf("%s_bio_%d%s", nikClean, time.Now().Unix(), filepath.Ext(bioFile.Filename))
 		uploadBioPath := filepath.Join("uploads", newBioName)
 		if err := c.SaveUploadedFile(bioFile, uploadBioPath); err == nil {
-			if employee.BiometricURL != "" { os.Remove("." + employee.BiometricURL) }
+			if employee.BiometricURL != "" {
+				os.Remove("." + employee.BiometricURL)
+			}
 			employee.BiometricURL = "/uploads/" + newBioName
 		}
 	}
@@ -907,75 +935,77 @@ func (h *RetailHandler) UpdateEmployee(c *gin.Context) {
 }
 
 type ProductInput struct {
-    SKU            *string `form:"sku"`
-    NamaProduk     string  `form:"nama_produk" binding:"required"`
-    Kategori       string  `form:"kategori"`
-    HargaModal     float64 `form:"harga_modal"`
-    HargaJual      float64 `form:"harga_jual" binding:"required"`
-    Stok           int     `form:"stok"`
-    SatuanDasar    string  `form:"satuan_dasar"`
-    SatuanBesar    string  `form:"satuan_besar"`
-    IsiPerBesar    int     `form:"isi_per_besar"`
-    HargaJualBesar float64 `form:"harga_jual_besar"`
-    
-    // 🚀 TAMBAHAN: Nangkep Form 3 Lapis (Rokok/Renteng)
-    IsNestedUom      bool   `form:"is_nested_uom"`
-    SatuanTengah     string `form:"satuan_tengah"`
-    IsiBesarKeTengah int    `form:"isi_besar_ke_tengah"`
-    IsiTengahKeDasar int    `form:"isi_tengah_ke_dasar"`
+	SKU            *string `form:"sku"`
+	NamaProduk     string  `form:"nama_produk" binding:"required"`
+	Kategori       string  `form:"kategori"`
+	HargaModal     float64 `form:"harga_modal"`
+	HargaJual      float64 `form:"harga_jual" binding:"required"`
+	Stok           int     `form:"stok"`
+	SatuanDasar    string  `form:"satuan_dasar"`
+	SatuanBesar    string  `form:"satuan_besar"`
+	IsiPerBesar    int     `form:"isi_per_besar"`
+	HargaJualBesar float64 `form:"harga_jual_besar"`
+
+	// 🚀 TAMBAHAN: Nangkep Form 3 Lapis (Rokok/Renteng)
+	IsNestedUom      bool   `form:"is_nested_uom"`
+	SatuanTengah     string `form:"satuan_tengah"`
+	IsiBesarKeTengah int    `form:"isi_besar_ke_tengah"`
+	IsiTengahKeDasar int    `form:"isi_tengah_ke_dasar"`
 }
 
 func (h *RetailHandler) CreateProduct(c *gin.Context) {
-    storeID := uint(c.MustGet("store_id").(float64))
+	storeID := uint(c.MustGet("store_id").(float64))
 
-    var input ProductInput
-    if err := c.ShouldBind(&input); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Periksa kembali isian form Anda: " + err.Error()})
-        return
-    }
-    if input.SatuanDasar == "" { input.SatuanDasar = "PCS" }
+	var input ProductInput
+	if err := c.ShouldBind(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Periksa kembali isian form Anda: " + err.Error()})
+		return
+	}
+	if input.SatuanDasar == "" {
+		input.SatuanDasar = "PCS"
+	}
 
-    var imagePath string
-    file, errFile := c.FormFile("gambar")
-    if errFile == nil {
-        folderPath := "uploads/products"
-        os.MkdirAll(folderPath, os.ModePerm)
-        fileName := fmt.Sprintf("%d_%s", time.Now().Unix(), file.Filename)
-        savePath := filepath.Join(folderPath, fileName)
+	var imagePath string
+	file, errFile := c.FormFile("gambar")
+	if errFile == nil {
+		folderPath := "uploads/products"
+		os.MkdirAll(folderPath, os.ModePerm)
+		fileName := fmt.Sprintf("%d_%s", time.Now().Unix(), file.Filename)
+		savePath := filepath.Join(folderPath, fileName)
 
-        if err := c.SaveUploadedFile(file, savePath); err != nil {
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan gambar produk"})
-            return
-        }
-        imagePath = "/" + savePath
-    }
+		if err := c.SaveUploadedFile(file, savePath); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan gambar produk"})
+			return
+		}
+		imagePath = "/" + savePath
+	}
 
-    product := models.Product{
-        StoreID:        storeID,
-        SKU:            input.SKU,
-        NamaProduk:     input.NamaProduk,
-        Kategori:       input.Kategori,
-        HargaModal:     input.HargaModal,
-        HargaJual:      input.HargaJual,
-        Stok:           input.Stok,
-        Gambar:         imagePath,
-        SatuanDasar:    input.SatuanDasar,
-        SatuanBesar:    input.SatuanBesar,
-        IsiPerBesar:    input.IsiPerBesar,
-        HargaJualBesar: input.HargaJualBesar, 
-        
-        // 🚀 TAMBAHAN: Masukin data 3 Lapis ke Database
-        IsNestedUom:      input.IsNestedUom,
-        SatuanTengah:     input.SatuanTengah,
-        IsiBesarKeTengah: input.IsiBesarKeTengah,
-        IsiTengahKeDasar: input.IsiTengahKeDasar,
-    }
+	product := models.Product{
+		StoreID:        storeID,
+		SKU:            input.SKU,
+		NamaProduk:     input.NamaProduk,
+		Kategori:       input.Kategori,
+		HargaModal:     input.HargaModal,
+		HargaJual:      input.HargaJual,
+		Stok:           input.Stok,
+		Gambar:         imagePath,
+		SatuanDasar:    input.SatuanDasar,
+		SatuanBesar:    input.SatuanBesar,
+		IsiPerBesar:    input.IsiPerBesar,
+		HargaJualBesar: input.HargaJualBesar,
 
-    if err := h.Repo.CreateProductGlobal(&product); err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan produk. Barcode mungkin sudah dipakai barang lain."})
-        return
-    }
-    c.JSON(http.StatusCreated, gin.H{"message": "Produk berhasil ditambahkan! 📦", "data": product})
+		// 🚀 TAMBAHAN: Masukin data 3 Lapis ke Database
+		IsNestedUom:      input.IsNestedUom,
+		SatuanTengah:     input.SatuanTengah,
+		IsiBesarKeTengah: input.IsiBesarKeTengah,
+		IsiTengahKeDasar: input.IsiTengahKeDasar,
+	}
+
+	if err := h.Repo.CreateProductGlobal(&product); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan produk. Barcode mungkin sudah dipakai barang lain."})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"message": "Produk berhasil ditambahkan! 📦", "data": product})
 }
 
 func (h *RetailHandler) GetProducts(c *gin.Context) {
@@ -990,8 +1020,12 @@ func (h *RetailHandler) GetProducts(c *gin.Context) {
 
 	if pageStr != "" || limitStr != "" {
 		usePagination = true
-		if pageStr == "" { pageStr = "1" }
-		if limitStr == "" { limitStr = "10" }
+		if pageStr == "" {
+			pageStr = "1"
+		}
+		if limitStr == "" {
+			limitStr = "10"
+		}
 		p, _ := strconv.Atoi(pageStr)
 		l, _ := strconv.Atoi(limitStr)
 		limit = l
@@ -1012,64 +1046,90 @@ func (h *RetailHandler) GetProducts(c *gin.Context) {
 }
 
 func (h *RetailHandler) UpdateProduct(c *gin.Context) {
-    storeID := uint(c.MustGet("store_id").(float64))
-    role := c.MustGet("role").(string)
+	storeID := uint(c.MustGet("store_id").(float64))
+	role := c.MustGet("role").(string)
 
-    if role != "owner" {
-        c.JSON(http.StatusForbidden, gin.H{"error": "Hentikan! Cuma Owner yang boleh ubah harga/data barang."})
-        return
-    }
+	if role != "owner" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Hentikan! Cuma Owner yang boleh ubah harga/data barang."})
+		return
+	}
 
-    productID, _ := strconv.Atoi(c.Param("id"))
-    product, err := h.Repo.GetProductByIDSimple(uint(productID), storeID)
-    if err != nil {
-        c.JSON(http.StatusNotFound, gin.H{"error": "Produk tidak ditemukan atau bukan milik toko Anda!"})
-        return
-    }
+	productID, _ := strconv.Atoi(c.Param("id"))
+	product, err := h.Repo.GetProductByIDSimple(uint(productID), storeID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Produk tidak ditemukan atau bukan milik toko Anda!"})
+		return
+	}
 
-    product.NamaProduk = c.PostForm("nama_produk")
-    if sku := c.PostForm("sku"); sku != "" { product.SKU = &sku } else { product.SKU = nil }
-    product.Kategori = c.PostForm("kategori")
+	product.NamaProduk = c.PostForm("nama_produk")
+	if sku := c.PostForm("sku"); sku != "" {
+		product.SKU = &sku
+	} else {
+		product.SKU = nil
+	}
+	product.Kategori = c.PostForm("kategori")
 
-    if hargaModal, err := strconv.ParseFloat(c.PostForm("harga_modal"), 64); err == nil { product.HargaModal = hargaModal }
-    if hargaJual, err := strconv.ParseFloat(c.PostForm("harga_jual"), 64); err == nil { product.HargaJual = hargaJual }
-    if stok, err := strconv.Atoi(c.PostForm("stok")); err == nil { product.Stok = stok }
-    if satuanDasar := c.PostForm("satuan_dasar"); satuanDasar != "" { product.SatuanDasar = satuanDasar }
-    product.SatuanBesar = c.PostForm("satuan_besar")
-    if isiPerBesar, err := strconv.Atoi(c.PostForm("isi_per_besar")); err == nil { product.IsiPerBesar = isiPerBesar } else { product.IsiPerBesar = 0 }
-    
-    // Nangkep harga_jual_besar
-    if hargaJualBesar, err := strconv.ParseFloat(c.PostForm("harga_jual_besar"), 64); err == nil {
-        product.HargaJualBesar = hargaJualBesar
-    } else {
-        product.HargaJualBesar = 0
-    }
+	if hargaModal, err := strconv.ParseFloat(c.PostForm("harga_modal"), 64); err == nil {
+		product.HargaModal = hargaModal
+	}
+	if hargaJual, err := strconv.ParseFloat(c.PostForm("harga_jual"), 64); err == nil {
+		product.HargaJual = hargaJual
+	}
+	if stok, err := strconv.Atoi(c.PostForm("stok")); err == nil {
+		product.Stok = stok
+	}
+	if satuanDasar := c.PostForm("satuan_dasar"); satuanDasar != "" {
+		product.SatuanDasar = satuanDasar
+	}
+	product.SatuanBesar = c.PostForm("satuan_besar")
+	if isiPerBesar, err := strconv.Atoi(c.PostForm("isi_per_besar")); err == nil {
+		product.IsiPerBesar = isiPerBesar
+	} else {
+		product.IsiPerBesar = 0
+	}
 
-    // 🚀 TAMBAHAN: Nangkep data kemasan tengah pas di-Edit
-    product.IsNestedUom = c.PostForm("is_nested_uom") == "true"
-    product.SatuanTengah = c.PostForm("satuan_tengah")
-    if ibt, err := strconv.Atoi(c.PostForm("isi_besar_ke_tengah")); err == nil { product.IsiBesarKeTengah = ibt } else { product.IsiBesarKeTengah = 0 }
-    if itd, err := strconv.Atoi(c.PostForm("isi_tengah_ke_dasar")); err == nil { product.IsiTengahKeDasar = itd } else { product.IsiTengahKeDasar = 0 }
+	// Nangkep harga_jual_besar
+	if hargaJualBesar, err := strconv.ParseFloat(c.PostForm("harga_jual_besar"), 64); err == nil {
+		product.HargaJualBesar = hargaJualBesar
+	} else {
+		product.HargaJualBesar = 0
+	}
 
-    file, errFile := c.FormFile("gambar")
-    if errFile == nil {
-        folderPath := "uploads/products"
-        os.MkdirAll(folderPath, os.ModePerm)
-        fileName := fmt.Sprintf("%d_%s", time.Now().Unix(), file.Filename)
-        savePath := filepath.Join(folderPath, fileName)
+	// 🚀 TAMBAHAN: Nangkep data kemasan tengah pas di-Edit
+	product.IsNestedUom = c.PostForm("is_nested_uom") == "true"
+	product.SatuanTengah = c.PostForm("satuan_tengah")
+	if ibt, err := strconv.Atoi(c.PostForm("isi_besar_ke_tengah")); err == nil {
+		product.IsiBesarKeTengah = ibt
+	} else {
+		product.IsiBesarKeTengah = 0
+	}
+	if itd, err := strconv.Atoi(c.PostForm("isi_tengah_ke_dasar")); err == nil {
+		product.IsiTengahKeDasar = itd
+	} else {
+		product.IsiTengahKeDasar = 0
+	}
 
-        if err := c.SaveUploadedFile(file, savePath); err == nil {
-            if product.Gambar != "" { os.Remove("." + product.Gambar) }
-            product.Gambar = "/" + savePath
-        }
-    }
+	file, errFile := c.FormFile("gambar")
+	if errFile == nil {
+		folderPath := "uploads/products"
+		os.MkdirAll(folderPath, os.ModePerm)
+		fileName := fmt.Sprintf("%d_%s", time.Now().Unix(), file.Filename)
+		savePath := filepath.Join(folderPath, fileName)
 
-    db := h.Repo.GetDB()
-    if err := h.Repo.SaveProduct(db, product); err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal update produk. Barcode mungkin bentrok."})
-        return
-    }
-    c.JSON(http.StatusOK, gin.H{"message": "Produk berhasil diubah! ✏️", "data": product})
+		if err := c.SaveUploadedFile(file, savePath); err == nil {
+			if product.Gambar != "" {
+				os.Remove("." + product.Gambar)
+			}
+			product.Gambar = "/" + savePath
+		}
+	}
+
+	db := h.Repo.GetDB()
+	if err := h.Repo.SaveProduct(db, product); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal update produk. Barcode mungkin bentrok."})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Produk berhasil diubah! ✏️", "data": product})
 }
 
 func (h *RetailHandler) DeleteProduct(c *gin.Context) {
@@ -1088,7 +1148,9 @@ func (h *RetailHandler) DeleteProduct(c *gin.Context) {
 		return
 	}
 
-	if product.Gambar != "" { os.Remove("." + product.Gambar) }
+	if product.Gambar != "" {
+		os.Remove("." + product.Gambar)
+	}
 	if err := h.Repo.DeleteProductGlobal(product); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus produk"})
 		return
@@ -1107,224 +1169,253 @@ func (h *RetailHandler) GetCategories(c *gin.Context) {
 }
 
 func (h *RetailHandler) ExportProducts(c *gin.Context) {
-    storeID := uint(c.MustGet("store_id").(float64))
-    products, err := h.Repo.GetAllProductsForExport(storeID)
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data produk"})
-        return
-    }
+	storeID := uint(c.MustGet("store_id").(float64))
+	products, err := h.Repo.GetAllProductsForExport(storeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data produk"})
+		return
+	}
 
-    b := &bytes.Buffer{}
-    w := csv.NewWriter(b)
-    w.Comma = '|'
-    
-    // 🚀 1. TAMBAHIN HEADER "Harga Jual Besar"
-    w.Write([]string{"SKU", "Nama Produk", "Kategori", "Harga Modal", "Harga Jual", "Stok", "Satuan Terkecil", "Satuan Tengah", "Satuan Besar", "Isi Per Besar", "Harga Jual Besar"})
+	b := &bytes.Buffer{}
+	w := csv.NewWriter(b)
+	w.Comma = '|'
 
-    for _, p := range products {
-        sku := ""
-        if p.SKU != nil { sku = *p.SKU }
-        w.Write([]string{
-            sku, p.NamaProduk, p.Kategori,
-            fmt.Sprintf("%.0f", p.HargaModal), fmt.Sprintf("%.0f", p.HargaJual),
-            fmt.Sprintf("%d", p.Stok), p.SatuanDasar, p.SatuanTengah, p.SatuanBesar, fmt.Sprintf("%d", p.IsiPerBesar),
-            fmt.Sprintf("%.0f", p.HargaJualBesar), // 🚀 2. MASUKIN DATANYA KE BARIS CSV
-        })
-    }
-    w.Flush()
+	// 🚀 1. TAMBAHIN HEADER "Harga Jual Besar"
+	w.Write([]string{"SKU", "Nama Produk", "Kategori", "Harga Modal", "Harga Jual", "Stok", "Satuan Terkecil", "Satuan Tengah", "Satuan Besar", "Isi Per Besar", "Harga Jual Besar"})
 
-    c.Header("Content-Disposition", "attachment; filename = katalog_produk_pos.csv")
-    c.Data(http.StatusOK, "text/csv", b.Bytes())
+	for _, p := range products {
+		sku := ""
+		if p.SKU != nil {
+			sku = *p.SKU
+		}
+		w.Write([]string{
+			sku, p.NamaProduk, p.Kategori,
+			fmt.Sprintf("%.0f", p.HargaModal), fmt.Sprintf("%.0f", p.HargaJual),
+			fmt.Sprintf("%d", p.Stok), p.SatuanDasar, p.SatuanTengah, p.SatuanBesar, fmt.Sprintf("%d", p.IsiPerBesar),
+			fmt.Sprintf("%.0f", p.HargaJualBesar), // 🚀 2. MASUKIN DATANYA KE BARIS CSV
+		})
+	}
+	w.Flush()
+
+	c.Header("Content-Disposition", "attachment; filename = katalog_produk_pos.csv")
+	c.Data(http.StatusOK, "text/csv", b.Bytes())
 }
 
 func (h *RetailHandler) ImportProducts(c *gin.Context) {
-    storeID := uint(c.MustGet("store_id").(float64))
-    file, _, err := c.Request.FormFile("file")
-    if err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "File tidak ditemukan"})
-        return
-    }
-    defer file.Close()
+	storeID := uint(c.MustGet("store_id").(float64))
+	file, _, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File tidak ditemukan"})
+		return
+	}
+	defer file.Close()
 
-    reader := csv.NewReader(file)
-    reader.Comma = '|'
-    _, _ = reader.Read() // Skip header
+	reader := csv.NewReader(file)
+	reader.Comma = '|'
+	_, _ = reader.Read() // Skip header
 
-    records, err := reader.ReadAll()
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membaca isi CSV"})
-        return
-    }
+	records, err := reader.ReadAll()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membaca isi CSV"})
+		return
+	}
 
-    db := h.Repo.GetDB()
-    err = db.Transaction(func(tx *gorm.DB) error {
-        for _, row := range records {
-            sku := row[0]; nama := row[1]; kategori := row[2]
-            modal, _ := strconv.ParseFloat(row[3], 64)
-            jual, _ := strconv.ParseFloat(row[4], 64)
-            stok, _ := strconv.Atoi(row[5])
-            dasar := row[6]; besar := row[7]; isi, _ := strconv.Atoi(row[8])
+	db := h.Repo.GetDB()
+	err = db.Transaction(func(tx *gorm.DB) error {
+		for _, row := range records {
+			sku := row[0]
+			nama := row[1]
+			kategori := row[2]
+			modal, _ := strconv.ParseFloat(row[3], 64)
+			jual, _ := strconv.ParseFloat(row[4], 64)
+			stok, _ := strconv.Atoi(row[5])
+			dasar := row[6]
+			besar := row[7]
+			isi, _ := strconv.Atoi(row[8])
 
-            // 🚀 3. BACA KOLOM BARU (Pake pengaman if len(row) > 9 biar ga error kalo upload CSV lama)
-            var jualBesar float64
-            if len(row) > 9 {
-                jualBesar, _ = strconv.ParseFloat(row[9], 64)
-            }
+			// 🚀 3. BACA KOLOM BARU (Pake pengaman if len(row) > 9 biar ga error kalo upload CSV lama)
+			var jualBesar float64
+			if len(row) > 9 {
+				jualBesar, _ = strconv.ParseFloat(row[9], 64)
+			}
 
-            if nama == "" { continue }
+			if nama == "" {
+				continue
+			}
 
-            var product models.Product
-            res := tx.Where("sku = ? AND store_id = ?", sku, storeID).First(&product)
+			var product models.Product
+			res := tx.Where("sku = ? AND store_id = ?", sku, storeID).First(&product)
 
-            if res.Error == nil {
-                // UPDATE BARANG YANG UDAH ADA
-                product.NamaProduk = nama; product.Kategori = kategori; product.HargaModal = modal
-                product.HargaJual = jual; product.Stok = stok; product.SatuanDasar = dasar
-                product.SatuanBesar = besar; product.IsiPerBesar = isi
-                product.HargaJualBesar = jualBesar // 🚀 4. SIMPAN HARGA GROSIR
+			if res.Error == nil {
+				// UPDATE BARANG YANG UDAH ADA
+				product.NamaProduk = nama
+				product.Kategori = kategori
+				product.HargaModal = modal
+				product.HargaJual = jual
+				product.Stok = stok
+				product.SatuanDasar = dasar
+				product.SatuanBesar = besar
+				product.IsiPerBesar = isi
+				product.HargaJualBesar = jualBesar // 🚀 4. SIMPAN HARGA GROSIR
 
-                tx.Save(&product)
-            } else {
-                // BIKIN BARANG BARU
-                newProduct := models.Product{
-                    StoreID: storeID, SKU: &sku, NamaProduk: nama, Kategori: kategori,
-                    HargaModal: modal, HargaJual: jual, Stok: stok, SatuanDasar: dasar,
-                    SatuanBesar: besar, IsiPerBesar: isi,
-                    HargaJualBesar: jualBesar, // 🚀 5. SIMPAN HARGA GROSIR
-                }
-                tx.Create(&newProduct)
-            }
-        }
-        return nil
-    })
+				tx.Save(&product)
+			} else {
+				// BIKIN BARANG BARU
+				newProduct := models.Product{
+					StoreID: storeID, SKU: &sku, NamaProduk: nama, Kategori: kategori,
+					HargaModal: modal, HargaJual: jual, Stok: stok, SatuanDasar: dasar,
+					SatuanBesar: besar, IsiPerBesar: isi,
+					HargaJualBesar: jualBesar, // 🚀 5. SIMPAN HARGA GROSIR
+				}
+				tx.Create(&newProduct)
+			}
+		}
+		return nil
+	})
 
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal impor: " + err.Error()})
-        return
-    }
-    c.JSON(http.StatusOK, gin.H{"message": "Berhasil mengimpor " + strconv.Itoa(len(records)) + " produk"})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal impor: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Berhasil mengimpor " + strconv.Itoa(len(records)) + " produk"})
 }
 
 func (h *RetailHandler) GetDashboardReport(c *gin.Context) {
-    role := c.MustGet("role").(string)
-    if role != "owner" {
-        c.JSON(http.StatusForbidden, gin.H{"error": "Akses ditolak! Laporan keuangan cuma untuk Owner."})
-        return
-    }
+	role := c.MustGet("role").(string)
+	if role != "owner" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Akses ditolak! Laporan keuangan cuma untuk Owner."})
+		return
+	}
 
-    storeID := uint(c.MustGet("store_id").(float64))
-    startDateStr := c.Query("start_date")
-    endDateStr := c.Query("end_date")
+	storeID := uint(c.MustGet("store_id").(float64))
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
 
-    now := time.Now()
-    location := now.Location()
+	now := time.Now()
+	location := now.Location()
 
-    start, _ := time.ParseInLocation("2006-01-02", startDateStr, location)
-    if startDateStr == "" { start = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, location) }
+	start, _ := time.ParseInLocation("2006-01-02", startDateStr, location)
+	if startDateStr == "" {
+		start = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, location)
+	}
 
-    end, _ := time.ParseInLocation("2006-01-02", endDateStr, location)
-    if endDateStr == "" { end = start.Add(24 * time.Hour) } else { end = end.Add(24 * time.Hour) }
+	end, _ := time.ParseInLocation("2006-01-02", endDateStr, location)
+	if endDateStr == "" {
+		end = start.Add(24 * time.Hour)
+	} else {
+		end = end.Add(24 * time.Hour)
+	}
 
-    // 🚀 STRUCT DI-UPDATE BUAT NAMPUNG DATA KLAIM & FINAL NETTO
-    var report struct {
-        TotalOmzet         float64 `json:"total_omzet"`
-        TotalLaba          float64 `json:"total_laba"`
-        JumlahTransaksi    int64   `json:"jumlah_transaksi"`
-        TotalProdukTerjual float64 `json:"total_produk_terjual"`
-        AvgTransaksi       float64 `json:"avg_transaksi"`
-        TotalReturQty      float64 `json:"total_retur_qty"`
-        TotalReturLoss     float64 `json:"total_retur_loss"`
-        
-        // Data SO Asli
-        TotalSOQty         float64 `json:"total_so_qty"`
-        TotalSOLoss        float64 `json:"total_so_loss"`
-        
-        // Data Klaim Barang Nyempil
-        TotalKlaimQty      float64 `json:"total_klaim_qty"`
-        TotalKlaimValue    float64 `json:"total_klaim_value"`
-        
-        // 🚀 HASIL AKHIR (FINAL) SETELAH DIKURANGI KLAIM
-        NetSOQty           float64 `json:"net_so_qty"`
-        NetSOLoss          float64 `json:"net_so_loss"`
-    }
+	// 🚀 STRUCT DI-UPDATE BUAT NAMPUNG DATA KLAIM & FINAL NETTO
+	var report struct {
+		TotalOmzet         float64 `json:"total_omzet"`
+		TotalLaba          float64 `json:"total_laba"`
+		JumlahTransaksi    int64   `json:"jumlah_transaksi"`
+		TotalProdukTerjual float64 `json:"total_produk_terjual"`
+		AvgTransaksi       float64 `json:"avg_transaksi"`
+		TotalReturQty      float64 `json:"total_retur_qty"`
+		TotalReturLoss     float64 `json:"total_retur_loss"`
 
-    omzet, qty, _ := h.Repo.GetDashboardSummary(storeID, start, end)
-    report.TotalOmzet = omzet
-    report.TotalProdukTerjual = qty
+		// Data SO Asli
+		TotalSOQty  float64 `json:"total_so_qty"`
+		TotalSOLoss float64 `json:"total_so_loss"`
 
-    laba, _ := h.Repo.GetDashboardLaba(storeID, start, end)
-    report.TotalLaba = laba
+		// Data Klaim Barang Nyempil
+		TotalKlaimQty   float64 `json:"total_klaim_qty"`
+		TotalKlaimValue float64 `json:"total_klaim_value"`
 
-    db := h.Repo.GetDB()
-    db.Model(&models.Transaction{}).Where("store_id = ? AND created_at BETWEEN ? AND ?", storeID, start, end).Count(&report.JumlahTransaksi)
+		// 🚀 HASIL AKHIR (FINAL) SETELAH DIKURANGI KLAIM
+		NetSOQty  float64 `json:"net_so_qty"`
+		NetSOLoss float64 `json:"net_so_loss"`
+	}
 
-    if report.JumlahTransaksi > 0 { report.AvgTransaksi = report.TotalOmzet / float64(report.JumlahTransaksi) }
+	omzet, qty, _ := h.Repo.GetDashboardSummary(storeID, start, end)
+	report.TotalOmzet = omzet
+	report.TotalProdukTerjual = qty
 
-    returQty, returLoss, _ := h.Repo.GetDashboardReturSummary(storeID, start, end)
-    report.TotalReturQty = returQty
-    report.TotalReturLoss = returLoss
+	laba, _ := h.Repo.GetDashboardLaba(storeID, start, end)
+	report.TotalLaba = laba
 
-    // 🚀 1. TARIK DATA SO AWAL
-    soQty, soLoss, _ := h.Repo.GetDashboardSOSummary(storeID, start, end)
-    report.TotalSOQty = soQty
-    report.TotalSOLoss = soLoss
+	db := h.Repo.GetDB()
+	db.Model(&models.Transaction{}).Where("store_id = ? AND created_at BETWEEN ? AND ?", storeID, start, end).Count(&report.JumlahTransaksi)
 
-    // 🚀 2. TARIK DATA KLAIM YANG UDAH DI-APPROVE
-    klaimQty, klaimValue, _ := h.Repo.GetDashboardKlaimSummary(storeID, start, end)
-    report.TotalKlaimQty = klaimQty
-    report.TotalKlaimValue = klaimValue
+	if report.JumlahTransaksi > 0 {
+		report.AvgTransaksi = report.TotalOmzet / float64(report.JumlahTransaksi)
+	}
 
-    // 🚀 3. HITUNG HASIL FINAL (NETTO RUGI)
-    report.NetSOQty = soQty - klaimQty
-    if report.NetSOQty < 0 { report.NetSOQty = 0 } // Biar gak minus kalau anomali
+	returQty, returLoss, _ := h.Repo.GetDashboardReturSummary(storeID, start, end)
+	report.TotalReturQty = returQty
+	report.TotalReturLoss = returLoss
 
-    report.NetSOLoss = soLoss - klaimValue
-    if report.NetSOLoss < 0 { report.NetSOLoss = 0 } // Biar gak minus kalau anomali
+	// 🚀 1. TARIK DATA SO AWAL
+	soQty, soLoss, _ := h.Repo.GetDashboardSOSummary(storeID, start, end)
+	report.TotalSOQty = soQty
+	report.TotalSOLoss = soLoss
 
-    lowStock, _ := h.Repo.GetLowStockProducts(storeID, 10)
+	// 🚀 2. TARIK DATA KLAIM YANG UDAH DI-APPROVE
+	klaimQty, klaimValue, _ := h.Repo.GetDashboardKlaimSummary(storeID, start, end)
+	report.TotalKlaimQty = klaimQty
+	report.TotalKlaimValue = klaimValue
 
-    type GrafikData struct {
-        Tanggal   string  `json:"tanggal"`
-        Omzet     float64 `json:"omzet"`
-        Laba      float64 `json:"laba"`
-        ReturLoss float64 `json:"retur_loss"`
-    }
-    var grafikPenjualan []GrafikData
+	// 🚀 3. HITUNG HASIL FINAL (NETTO RUGI)
+	report.NetSOQty = soQty - klaimQty
+	if report.NetSOQty < 0 {
+		report.NetSOQty = 0
+	} // Biar gak minus kalau anomali
 
-    days := int(end.Sub(start).Hours() / 24)
-    if days <= 0 { days = 1 }
-    if days > 31 { days = 31 }
+	report.NetSOLoss = soLoss - klaimValue
+	if report.NetSOLoss < 0 {
+		report.NetSOLoss = 0
+	} // Biar gak minus kalau anomali
 
-    for i := 0; i < days; i++ {
-        tgl := start.AddDate(0, 0, i)
-        tglEnd := tgl.Add(24 * time.Hour)
+	lowStock, _ := h.Repo.GetLowStockProducts(storeID, 10)
 
-        dailyOmzet, dailyLaba, dailyReturLoss, _ := h.Repo.GetDailySalesReport(storeID, tgl, tglEnd)
-        grafikPenjualan = append(grafikPenjualan, GrafikData{
-            Tanggal:   tgl.Format("02 Jan"),
-            Omzet:     dailyOmzet,
-            Laba:      dailyLaba,
-            ReturLoss: dailyReturLoss,
-        })
-    }
+	type GrafikData struct {
+		Tanggal   string  `json:"tanggal"`
+		Omzet     float64 `json:"omzet"`
+		Laba      float64 `json:"laba"`
+		ReturLoss float64 `json:"retur_loss"`
+	}
+	var grafikPenjualan []GrafikData
 
-    bestSellers, _ := h.Repo.GetTopBestSellers(storeID, start, end)
+	days := int(end.Sub(start).Hours() / 24)
+	if days <= 0 {
+		days = 1
+	}
+	if days > 31 {
+		days = 31
+	}
 
-    c.JSON(http.StatusOK, gin.H{
-        "data": gin.H{
-            "summary":          report,
-            "grafik_penjualan": grafikPenjualan,
-            "best_sellers":     bestSellers,
-            "low_stock":        lowStock,
-        },
-    })
+	for i := 0; i < days; i++ {
+		tgl := start.AddDate(0, 0, i)
+		tglEnd := tgl.Add(24 * time.Hour)
+
+		dailyOmzet, dailyLaba, dailyReturLoss, _ := h.Repo.GetDailySalesReport(storeID, tgl, tglEnd)
+		grafikPenjualan = append(grafikPenjualan, GrafikData{
+			Tanggal:   tgl.Format("02 Jan"),
+			Omzet:     dailyOmzet,
+			Laba:      dailyLaba,
+			ReturLoss: dailyReturLoss,
+		})
+	}
+
+	bestSellers, _ := h.Repo.GetTopBestSellers(storeID, start, end)
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": gin.H{
+			"summary":          report,
+			"grafik_penjualan": grafikPenjualan,
+			"best_sellers":     bestSellers,
+			"low_stock":        lowStock,
+		},
+	})
 }
 
 // 📅 SCHEDULE STRUCTURES & METHODS
 type ScheduleItem struct {
 	UserID    uint   `json:"user_id" binding:"required"`
-	Tanggal   string `json:"tanggal" binding:"required"`    
-	ShiftType string `json:"shift_type" binding:"required"` 
+	Tanggal   string `json:"tanggal" binding:"required"`
+	ShiftType string `json:"shift_type" binding:"required"`
 }
 
 type BulkScheduleInput struct {
@@ -1334,7 +1425,11 @@ type BulkScheduleInput struct {
 func (h *RetailHandler) SaveSchedules(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	if val, ok := storeIDRaw.(float64); ok { storeID = uint(val) } else if val, ok := storeIDRaw.(uint); ok { storeID = val }
+	if val, ok := storeIDRaw.(float64); ok {
+		storeID = uint(val)
+	} else if val, ok := storeIDRaw.(uint); ok {
+		storeID = val
+	}
 
 	var input BulkScheduleInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -1347,7 +1442,16 @@ func (h *RetailHandler) SaveSchedules(c *gin.Context) {
 
 	for _, item := range input.Schedules {
 		jamMasuk, jamPulang := "-", "-"
-		if item.ShiftType == "Shift 1" { jamMasuk = "07:00"; jamPulang = "15:00" } else if item.ShiftType == "Shift 2" { jamMasuk = "15:00"; jamPulang = "23:00" } else if item.ShiftType == "Middle" { jamMasuk = "11:00"; jamPulang = "19:00" }
+		if item.ShiftType == "Shift 1" {
+			jamMasuk = "07:00"
+			jamPulang = "15:00"
+		} else if item.ShiftType == "Shift 2" {
+			jamMasuk = "15:00"
+			jamPulang = "23:00"
+		} else if item.ShiftType == "Middle" {
+			jamMasuk = "11:00"
+			jamPulang = "19:00"
+		}
 
 		existing, err := h.Repo.GetScheduleByDate(tx, item.UserID, item.Tanggal)
 		if err == nil {
@@ -1383,7 +1487,11 @@ func (h *RetailHandler) SaveSchedules(c *gin.Context) {
 func (h *RetailHandler) GetSchedules(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	if val, ok := storeIDRaw.(float64); ok { storeID = uint(val) } else if val, ok := storeIDRaw.(uint); ok { storeID = val }
+	if val, ok := storeIDRaw.(float64); ok {
+		storeID = uint(val)
+	} else if val, ok := storeIDRaw.(uint); ok {
+		storeID = val
+	}
 
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
@@ -1405,10 +1513,12 @@ type OpenSessionInput struct {
 func (h *RetailHandler) OpenSession(c *gin.Context) {
 	userID := uint(c.MustGet("user_id").(float64))
 	storeID := uint(c.MustGet("store_id").(float64))
-	
+
 	userRoleRaw, exists := c.Get("role")
 	userRole := ""
-	if exists { userRole = userRoleRaw.(string) }
+	if exists {
+		userRole = userRoleRaw.(string)
+	}
 
 	var input OpenSessionInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -1417,7 +1527,7 @@ func (h *RetailHandler) OpenSession(c *gin.Context) {
 	}
 
 	loc, _ := time.LoadLocation("Asia/Jakarta")
-	nowInJKT := time.Now().In(loc) 
+	nowInJKT := time.Now().In(loc)
 	today := nowInJKT.Format("2006-01-02")
 
 	if userRole != "owner" {
@@ -1472,8 +1582,10 @@ func (h *RetailHandler) CheckSessionStatus(c *gin.Context) {
 func (h *RetailHandler) CloseSession(c *gin.Context) {
 	sessionIDStr := c.Param("id")
 	sessionID, _ := strconv.Atoi(sessionIDStr)
-	
-	var input struct { TotalAktual float64 `json:"total_aktual"` }
+
+	var input struct {
+		TotalAktual float64 `json:"total_aktual"`
+	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Format input salah"})
 		return
@@ -1489,9 +1601,7 @@ func (h *RetailHandler) CloseSession(c *gin.Context) {
 	netSales := salesGross - totalTax
 
 	salesCash, _ := h.Repo.GetSalesMethodSummary(sessionIDStr, "Cash")
-	salesQRIS, _ := h.Repo.GetSalesMethodSummary(sessionIDStr, "QRIS")
-	salesBCA, _ := h.Repo.GetSalesMethodSummary(sessionIDStr, "BCA")
-	salesNonTunai := salesQRIS + salesBCA
+	salesNonTunai := salesGross - salesCash
 
 	totalExpected := session.ModalAwal + salesCash
 	selisih := input.TotalAktual - totalExpected
@@ -1499,7 +1609,7 @@ func (h *RetailHandler) CloseSession(c *gin.Context) {
 	loc, _ := time.LoadLocation("Asia/Jakarta")
 	now := time.Now().In(loc)
 
-	session.TotalMasuk = salesCash 
+	session.TotalMasuk = salesCash
 	session.TotalAktual = input.TotalAktual
 	session.Selisih = selisih
 	session.EndTime = &now
@@ -1508,33 +1618,31 @@ func (h *RetailHandler) CloseSession(c *gin.Context) {
 	h.Repo.SaveSession(session)
 
 	c.JSON(http.StatusOK, gin.H{
-		"start_time":       session.StartTime.In(loc).Format("02.01.06 15:04"),
-		"end_time":         session.EndTime.In(loc).Format("02.01.06 15:04"),
-		"sales_gross":      salesGross,
-		"total_tax":        totalTax,
-		"net_sales":        netSales,
-		"modal_awal":        session.ModalAwal,
-		"sales_cash":       salesCash,
-		"sales_qris":       salesQRIS,
-		"sales_bca":        salesBCA,
-		"sales_non_tunai":  salesNonTunai,
-		"total_expected":   totalExpected,
-		"total_actual":     input.TotalAktual,
-		"selisih":          selisih,
+		"start_time":      session.StartTime.In(loc).Format("02.01.06 15:04"),
+		"end_time":        session.EndTime.In(loc).Format("02.01.06 15:04"),
+		"sales_gross":     salesGross,
+		"total_tax":       totalTax,
+		"net_sales":       netSales,
+		"modal_awal":      session.ModalAwal,
+		"sales_cash":      salesCash,
+		"sales_non_tunai": salesNonTunai,
+		"total_expected":  totalExpected,
+		"total_actual":    input.TotalAktual,
+		"selisih":         selisih,
 	})
 }
 
 // 🛒 POS TRANSACTION LOGIC METHODS
 type CartItem struct {
-    ProductID uint `json:"product_id" binding:"required"`
-    Kuantitas int  `json:"kuantitas" binding:"required,gt=0"`
+	ProductID uint    `json:"product_id" binding:"required"`
+	Kuantitas int     `json:"kuantitas" binding:"required,gt=0"`
 	UomLabel  string  `json:"uom_label"`
 	HargaUom  float64 `json:"harga_uom"`
 }
 type TransactionInput struct {
-    Items        []CartItem `json:"items" binding:"required,gt=0"`
-    NominalBayar float64    `json:"nominal_bayar" binding:"required"`
-    MetodeBayar  string     `json:"metode_bayar"`
+	Items         []CartItem `json:"items" binding:"required,gt=0"`
+	NominalBayar  float64    `json:"nominal_bayar" binding:"required"`
+	MetodeBayar   string     `json:"metode_bayar"`
 	NoHPPelanggan string     `json:"no_hp_pelanggan"`
 }
 
@@ -1542,7 +1650,7 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 	storeID := uint(c.MustGet("store_id").(float64))
 	userID := uint(c.MustGet("user_id").(float64))
 
-	var input TransactionInput 
+	var input TransactionInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Format keranjang tidak sesuai!"})
 		return
@@ -1577,22 +1685,24 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 		}
 
 		tipeBisnis := "RETAIL"
-		statusPesanan := "SELESAI" 
+		statusPesanan := "SELESAI"
 		if store.BusinessType == "Jasa - Laundry" {
 			tipeBisnis = "LAUNDRY"
-			statusPesanan = "ANTRI"   
+			statusPesanan = "ANTRI"
 		} else if store.BusinessType == "Kuliner - F&B" {
 			tipeBisnis = "FNB"
-			statusPesanan = "PROSES"  
+			statusPesanan = "PROSES"
 		}
 
 		var subTotal float64
 		var details []models.TransactionDetail
-		rincianBarangWA := "" 
+		rincianBarangWA := ""
 
 		for _, item := range input.Items {
 			product, err := h.Repo.GetProductByID(tx, item.ProductID, storeID)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 
 			if product.Stok < item.Kuantitas {
 				return fmt.Errorf("Stok %s habis! Sisa: %d", product.NamaProduk, product.Stok)
@@ -1600,11 +1710,13 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 
 			// Kurangi stok berdasarkan total eceran (batang)
 			product.Stok -= item.Kuantitas
-			if err := h.Repo.SaveProduct(tx, product); err != nil { return err }
+			if err := h.Repo.SaveProduct(tx, product); err != nil {
+				return err
+			}
 
 			// 🚀 LOGIKA KALKULASI DISPLAY
 			itemSubTotal := float64(item.Kuantitas) * (product.HargaJual) // Fallback kalkulasi
-			
+
 			rincianDisplay := item.UomLabel
 			hargaSatuanDisplay := item.HargaUom
 
@@ -1621,19 +1733,19 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 			subTotal += itemSubTotal
 
 			// Teks WA yang rapi dan detail
-			rincianBarangWA += fmt.Sprintf("▪️ *%s*\n   %s x %s = *%s*\n", 
-				product.NamaProduk, 
-				rincianDisplay, 
-				formatRupiah(hargaSatuanDisplay), 
+			rincianBarangWA += fmt.Sprintf("▪️ *%s*\n   %s x %s = *%s*\n",
+				product.NamaProduk,
+				rincianDisplay,
+				formatRupiah(hargaSatuanDisplay),
 				formatRupiah(itemSubTotal),
 			)
 
 			details = append(details, models.TransactionDetail{
 				ProductID:   product.ID,
-				HargaSatuan: hargaSatuanDisplay, 
+				HargaSatuan: hargaSatuanDisplay,
 				Kuantitas:   item.Kuantitas, // Disimpan eceran untuk histori gudang
 				SubTotal:    itemSubTotal,
-				ItemType:    "PRODUCT", 
+				ItemType:    "PRODUCT",
 				DetailNotes: rincianDisplay, // Disimpan format "3 BUNGKUS"
 			})
 		}
@@ -1644,7 +1756,9 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 		pembulatan := roundedTotal - rawTotal
 
 		kembalian := input.NominalBayar - roundedTotal
-		if kembalian < 0 { return fmt.Errorf("Uang pelanggan kurang!") }
+		if kembalian < 0 {
+			return fmt.Errorf("Uang pelanggan kurang!")
+		}
 
 		noInvoice := fmt.Sprintf("INV-%s", time.Now().Format("20060102150405"))
 
@@ -1659,8 +1773,8 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 			TotalHarga:    roundedTotal,
 			MetodeBayar:   input.MetodeBayar,
 			StatusBayar:   "LUNAS",
-			TipeBisnis:    tipeBisnis,   
-			StatusPesanan: statusPesanan, 
+			TipeBisnis:    tipeBisnis,
+			StatusPesanan: statusPesanan,
 			NominalBayar:  input.NominalBayar,
 			Kembalian:     kembalian,
 			Details:       details,
@@ -1669,7 +1783,7 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 		// 🚀 KIRIM WA DENGAN FORMAT RUPIAH YANG SEMPURNA
 		if input.NoHPPelanggan != "" && store.WaToken != "" {
 			pesanNota := fmt.Sprintf(
-`🏪 *%s*
+				`🏪 *%s*
 ========================
 Halo Bosku! Terima kasih sudah berbelanja. Berikut rincian transaksi Anda:
 
@@ -1722,7 +1836,9 @@ Halo Bosku! Terima kasih sudah berbelanja. Berikut rincian transaksi Anda:
 func (h *RetailHandler) GetTransactions(c *gin.Context) {
 	storeID := uint(c.MustGet("store_id").(float64))
 	tanggal := c.Query("tanggal")
-	if tanggal == "" { tanggal = time.Now().Format("2006-01-02") }
+	if tanggal == "" {
+		tanggal = time.Now().Format("2006-01-02")
+	}
 
 	parsedDate, err := time.ParseInLocation("2006-01-02", tanggal, time.Local)
 	if err != nil {
@@ -1781,24 +1897,56 @@ func (h *RetailHandler) UpdateStoreSettings(c *gin.Context) {
 	}
 
 	// 1. Update Data Teks Standar
-	if v := c.PostForm("nama_toko"); v != "" { store.NamaToko = v }
-	if v := c.PostForm("telepon"); v != "" { store.Telepon = utils.FormatPhoneNumber(v) }
-	if v := c.PostForm("alamat"); v != "" { store.Alamat = v }
-	if v := c.PostForm("provinsi"); v != "" { store.Provinsi = v }
-	if v := c.PostForm("kota"); v != "" { store.Kota = v }
-	if v := c.PostForm("kecamatan"); v != "" { store.Kecamatan = v }
-	if v := c.PostForm("kelurahan"); v != "" { store.Kelurahan = v }
-	if v := c.PostForm("kode_pos"); v != "" { store.KodePos = v }
-	if v := c.PostForm("qris_name"); v != "" { store.QrisName = v }
-	if v := c.PostForm("receipt_footer"); v != "" { store.ReceiptFooter = v }
-	if v := c.PostForm("wa_token"); v != "" { store.WaToken = v }
+	if v := c.PostForm("nama_toko"); v != "" {
+		store.NamaToko = v
+	}
+	if v := c.PostForm("telepon"); v != "" {
+		store.Telepon = utils.FormatPhoneNumber(v)
+	}
+	if v := c.PostForm("alamat"); v != "" {
+		store.Alamat = v
+	}
+	if v := c.PostForm("provinsi"); v != "" {
+		store.Provinsi = v
+	}
+	if v := c.PostForm("kota"); v != "" {
+		store.Kota = v
+	}
+	if v := c.PostForm("kecamatan"); v != "" {
+		store.Kecamatan = v
+	}
+	if v := c.PostForm("kelurahan"); v != "" {
+		store.Kelurahan = v
+	}
+	if v := c.PostForm("kode_pos"); v != "" {
+		store.KodePos = v
+	}
+	if v := c.PostForm("qris_name"); v != "" {
+		store.QrisName = v
+	}
+	if v := c.PostForm("receipt_footer"); v != "" {
+		store.ReceiptFooter = v
+	}
+	if v := c.PostForm("wa_token"); v != "" {
+		store.WaToken = v
+	}
 
 	// 🚀 TAMBAHAN: Update Data Payment Gateway & Printer
-	if v := c.PostForm("payment_type"); v != "" { store.PaymentType = v }
-	if v := c.PostForm("midtrans_server_key"); v != "" { store.MidtransServerKey = v }
-	if v := c.PostForm("midtrans_client_key"); v != "" { store.MidtransClientKey = v }
-	if v := c.PostForm("printer_width"); v != "" { store.PrinterWidth = v }
-	if v := c.PostForm("printer_type"); v != "" { store.PrinterType = v }
+	if v := c.PostForm("payment_type"); v != "" {
+		store.PaymentType = v
+	}
+	if v := c.PostForm("midtrans_server_key"); v != "" {
+		store.MidtransServerKey = v
+	}
+	if v := c.PostForm("midtrans_client_key"); v != "" {
+		store.MidtransClientKey = v
+	}
+	if v := c.PostForm("printer_width"); v != "" {
+		store.PrinterWidth = v
+	}
+	if v := c.PostForm("printer_type"); v != "" {
+		store.PrinterType = v
+	}
 
 	// Toggle Pajak
 	if v := c.PostForm("is_tax_active"); v != "" {
@@ -1820,7 +1968,9 @@ func (h *RetailHandler) UpdateStoreSettings(c *gin.Context) {
 		newFileName := fmt.Sprintf("store_%d_logo_%d%s", storeID, time.Now().Unix(), filepath.Ext(file.Filename))
 		uploadPath := filepath.Join("uploads", newFileName)
 		if err := c.SaveUploadedFile(file, uploadPath); err == nil {
-			if store.LogoURL != "" { os.Remove("." + store.LogoURL) } // Hapus logo lama
+			if store.LogoURL != "" {
+				os.Remove("." + store.LogoURL)
+			} // Hapus logo lama
 			store.LogoURL = "/uploads/" + newFileName
 		}
 	}
@@ -1835,7 +1985,9 @@ func (h *RetailHandler) UpdateStoreSettings(c *gin.Context) {
 		newFileName := fmt.Sprintf("store_%d_qris_%d%s", storeID, time.Now().Unix(), filepath.Ext(file.Filename))
 		uploadPath := filepath.Join("uploads", newFileName)
 		if err := c.SaveUploadedFile(file, uploadPath); err == nil {
-			if store.QrisImage != "" { os.Remove("." + store.QrisImage) } // Hapus qris lama
+			if store.QrisImage != "" {
+				os.Remove("." + store.QrisImage)
+			} // Hapus qris lama
 			store.QrisImage = "/uploads/" + newFileName
 		}
 	}
@@ -1867,15 +2019,15 @@ func (h *RetailHandler) CreateUpgradePayment(c *gin.Context) {
 
 	// 1. SETUP KUNCI RAHASIA MIDTRANS (Pakai Server Key Sandbox Lu)
 	// Nanti ganti pakai Server Key asli dari dashboard Midtrans lu
-	midtrans.ServerKey = os.Getenv("MIDTRANS_SERVER_KEY") 
+	midtrans.ServerKey = os.Getenv("MIDTRANS_SERVER_KEY")
 	midtrans.Environment = midtrans.Sandbox // Default aman
-    if os.Getenv("APP_ENV") == "production" {
-        midtrans.Environment = midtrans.Production
-    }
+	if os.Getenv("APP_ENV") == "production" {
+		midtrans.Environment = midtrans.Production
+	}
 
 	// 2. BIKIN KERANJANG TAGIHAN
 	orderID := fmt.Sprintf("UPGRADE-TOKO-%d-%s-%d", storeID, strings.ToUpper(input.PlanName), time.Now().Unix())
-	
+
 	req := &snap.Request{
 		TransactionDetails: midtrans.TransactionDetails{
 			OrderID:  orderID,
@@ -1913,19 +2065,26 @@ func (h *RetailHandler) MidtransWebhook(c *gin.Context) {
 	transactionStatus, _ := payload["transaction_status"].(string)
 
 	if transactionStatus == "settlement" || transactionStatus == "capture" {
-		// Pecah Order ID: "UPGRADE-TOKO-1-PREMIUM-1717200000"
 		parts := strings.Split(orderID, "-")
+
+		// A. CEK UPGRADE PAKET
 		if len(parts) >= 5 && parts[0] == "UPGRADE" {
 			storeID := parts[2]
-			planName := parts[3] // Ini bakal dapet kata "PREMIUM" atau "PROFESSIONAL"
-			
-			endDate := time.Now().AddDate(0, 1, 0) // Tambah 1 bulan dari sekarang
-			
+			planName := parts[3]
+			endDate := time.Now().AddDate(0, 1, 0)
 			db := h.Repo.GetDB()
-			
-			// 🚀 UPDATE NAMA PAKET JUGA DI SINI BOSKU!
-			db.Exec("UPDATE stores SET subscription_status = ?, subscription_end = ?, subscription_plan = ? WHERE id = ?", 
+			db.Exec("UPDATE stores SET subscription_status = ?, subscription_end = ?, subscription_plan = ? WHERE id = ?",
 				"active", endDate, strings.ToLower(planName), storeID)
+
+			// B. CEK TRANSAKSI POS (KASIR)
+		} else if len(parts) >= 2 && parts[0] == "POS" {
+			db := h.Repo.GetDB()
+			err := db.Exec("UPDATE transactions SET status_bayar = ? WHERE no_invoice = ?",
+				"LUNAS", orderID).Error
+
+			if err != nil {
+				fmt.Println("❌ GAGAL UPDATE TRANSAKSI:", err)
+			}
 		}
 	}
 
@@ -1947,7 +2106,7 @@ func (h *RetailHandler) CreatePosMidtransOrder(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Sesi tidak valid"})
 		return
 	}
-	
+
 	var storeID uint
 	switch v := storeIDRaw.(type) {
 	case float64:
@@ -1977,13 +2136,13 @@ func (h *RetailHandler) CreatePosMidtransOrder(c *gin.Context) {
 
 	// 1. INIT CLIENT MIDTRANS
 	var s snap.Client
-	
+
 	// 🚀 FIX: PAKSA JADI SANDBOX (HAPUS LOGIKA DETEKSI SB-)
-	env := midtrans.Sandbox 
-    if os.Getenv("APP_ENV") == "production" {
-        env = midtrans.Production
-    } 
-	
+	env := midtrans.Sandbox
+	if os.Getenv("APP_ENV") == "production" {
+		env = midtrans.Production
+	}
+
 	s.New(store.MidtransServerKey, env)
 
 	orderID := fmt.Sprintf("POS-STR%d-%d", storeID, time.Now().Unix())

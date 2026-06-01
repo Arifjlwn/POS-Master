@@ -47,43 +47,95 @@ const emit = defineEmits(['close', 'process-closing', 'print-closing', 'finish-c
     </div>
 
     <div v-if="showReceiptClosing" class="fixed inset-0 bg-slate-900/90 flex items-center justify-center z-[200] p-4 backdrop-blur-sm">
-        <div class="bg-white p-6 rounded-[32px] shadow-2xl w-full max-w-sm overflow-hidden border-t-8 border-indigo-600">
-            <div id="print-closing" class="text-left font-mono text-[9px] leading-tight uppercase text-black bg-white p-2 mx-auto" style="width: 58mm;">
-                <div class="text-center mb-3">
-                    <h2 class="font-black text-xs mb-1 italic">{{ currentSession?.store?.nama_toko || 'ARZU STORE' }}</h2>
-                    <p class="font-bold text-[7px] tracking-widest border-y border-black py-1">CLOSING REPORT - POS {{ currentSession?.station_number }}</p>
-                </div>
-                
-                <div class="flex justify-between mb-1 font-bold"><span>MULAI :</span><span>{{ lastClosingData?.start_time }}</span></div>
-                <div class="flex justify-between mb-1 font-bold"><span>SELESAI :</span><span>{{ lastClosingData?.end_time }}</span></div>
-                <div class="flex justify-between mb-2 font-bold"><span>KASIR :</span><span>{{ currentUser?.name?.split(' ')[0] }}</span></div>
-                
-                <p class="border-b border-dashed border-black mb-2"></p>
-                <div class="flex justify-between font-bold"><span>SALES KOTOR :</span><span>{{ lastClosingData?.sales_gross?.toLocaleString('id-ID') || 0 }}</span></div>
-                <p class="border-b border-black my-1"></p>
-                <div class="flex justify-between font-black text-[10px]"><span>NET SALES :</span><span>{{ lastClosingData?.net_sales?.toLocaleString('id-ID') || 0 }}</span></div>
-                
-                <p class="border-b border-dashed border-black my-2"></p>
-                <div class="flex justify-between font-bold"><span>MODAL AWAL :</span><span>{{ currentSession?.modal_awal?.toLocaleString('id-ID') || 0 }}</span></div>
-                <div class="flex justify-between font-bold"><span>SALES TUNAI :</span><span>{{ lastClosingData?.sales_cash?.toLocaleString('id-ID') || 0 }}</span></div>
-                <div class="flex justify-between font-bold"><span>SALES NON-TUNAI :</span><span>{{ lastClosingData?.sales_non_tunai?.toLocaleString('id-ID') || 0 }}</span></div>
-                <div class="flex justify-between font-black text-[10px] mt-1"><span>TOTAL MASUK :</span><span>{{ lastClosingData?.total_expected?.toLocaleString('id-ID') || 0 }}</span></div>
-                
-                <p class="border-b border-dashed border-black my-2"></p>
-                <div class="flex justify-between font-bold"><span>UANG FISIK :</span><span>{{ lastClosingData?.total_actual?.toLocaleString('id-ID') || 0 }}</span></div>
-                <div class="flex justify-between font-black text-[11px] mt-1"><span>SELISIH :</span><span>{{ lastClosingData?.selisih?.toLocaleString('id-ID') || 0 }}</span></div>
-                
-                <p class="border-b border-dashed border-black mt-4"></p>
-                <div class="text-center mt-2 font-bold text-[7px] tracking-widest">
-                    <p>=== SHIFT SELESAI ===</p>
-                    <p class="mt-2">DIPERIKSA OLEH : ___________</p>
-                </div>
-            </div>
+    <div class="bg-white p-6 rounded-[32px] shadow-2xl w-full max-w-sm overflow-hidden border-t-8 border-slate-800">
+        <div id="print-closing" class="text-left font-mono text-[10px] leading-relaxed uppercase text-black bg-white p-2 mx-auto" style="width: 58mm;">
             
-            <div class="mt-5 flex gap-2 no-print">
-                <button @click="emit('print-closing')" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg flex items-center justify-center gap-2">Struk</button>
-                <button @click="emit('finish-closing')" class="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-black text-[9px] uppercase tracking-widest flex items-center justify-center gap-2">Pulang</button>
-            </div>
+    <div class="text-center mb-4">
+        <h2 class="font-black text-xs uppercase">{{ currentSession?.store?.nama_toko || 'ARZU STORE' }}</h2>
+        <div class="w-full h-[1px] bg-black my-1"></div>
+        <p class="font-bold text-[8px] tracking-widest">CLOSING REPORT</p>
+        <p class="font-bold text-[8px]">POS #{{ currentSession?.station_number }}</p>
+    </div>
+    
+    <div class="mb-3">
+        <div class="flex justify-between font-bold">
+            <span>START</span>
+            <span>{{ lastClosingData?.start_time }}</span></div>
+        <div class="flex justify-between font-bold">
+            <span>END</span>
+            <span>{{ lastClosingData?.end_time }}</span></div>
+        <div class="flex justify-between font-bold">
+            <span>CASHIER</span>
+            <span>{{ currentUser?.name?.split(' ')[0] }}</span>
         </div>
     </div>
+    
+    <div class="border-b border-dashed border-black mb-3"></div>
+    
+    <div class="mb-3">
+        <div class="flex justify-between font-bold text-[9px] mt-1">
+            <span>- NET SALES</span>
+            <span class="font-black">{{ lastClosingData?.net_sales?.toLocaleString('id-ID') || 0 }}</span>
+        </div>
+        <div class="flex justify-between font-bold text-[9px]">
+            <span>- TAX</span>
+            <span>{{ lastClosingData?.total_tax?.toLocaleString('id-ID') || 0 }}</span>
+        </div>
+        <div class="flex justify-between font-bold text-[9px]">
+            <span>TOTAL TRANSACTION</span>
+            <span>{{ (lastClosingData?.net_sales.toLocaleString('id-ID') || 0) + (lastClosingData?.total_tax.toLocaleString('id-ID') || 0) }}</span>
+        </div>
+    </div>
+
+    <div class="border-b border-black mb-3"></div>
+    <div class="flex justify-between font-bold text-[9px]">
+        <span>DRAWER SUMMARY :</span>    
+    </div>
+    
+    <div class="mb-3 space-y-0.5">
+        <div class="flex justify-between font-bold">
+            <span>CASH FLOAT</span>
+            <span>{{ currentSession?.modal_awal?.toLocaleString('id-ID') || 0 }}</span>
+        </div>
+        <div class="flex justify-between font-bold">
+            <span>CASH SALES</span>
+            <span>{{ lastClosingData?.sales_cash?.toLocaleString('id-ID') || 0 }}</span>
+        </div>
+        <div class="flex justify-between font-bold">
+            <span>NON-CASH</span>
+            <span>{{ lastClosingData?.sales_non_tunai?.toLocaleString('id-ID') || 0 }}</span>
+        </div>
+    </div>
+    
+    <div class="border-b border-black mb-2"></div>
+    
+    <div class="mb-4">
+        <div class="flex justify-between font-black text-[10px] mb-1">
+            <span>EXPECTED CASH</span>
+            <span>{{ lastClosingData?.total_expected?.toLocaleString('id-ID') || 0 }}</span>
+        </div>
+        <div class="flex justify-between font-black text-[10px]">
+            <span>ACTUAL CASH</span>
+            <span>{{ lastClosingData?.total_actual?.toLocaleString('id-ID') || 0 }}</span>
+        </div>
+        <div class="flex justify-between font-black text-[11px] mt-2 border-t border-black pt-1">
+            <span>VARIANCE</span>
+            <span>{{ lastClosingData?.selisih?.toLocaleString('id-ID') || 0 }}</span>
+        </div>
+    </div>
+    
+    <div class="text-center font-bold text-[8px] mt-6">
+        <p>=== END OF SHIFT ===</p>
+        <div class="mt-8 border-t border-black w-3/4 mx-auto"></div>
+        <p class="mt-1">{{ currentUser?.name }}</p>
+        
+    </div>
+</div>
+        
+        <div class="mt-6 flex gap-2 no-print">
+            <button @click="emit('print-closing')" class="flex-1 bg-slate-900 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg">Print Struk</button>
+            <button @click="emit('finish-closing')" class="flex-1 bg-slate-200 text-slate-700 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest">Selesai</button>
+        </div>
+    </div>
+</div>
 </template>
