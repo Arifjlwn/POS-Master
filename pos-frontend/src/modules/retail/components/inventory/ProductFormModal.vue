@@ -197,9 +197,12 @@ const enableNestedUom = () => {
                                 <label class="text-[8px] font-black text-blue-400 uppercase block mb-1">Sebutannya Apa ? ( Kemasan Paling Besar )</label>
                                 <input v-model="form.satuan_besar" type="text" placeholder="KARTON / SLOP / KARUNG / JERIGEN" class="w-full md:w-1/2 p-3 bg-slate-800 border border-blue-900 focus:border-blue-500 rounded-xl outline-none font-black text-xs uppercase text-white transition-all">
                                 
-                                <button v-if="!form.is_nested_uom" @click="enableNestedUom" class="mt-3 text-[9px] font-black text-blue-400 hover:text-blue-300 uppercase tracking-widest text-left flex items-center gap-1.5 w-max bg-blue-900/30 px-3 py-2.5 rounded-xl border border-blue-900/50 transition-all hover:bg-blue-900/50 active:scale-95 shadow-sm">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-                                    Tambah Kemasan Tengah ( Cth: Slop -> Bungkus -> Batang )
+                                <button v-if="!form.is_nested_uom" @click="enableNestedUom" class="mt-3 text-[9px] font-black text-blue-400 hover:text-blue-300 uppercase tracking-widest text-left flex items-start sm:items-center gap-1.5 w-full sm:w-max bg-blue-900/30 px-3 py-2.5 rounded-xl border border-blue-900/50 transition-all hover:bg-blue-900/50 active:scale-95 shadow-sm whitespace-normal">
+                                    <!-- Icon SVG diberikan flex-shrink-0 agar tidak gepeng saat teks melipat -->
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 mt-0.5 sm:mt-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    <span>Tambah Kemasan Tengah ( Cth: Slop -> Bungkus -> Batang )</span>
                                 </button>
                             </div>
 
