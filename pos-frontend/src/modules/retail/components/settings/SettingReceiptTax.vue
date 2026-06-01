@@ -4,6 +4,7 @@ const props = defineProps({ form: Object });
 
 <template>
     <div class="space-y-6 animate-fade-in-up">
+        
         <div class="p-6 border-2 border-slate-100 rounded-3xl bg-white">
             <div class="flex items-center justify-between mb-6">
                 <div>
@@ -23,10 +24,32 @@ const props = defineProps({ form: Object });
         </div>
 
         <div class="p-6 border-2 border-slate-100 rounded-3xl bg-white">
-            <h4 class="font-black text-slate-800 uppercase tracking-widest text-sm mb-1">Catatan Kaki Struk</h4>
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Pesan yang tercetak di bagian paling bawah struk thermal</p>
+            <h4 class="font-black text-slate-800 uppercase tracking-widest text-sm mb-1">Pengaturan Cetak Struk</h4>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">Konfigurasi hardware dan identitas nota pelanggan</p>
             
-            <textarea v-model="form.receipt_footer" rows="3" placeholder="Terima kasih atas kunjungan Anda. Barang yang sudah dibeli tidak dapat ditukar/dikembalikan." class="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-blue-600 outline-none font-bold text-sm text-center resize-none"></textarea>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+                <div>
+                    <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Ukuran Kertas Printer</label>
+                    <select v-model="form.printer_width" class="w-full p-4 bg-slate-50 border-2 border-slate-100 focus:border-blue-500 rounded-2xl outline-none font-black text-xs uppercase text-slate-800 cursor-pointer transition-all">
+                        <option value="58mm">Thermal Kecil (58mm)</option>
+                        <option value="80mm">Thermal Besar (80mm)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Tipe Koneksi Printer</label>
+                    <select v-model="form.printer_type" class="w-full p-4 bg-slate-50 border-2 border-slate-100 focus:border-blue-500 rounded-2xl outline-none font-black text-xs uppercase text-slate-800 cursor-pointer transition-all">
+                        <option value="bluetooth">Bluetooth (HP / Tablet)</option>
+                        <option value="usb">Kabel USB (Laptop / PC)</option>
+                        <option value="lan">LAN / WiFi (Jaringan)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="pt-6 border-t border-slate-100">
+                <label class="text-[9px] font-black text-slate-800 uppercase tracking-widest mb-2 block">Catatan Kaki Struk (Footer)</label>
+                <textarea v-model="form.receipt_footer" rows="3" placeholder="Terima kasih atas kunjungan Anda. Barang yang dibeli tidak dapat ditukar." class="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-blue-600 outline-none font-bold text-sm text-center resize-none"></textarea>
+            </div>
         </div>
+
     </div>
 </template>

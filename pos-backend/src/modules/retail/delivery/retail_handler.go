@@ -1780,7 +1780,7 @@ func (h *RetailHandler) UpdateStoreSettings(c *gin.Context) {
 		return
 	}
 
-	// 1. Update Data Teks
+	// 1. Update Data Teks Standar
 	if v := c.PostForm("nama_toko"); v != "" { store.NamaToko = v }
 	if v := c.PostForm("telepon"); v != "" { store.Telepon = utils.FormatPhoneNumber(v) }
 	if v := c.PostForm("alamat"); v != "" { store.Alamat = v }
@@ -1793,6 +1793,13 @@ func (h *RetailHandler) UpdateStoreSettings(c *gin.Context) {
 	if v := c.PostForm("receipt_footer"); v != "" { store.ReceiptFooter = v }
 	if v := c.PostForm("wa_token"); v != "" { store.WaToken = v }
 
+	// 🚀 TAMBAHAN: Update Data Payment Gateway & Printer
+	if v := c.PostForm("payment_type"); v != "" { store.PaymentType = v }
+	if v := c.PostForm("midtrans_server_key"); v != "" { store.MidtransServerKey = v }
+	if v := c.PostForm("midtrans_client_key"); v != "" { store.MidtransClientKey = v }
+	if v := c.PostForm("printer_width"); v != "" { store.PrinterWidth = v }
+	if v := c.PostForm("printer_type"); v != "" { store.PrinterType = v }
+
 	// Toggle Pajak
 	if v := c.PostForm("is_tax_active"); v != "" {
 		store.IsTaxActive = (v == "true")
@@ -1803,8 +1810,13 @@ func (h *RetailHandler) UpdateStoreSettings(c *gin.Context) {
 		}
 	}
 
-	// 2. Update Logo Struk
-	if file, err := c.FormFile("logo"); err == nil {
+	// 2. 🚀 Update / Hapus Logo Struk
+	if c.PostForm("delete_logo") == "true" {
+		if store.LogoURL != "" {
+			os.Remove("." + store.LogoURL) // Hapus file dari folder lokal server!
+			store.LogoURL = ""             // Kosongkan URL di database
+		}
+	} else if file, err := c.FormFile("logo"); err == nil {
 		newFileName := fmt.Sprintf("store_%d_logo_%d%s", storeID, time.Now().Unix(), filepath.Ext(file.Filename))
 		uploadPath := filepath.Join("uploads", newFileName)
 		if err := c.SaveUploadedFile(file, uploadPath); err == nil {
@@ -1813,8 +1825,13 @@ func (h *RetailHandler) UpdateStoreSettings(c *gin.Context) {
 		}
 	}
 
-	// 3. Update Barcode QRIS
-	if file, err := c.FormFile("qris"); err == nil {
+	// 3. 🚀 Update / Hapus Barcode QRIS
+	if c.PostForm("delete_qris") == "true" {
+		if store.QrisImage != "" {
+			os.Remove("." + store.QrisImage) // Hapus file fisik
+			store.QrisImage = ""             // Kosongkan dari DB
+		}
+	} else if file, err := c.FormFile("qris"); err == nil {
 		newFileName := fmt.Sprintf("store_%d_qris_%d%s", storeID, time.Now().Unix(), filepath.Ext(file.Filename))
 		uploadPath := filepath.Join("uploads", newFileName)
 		if err := c.SaveUploadedFile(file, uploadPath); err == nil {
@@ -1851,7 +1868,10 @@ func (h *RetailHandler) CreateUpgradePayment(c *gin.Context) {
 	// 1. SETUP KUNCI RAHASIA MIDTRANS (Pakai Server Key Sandbox Lu)
 	// Nanti ganti pakai Server Key asli dari dashboard Midtrans lu
 	midtrans.ServerKey = os.Getenv("MIDTRANS_SERVER_KEY") 
-	midtrans.Environment = midtrans.Sandbox
+	midtrans.Environment = midtrans.Sandbox // Default aman
+    if os.Getenv("APP_ENV") == "production" {
+        midtrans.Environment = midtrans.Production
+    }
 
 	// 2. BIKIN KERANJANG TAGIHAN
 	orderID := fmt.Sprintf("UPGRADE-TOKO-%d-%s-%d", storeID, strings.ToUpper(input.PlanName), time.Now().Unix())
@@ -1893,11 +1913,11 @@ func (h *RetailHandler) MidtransWebhook(c *gin.Context) {
 	transactionStatus, _ := payload["transaction_status"].(string)
 
 	if transactionStatus == "settlement" || transactionStatus == "capture" {
-		// Pecah Order ID: "UPGRADE-TOKO-1-ENTERPRISE-1717200000"
+		// Pecah Order ID: "UPGRADE-TOKO-1-PREMIUM-1717200000"
 		parts := strings.Split(orderID, "-")
 		if len(parts) >= 5 && parts[0] == "UPGRADE" {
 			storeID := parts[2]
-			planName := parts[3] // Ini bakal dapet kata "ENTERPRISE" atau "PROFESSIONAL"
+			planName := parts[3] // Ini bakal dapet kata "PREMIUM" atau "PROFESSIONAL"
 			
 			endDate := time.Now().AddDate(0, 1, 0) // Tambah 1 bulan dari sekarang
 			
@@ -1910,4 +1930,78 @@ func (h *RetailHandler) MidtransWebhook(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+// ==============================================================
+// 🚀 MIDTRANS TRANSAKSI KASIR (UANG MASUK KE REKENING TENANT/TOKO)
+// ==============================================================
+
+// Struct buat nangkep total belanja dari Vue
+type PosMidtransReq struct {
+	Total float64 `json:"total" binding:"required"`
+}
+
+func (h *RetailHandler) CreatePosMidtransOrder(c *gin.Context) {
+	storeIDRaw, exists := c.Get("store_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Sesi tidak valid"})
+		return
+	}
+	
+	var storeID uint
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
+	}
+
+	var input PosMidtransReq
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data nominal tidak valid"})
+		return
+	}
+
+	var store models.Store
+	if err := src.DB.First(&store, storeID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Toko tidak ditemukan!"})
+		return
+	}
+
+	if store.PaymentType != "midtrans" || store.MidtransServerKey == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Toko belum mengatur Midtrans Server Key!"})
+		return
+	}
+
+	// 1. INIT CLIENT MIDTRANS
+	var s snap.Client
+	
+	// 🚀 FIX: PAKSA JADI SANDBOX (HAPUS LOGIKA DETEKSI SB-)
+	env := midtrans.Sandbox 
+    if os.Getenv("APP_ENV") == "production" {
+        env = midtrans.Production
+    } 
+	
+	s.New(store.MidtransServerKey, env)
+
+	orderID := fmt.Sprintf("POS-STR%d-%d", storeID, time.Now().Unix())
+
+	req := &snap.Request{
+		TransactionDetails: midtrans.TransactionDetails{
+			OrderID:  orderID,
+			GrossAmt: int64(input.Total),
+		},
+	}
+
+	// TEMBAK API MIDTRANS
+	snapResp, err := s.CreateTransaction(req)
+	if err != nil {
+		fmt.Println("❌ ERROR MIDTRANS:", err.GetMessage())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.GetMessage()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"token": snapResp.Token, "order_id": orderID})
 }

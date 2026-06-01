@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 
 const props = defineProps({ form: Object, logoPreview: String });
-const emit = defineEmits(['update-file']);
+const emit = defineEmits(['update-file', 'remove-logo']); // 🚀 Tambahin emit remove-logo
 const fileInput = ref(null);
 
 const onLogoSelect = (e) => {
@@ -16,10 +16,23 @@ const onLogoSelect = (e) => {
         <div class="flex flex-col md:flex-row gap-6">
             <div class="w-full md:w-1/3 flex flex-col items-center p-6 bg-slate-50 rounded-3xl border-2 border-slate-100">
                 <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Logo Toko</label>
-                <div @click="$refs.fileInput.click()" class="w-32 h-32 bg-white rounded-[24px] shadow-sm flex items-center justify-center cursor-pointer overflow-hidden border-2 border-slate-200 group relative hover:border-blue-400 transition-colors">
-                    <img v-if="logoPreview" :src="logoPreview" class="w-full h-full object-contain p-2">
-                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-slate-300 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                
+                <div class="relative w-32 h-32 bg-white rounded-[24px] shadow-sm flex items-center justify-center overflow-hidden border-2 border-slate-200 group hover:border-blue-400 transition-colors">
+                    
+                    <div v-if="logoPreview" class="w-full h-full relative cursor-default">
+                        <img :src="logoPreview" class="w-full h-full object-contain p-2">
+                        
+                        <button @click.prevent="emit('remove-logo')" class="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm cursor-pointer z-10">
+                            <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <div v-else @click="$refs.fileInput.click()" class="w-full h-full flex items-center justify-center cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-slate-300 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                    </div>
+
                 </div>
+                
                 <input type="file" ref="fileInput" @change="onLogoSelect" class="hidden" accept="image/*">
                 <p class="text-[9px] text-slate-400 font-bold mt-4 text-center">Format: JPG, PNG (Max 2MB)</p>
             </div>

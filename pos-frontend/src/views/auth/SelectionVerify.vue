@@ -1,21 +1,51 @@
 <script setup>
 import { useRoute, useRouter } from 'vue-router';
 import Swal from 'sweetalert2';
+import api from '../../api.js'; // Pastikan path ke api.js lu bener
 
 const route = useRoute();
 const router = useRouter();
 const email = route.query.email;
 const phone = route.query.phone;
 
-const selectMethod = (method) => {
-    if (method === 'whatsapp') {
-        // Nanti Mas bisa integrasi API WA Blast di sini
-        Swal.fire('Info', 'Fitur WhatsApp sedang dalam pengembangan, gunakan Email dulu ya!', 'info');
+const selectMethod = async (method) => {
+    // 🚀 OPSI EMAIL: TETEP PAKE ROUTER PUSH BIASA
+    if (method === 'email') {
+        router.push({ path: '/verify-otp', query: { email: email } });
         return;
     }
     
-    // 🚀 FIX: Diarahkan ke /verify-otp sesuai rute Kepala Suku index.js lu
-    router.push({ path: '/verify-otp', query: { email: email } });
+    // 🚀 OPSI WHATSAPP: TEMBAK API KE GOLANG LU
+    if (method === 'whatsapp') {
+        Swal.fire({
+            title: 'Mengirim OTP...',
+            text: 'Mohon tunggu, kami sedang mengirim kode ke WhatsApp Anda',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        try {
+            // Tembak API Go lu
+            await api.post('/auth/send-otp-wa', {
+                phone: phone // Pastikan format nomor HP di backend udah bener (+62 atau 08)
+            });
+
+            Swal.close();
+            Swal.fire('Berhasil!', 'Kode OTP sudah dikirim ke WhatsApp Anda.', 'success');
+            
+            // Setelah berhasil, arahin ke halaman verifikasi
+            router.push({ path: '/verify-otp', query: { email: email, method: 'wa' } });
+            
+        } catch (error) {
+            Swal.close();
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Mengirim',
+                text: error.response?.data?.error || 'Server Fonnte sedang sibuk, coba lagi nanti.',
+                confirmButtonColor: '#ef4444'
+            });
+        }
+    }
 };
 </script>
 

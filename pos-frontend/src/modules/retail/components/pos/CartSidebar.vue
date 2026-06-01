@@ -337,14 +337,10 @@
         </div>
       </div>
 
-      <div
-        class="p-3 bg-white border-t border-slate-100 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)] shrink-0 z-10 lg:rounded-b-[32px]"
-      >
+      <div class="p-3 bg-white border-t border-slate-100 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)] shrink-0 z-10 lg:rounded-b-[32px]">
+        
         <div class="mb-2.5">
-          <span
-            class="font-black text-[8px] md:text-[9px] text-slate-400 block mb-1.5 uppercase tracking-widest text-center"
-            >Metode Pembayaran</span
-          >
+          <span class="font-black text-[8px] md:text-[9px] text-slate-400 block mb-1.5 uppercase tracking-widest text-center">Metode Pembayaran</span>
           <div class="grid grid-cols-3 gap-1.5 md:gap-2">
             <button
               v-for="method in ['Cash', 'QRIS', 'Debit']"
@@ -357,112 +353,73 @@
               "
               class="py-1.5 md:py-2 rounded-lg font-black text-[9px] uppercase transition-all flex flex-col items-center gap-1 border"
             >
-              <svg
-                v-if="method === 'Cash'"
-                xmlns="http://www.w3.org/2000/svg"
-                class="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
-              <svg
-                v-else-if="method === 'QRIS'"
-                xmlns="http://www.w3.org/2000/svg"
-                class="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
-                />
-              </svg>
-              <svg
-                v-else-if="method === 'Debit'"
-                xmlns="http://www.w3.org/2000/svg"
-                class="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-                />
-              </svg>
+              <svg v-if="method === 'Cash'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+              <svg v-else-if="method === 'QRIS'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+              <svg v-else-if="method === 'Debit'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
               {{ method === 'Cash' ? 'Tunai' : method }}
             </button>
           </div>
         </div>
 
         <div class="space-y-2 mb-3">
-          <div
-            class="flex justify-between items-end border-b border-dashed border-slate-200 pb-1.5"
-          >
-            <span
-              class="font-black text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest"
-              >Total Tagihan</span
-            >
-            <span
-              class="text-xl md:text-2xl font-black text-indigo-800 leading-none tracking-tighter"
-              >Rp {{ totalBelanja.toLocaleString('id-ID') }}</span
-            >
+          <div class="flex justify-between items-end border-b border-dashed border-slate-200 pb-1.5">
+            <span class="font-black text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest">Total Tagihan</span>
+            <span class="text-xl md:text-2xl font-black text-indigo-800 leading-none tracking-tighter">Rp {{ totalBelanja.toLocaleString('id-ID') }}</span>
           </div>
 
-          <div class="grid grid-cols-5 gap-1.5 mb-3">
+          <div v-show="paymentMethod === 'Cash'" class="animate-[fadeInUp_0.2s_ease-out]">
+            <div class="grid grid-cols-5 gap-1.5 mb-3">
+              <button
+                v-for="nom in [100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100]"
+                :key="nom"
+                @click="emit('set-nominal', nom)"
+                class="bg-white border border-slate-200 hover:border-indigo-400 hover:text-indigo-600 py-2 rounded-lg font-black text-[9px] text-slate-600 uppercase transition-all active:scale-95 shadow-sm"
+              >
+                {{ nom >= 1000 ? nom / 1000 + 'K' : nom }}
+              </button>
+            </div>
+            
             <button
-              v-for="nom in [
-                100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100,
-              ]"
-              :key="nom"
-              @click="emit('set-nominal', nom)"
-              class="bg-white border border-slate-200 hover:border-indigo-400 hover:text-indigo-600 py-2 rounded-lg font-black text-[9px] text-slate-600 uppercase transition-all active:scale-95 shadow-sm"
+              @click="emit('set-nominal', -payAmount)"
+              class="w-full bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-600 py-2 rounded-lg font-black text-[10px] uppercase transition-all active:scale-95 shadow-sm mb-3"
             >
-              {{ nom >= 1000 ? nom / 1000 + 'K' : nom }}
+              CLEAR NOMINAL (C)
             </button>
           </div>
 
-          <button
-            @click="emit('set-nominal', -payAmount)"
-            class="w-full bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-600 py-2 rounded-lg font-black text-[10px] uppercase transition-all active:scale-95 shadow-sm mb-3"
-          >
-            CLEAR NOMINAL (C)
-          </button>
+          <div v-show="paymentMethod === 'QRIS'" class="bg-indigo-50 p-3 rounded-xl border border-indigo-100 flex items-center justify-between animate-[fadeInUp_0.2s_ease-out] mb-3">
+            <div class="flex items-center gap-2">
+                <div class="p-1.5 bg-indigo-100 text-indigo-600 rounded-lg"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg></div>
+                <div class="text-[9px] font-black text-indigo-800 uppercase tracking-widest leading-tight">Uang Pas<br><span class="text-indigo-500 font-bold">Terisi Otomatis</span></div>
+            </div>
+            <div class="text-right">
+                <div class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Validasi</div>
+                <div class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Via Midtrans/Statis</div>
+            </div>
+          </div>
 
-          <div
-            class="flex justify-between items-center bg-slate-50 p-1.5 md:p-2 rounded-xl border-2 border-slate-100 focus-within:border-indigo-500 transition-all"
-          >
-            <span
-              class="font-black text-[9px] md:text-[10px] text-slate-600 uppercase tracking-widest pl-2"
-              >Bayar</span
-            >
+          <div v-show="paymentMethod === 'Debit'" class="bg-slate-100 p-3 rounded-xl border border-slate-200 flex items-center justify-between animate-[fadeInUp_0.2s_ease-out] mb-3">
+            <div class="flex items-center gap-2">
+                <div class="p-1.5 bg-slate-200 text-slate-500 rounded-lg"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg></div>
+                <div class="text-[9px] font-black text-slate-600 uppercase tracking-widest leading-tight">Uang Pas<br><span class="text-slate-400 font-bold">Terisi Otomatis</span></div>
+            </div>
+            <div class="text-right">
+                <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">EDC External</div>
+            </div>
+          </div>
+
+          <div class="flex justify-between items-center bg-slate-50 p-1.5 md:p-2 rounded-xl border-2 border-slate-100 focus-within:border-indigo-500 transition-all">
+            <span class="font-black text-[9px] md:text-[10px] text-slate-600 uppercase tracking-widest pl-2">Bayar</span>
             <div class="relative flex-1 ml-2 md:ml-4">
-              <span
-                class="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs italic"
-                >Rp</span
-              >
+              <span class="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs italic">Rp</span>
               <input
                 type="text"
-                :value="
-                  payAmount === 0 ? '' : payAmount.toLocaleString('id-ID')
-                "
+                :value="paymentMethod === 'Cash' ? (payAmount === 0 ? '' : payAmount.toLocaleString('id-ID')) : totalBelanja.toLocaleString('id-ID')"
                 @input="emit('format-rupiah', $event)"
                 :disabled="paymentMethod !== 'Cash'"
                 :class="
                   paymentMethod !== 'Cash'
-                    ? 'bg-slate-200/50 text-slate-400 cursor-not-allowed border-transparent'
+                    ? 'bg-slate-200/50 text-slate-500 cursor-not-allowed border-transparent font-black shadow-inner'
                     : 'bg-white text-slate-900 border-slate-200 shadow-sm'
                 "
                 class="w-full text-right text-sm md:text-base font-black rounded-lg py-1 pl-8 pr-3 transition-all outline-none border"
@@ -472,50 +429,27 @@
           </div>
 
           <div class="flex justify-between items-center px-1">
-            <span
-              class="font-black text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest"
-              >Kembali</span
-            >
-            <span
-              class="text-base md:text-lg font-black"
-              :class="kembalian >= 0 ? 'text-emerald-500' : 'text-rose-500'"
-            >
-              Rp {{ kembalian.toLocaleString('id-ID') }}
+            <span class="font-black text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest">Kembali</span>
+            <span class="text-base md:text-lg font-black" :class="kembalian >= 0 && paymentMethod === 'Cash' ? 'text-emerald-500' : 'text-slate-400'">
+              Rp {{ paymentMethod === 'Cash' ? kembalian.toLocaleString('id-ID') : '0' }}
             </span>
           </div>
         </div>
 
         <button
           @click="emit('checkout')"
-          :disabled="
-            cart.length === 0 ||
-            payAmount < totalBelanja ||
-            isProcessingCheckout
-          "
-          class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black py-2.5 md:py-3 px-4 rounded-xl transition-all flex justify-center items-center gap-2 md:gap-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-emerald-200 hover:shadow-emerald-300 active:scale-95 text-xs md:text-sm uppercase tracking-widest"
+          :disabled="cart.length === 0 || (paymentMethod === 'Cash' && payAmount < totalBelanja) || isProcessingCheckout"
+          class="w-full text-white font-black py-2.5 md:py-3 px-4 rounded-xl transition-all flex justify-center items-center gap-2 md:gap-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl active:scale-95 text-xs md:text-sm uppercase tracking-widest"
+          :class="paymentMethod === 'QRIS' ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200' : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-200'"
         >
           <template v-if="isProcessingCheckout">
-            <div
-              class="w-4 h-4 md:w-5 md:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"
-            ></div>
+            <div class="w-4 h-4 md:w-5 md:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
             Memproses...
           </template>
           <template v-else>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4 md:w-5 md:h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="3"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-            Proses Bayar
+            <svg v-if="paymentMethod === 'QRIS'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            {{ paymentMethod === 'QRIS' ? 'Generate QRIS' : 'Proses Bayar' }}
           </template>
         </button>
       </div>

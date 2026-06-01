@@ -10,6 +10,7 @@ import (
 	"pos-backend/src/core/middlewares"
 	"pos-backend/models"
 	"time"
+	"strings"
 
 	// 🚀 ALIAS DIBAWAH INI KUNCI BIAR GAK COLLISION
 	fnbDelivery "pos-backend/src/modules/fnb/delivery"
@@ -76,6 +77,7 @@ func main() {
 	r.POST("/api/register", auth.Register)
 	r.POST("/api/verify-otp", auth.VerifyOTP)
 	r.POST("/api/login", auth.Login)
+	r.POST("/api/auth/send-otp-wa", auth.SendOTPWhatsApp)
 
 	// 1. TAMBAHKAN INI: Inisialisasi Retail Handler di sini (di luar rute terproteksi)
     retailRepo := retailRepository.NewRetailRepo(src.DB)
@@ -131,49 +133,48 @@ func main() {
             }
 
             // 🚀 2. LOGIKA SUBSCRIPTION (SAAS)
-            subPlan := input.Plan
-            if subPlan == "" { subPlan = "trial" } // Proteksi
+            subPlan := strings.ToLower(input.Plan)
+			if subPlan == "" { subPlan = "trial" }
 
-            subIndustry := input.Industry
-            if subIndustry == "" { subIndustry = "retail" }
+			subIndustry := input.Industry
+			if subIndustry == "" { subIndustry = "retail" }
 
-            var subEnd time.Time
-            if subPlan == "trial" {
-                subEnd = time.Now().AddDate(0, 0, 14) // Trial 14 Hari
-            } else {
-                subEnd = time.Now().AddDate(0, 1, 0)  // Paket bayar 30 Hari
-            }
+			var subEnd time.Time
+			subStatus := "inactive" // 🚀 Default berbayar adalah inactive (Nunggak)
 
-            // 🚀 3. SETTING FITUR APA AJA YANG KETEMBAK
-            fiturAktif := `["kasir"]` // Paket miskin (Basic)
-            if subPlan == "pro" {
-                fiturAktif = `["kasir", "absensi", "export_excel"]`
-            } else if subPlan == "premium" || subPlan == "trial" {
-                // Trial ngerasain fitur dewa
-                fiturAktif = `["kasir", "absensi", "export_excel", "multi_gudang", "ai_analyst", "whatsapp"]`
-            }
+			if subPlan == "trial" {
+				subStatus = "active"                  // Trial langsung aktif gratis
+				subEnd = time.Now().AddDate(0, 0, 14) // Trial 14 Hari
+			} else {
+				// Kalau berbayar, set expired-nya detik ini juga (biar ke-lock sebelum bayar)
+				subEnd = time.Now() 
+			}
 
-            // 🚀 4. SUSUN MODEL DATABASE TOKO BARU
-            newStore := models.Store{
-                NamaToko:     input.NamaToko,
-                Telepon:      input.Telepon,
-                BusinessType: input.Business_type,
-                
-                // DATA SAAS
-                Industry:           subIndustry,
-                SubscriptionPlan:   subPlan,
-                SubscriptionStatus: "active",
-                SubscriptionEnd:    subEnd,
-                FiturAktif:         fiturAktif,
+			// 🚀 SETTING FITUR
+			fiturAktif := `["kasir"]`
+			if subPlan == "pro" {
+				fiturAktif = `["kasir", "absensi", "export_excel"]`
+			} else if subPlan == "premium" || subPlan == "trial" {
+				fiturAktif = `["kasir", "absensi", "export_excel", "multi_gudang", "ai_analyst", "whatsapp"]`
+			}
 
-                // LOKASI (UDAH NORMALISASI)
-                Alamat:       input.AlamatJalan, 
-                Provinsi:     input.Provinsi, 
-                Kota:         input.Kota,
-                Kecamatan:    input.Kecamatan,
-                Kelurahan:    input.Kelurahan,
-                KodePos:      input.KodePos,
-            }
+			// 🚀 SUSUN MODEL DATABASE TOKO BARU
+			newStore := models.Store{
+				NamaToko:           input.NamaToko,
+				Telepon:            input.Telepon,
+				BusinessType:       input.Business_type,
+				Industry:           subIndustry,
+				SubscriptionPlan:   subPlan,
+				SubscriptionStatus: subStatus, // 🚀 Gunakan status dinamis hasil filter di atas!
+				SubscriptionEnd:    subEnd,
+				FiturAktif:         fiturAktif,
+				Alamat:             input.AlamatJalan, 
+				Provinsi:           input.Provinsi, 
+				Kota:               input.Kota,
+				Kecamatan:          input.Kecamatan,
+				Kelurahan:          input.Kelurahan,
+				KodePos:            input.KodePos,
+			}
             
             // 🚀 5. TRANSAKSI DATABASE (Simpan Toko + Update ID di User)
             errTx := src.DB.Transaction(func(tx *gorm.DB) error {

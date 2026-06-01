@@ -56,7 +56,6 @@ const router = createRouter({
 })
 
 // 🛡️ SATPAM GLOBAL VUE ROUTER
-// 🛡️ SATPAM GLOBAL VUE ROUTER
 router.beforeEach((to, from) => {
   const token = localStorage.getItem('token');
   
@@ -80,7 +79,7 @@ router.beforeEach((to, from) => {
 
     const getPlanLevel = (plan) => {
       const p = plan.toLowerCase();
-      if (p === 'premium' || p === 'enterprise' || p === 'trial') return 3;
+      if (p === 'premium' || p === 'trial') return 3;
       if (p === 'pro') return 2;
       return 1; // Basic
     };
@@ -97,7 +96,7 @@ router.beforeEach((to, from) => {
         customClass: { popup: 'rounded-[32px]' }
       });
       
-      return '/retail/pos'; 
+      return '/retail/pos/riwayat'; 
     }
   }
 

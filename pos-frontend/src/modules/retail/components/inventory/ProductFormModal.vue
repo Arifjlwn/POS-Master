@@ -194,29 +194,35 @@ const enableNestedUom = () => {
                         <div v-if="form.has_satuan_besar" class="col-span-2 flex flex-col gap-4 pt-4 border-t border-slate-800 mt-2">
                             
                             <div>
-                                <label class="text-[8px] font-black text-blue-400 uppercase block mb-1">Sebutannya Apa? (Kemasan Paling Besar)</label>
+                                <label class="text-[8px] font-black text-blue-400 uppercase block mb-1">Sebutannya Apa ? ( Kemasan Paling Besar )</label>
                                 <input v-model="form.satuan_besar" type="text" placeholder="KARTON / SLOP / KARUNG / JERIGEN" class="w-full md:w-1/2 p-3 bg-slate-800 border border-blue-900 focus:border-blue-500 rounded-xl outline-none font-black text-xs uppercase text-white transition-all">
+                                
+                                <button v-if="!form.is_nested_uom" @click="enableNestedUom" class="mt-3 text-[9px] font-black text-blue-400 hover:text-blue-300 uppercase tracking-widest text-left flex items-center gap-1.5 w-max bg-blue-900/30 px-3 py-2.5 rounded-xl border border-blue-900/50 transition-all hover:bg-blue-900/50 active:scale-95 shadow-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                                    Tambah Kemasan Tengah ( Cth: Slop -> Bungkus -> Batang )
+                                </button>
                             </div>
 
-                            <div class="p-4 bg-slate-800/50 border border-slate-700 rounded-2xl flex flex-col gap-4">
+                            <div v-if="form.is_nested_uom" class="animate-[fadeInUp_0.3s_ease-out]">
+                                <div class="flex items-center justify-between md:w-1/2 mb-1">
+                                    <label class="text-[8px] font-black text-sky-400 uppercase block">Sebutannya Apa ? (Kemasan Tengah)</label>
+                                    <button @click="form.is_nested_uom = false" class="text-[8px] font-black text-rose-400 hover:text-rose-300 uppercase tracking-widest flex items-center gap-1 bg-rose-900/20 px-2 py-1 rounded-lg">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg> Batal
+                                    </button>
+                                </div>
+                                <input v-model="form.satuan_tengah" type="text" placeholder="Cth: BUNGKUS / RENTENG / LITER / KG" class="w-full md:w-1/2 p-3 bg-slate-800 border border-sky-900 focus:border-sky-500 rounded-xl outline-none font-black text-xs uppercase text-white transition-all">
+                            </div>
+
+                            <div class="p-4 bg-slate-800/50 border border-slate-700 rounded-2xl flex flex-col gap-4 mt-2 shadow-inner">
                                 <div class="flex items-center gap-2 mb-1">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
                                     <span class="text-[9px] font-black text-amber-400 uppercase tracking-widest">Kalkulator Isi Otomatis</span>
                                 </div>
 
-                                <!-- 🚀 MODE 1: KEMASAN BERLAPIS (YANG SUDAH DI-REVERSE & DINAMIS) -->
                                 <div v-if="form.is_nested_uom" class="flex flex-col gap-4">
-                                    
-                                    <!-- 1. ISI NAMA TENGAH DULU DI ATAS -->
-                                    <div>
-                                        <label class="text-[8px] font-black text-slate-400 uppercase block mb-1">Sebutannya Apa? (Kemasan Tengah)</label>
-                                        <input v-model="form.satuan_tengah" type="text" placeholder="Cth: BUNGKUS / RENTENG / LITER / KG" class="w-full md:w-1/2 p-3 bg-slate-900 border border-slate-700 focus:border-blue-500 rounded-xl outline-none font-black text-xs uppercase text-white transition-all">
-                                    </div>
-
-                                    <!-- 2. KOTAK ANGKA (DIKUNCI KALAU NAMA TENGAH KOSONG) -->
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 transition-all duration-300" :class="!form.satuan_tengah ? 'opacity-40 pointer-events-none grayscale-[50%]' : ''">
                                         <div>
-                                            <label class="text-[8px] font-black text-slate-400 uppercase block mb-1">1 {{ form.satuan_besar || 'BESAR' }} isi berapa {{ form.satuan_tengah || 'KEMASAN TENGAH' }}?</label>
+                                            <label class="text-[8px] font-black text-slate-400 uppercase block mb-1">1 {{ form.satuan_besar || 'BESAR' }} isi berapa {{ form.satuan_tengah || 'TENGAH' }}?</label>
                                             <input :value="formatNumber(form.isi_besar_ke_tengah)" @input="handleInputForm('isi_besar_ke_tengah', $event)" type="text" inputmode="numeric" placeholder="Contoh: 10" class="w-full p-3 bg-slate-900 border border-slate-700 focus:border-blue-500 rounded-xl outline-none font-black text-xs text-center text-white transition-all">
                                         </div>
                                         <div>
@@ -224,17 +230,12 @@ const enableNestedUom = () => {
                                             <input :value="formatNumber(form.isi_tengah_ke_dasar)" @input="handleInputForm('isi_tengah_ke_dasar', $event)" type="text" inputmode="numeric" placeholder="Contoh: 16" class="w-full p-3 bg-slate-900 border border-slate-700 focus:border-blue-500 rounded-xl outline-none font-black text-xs text-center text-white transition-all">
                                         </div>
                                     </div>
-
                                     <div class="text-[9px] font-black text-emerald-400 uppercase tracking-widest italic text-center mt-1 bg-emerald-900/20 py-2.5 rounded-lg border border-emerald-900/50">
-                                        <span v-if="form.isi_per_besar > 0">Sistem Menyimpan: 1 {{ form.satuan_besar || 'KEMASAN' }} = {{ formatNumber(form.isi_per_besar) }} {{ form.satuan_dasar }}</span>
+                                        <span v-if="form.isi_per_besar > 0">Sistem Menyimpan: 1 {{ form.satuan_besar || 'BESAR' }} = {{ formatNumber(form.isi_per_besar) }} {{ form.satuan_dasar }}</span>
                                         <span v-else>Isi angka di atas untuk hitung otomatis...</span>
                                     </div>
-                                    <button @click="form.is_nested_uom = false" class="text-[8px] font-black text-slate-500 hover:text-rose-400 uppercase tracking-widest mt-1 text-left flex items-center gap-1 w-max">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg> Batal pakai kemasan berlapis
-                                    </button>
                                 </div>
 
-                                <!-- 🚀 MODE 2: GULA (GRAM) ATAU MINYAK CURAH (ML) -->
                                 <div v-else-if="form.satuan_dasar === 'GRAM' || form.satuan_dasar === 'ML'" class="flex flex-col gap-2">
                                     <label class="text-[8px] font-black text-slate-400 uppercase block">1 {{ form.satuan_besar || (form.satuan_dasar === 'GRAM' ? 'KARUNG' : 'JERIGEN') }} isinya berapa {{ form.satuan_dasar === 'GRAM' ? 'KG' : 'LITER' }}?</label>
                                     <div class="flex items-center gap-3">
@@ -242,26 +243,17 @@ const enableNestedUom = () => {
                                         <span class="text-xs font-black text-slate-400">{{ form.satuan_dasar === 'GRAM' ? 'KG' : 'LITER' }}</span>
                                     </div>
                                     <div class="text-[9px] font-black text-emerald-400 mt-1 uppercase tracking-widest italic">
-                                        <span v-if="form.isi_per_besar > 0">Sistem Menyimpan Otomatis: 1 {{ form.satuan_besar || 'KEMASAN' }} = {{ formatNumber(form.isi_per_besar) }} {{ form.satuan_dasar }}</span>
+                                        <span v-if="form.isi_per_besar > 0">Sistem Menyimpan Otomatis: 1 {{ form.satuan_besar || 'BESAR' }} = {{ formatNumber(form.isi_per_besar) }} {{ form.satuan_dasar }}</span>
                                         <span v-else>Masukkan isi dalam {{ form.satuan_dasar === 'GRAM' ? 'KG' : 'LITER' }}</span>
                                     </div>
-                                    <button @click="enableNestedUom" class="mt-2 text-[8px] font-black text-blue-400 hover:text-blue-300 uppercase tracking-widest text-left flex items-center gap-1 w-max">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                        Punya kemasan tengah? (Cth: Karung -> Pouch -> Gram)
-                                    </button>
                                 </div>
 
-                                <!-- 🚀 MODE 3: NORMAL (DUS -> PCS) -->
                                 <div v-else class="flex flex-col gap-2">
-                                    <label class="text-[8px] font-black text-slate-400 uppercase block">1 {{ form.satuan_besar || 'KEMASAN' }} isi berapa {{ form.satuan_dasar }}?</label>
+                                    <label class="text-[8px] font-black text-slate-400 uppercase block">1 {{ form.satuan_besar || 'BESAR' }} isi berapa {{ form.satuan_dasar }}?</label>
                                     <div class="flex gap-2 items-center">
                                         <input :value="formatNumber(form.isi_per_besar)" @input="handleInputForm('isi_per_besar', $event)" type="text" inputmode="numeric" placeholder="Contoh: 24" class="w-full md:w-1/3 p-3 bg-slate-900 border border-slate-700 focus:border-blue-500 rounded-xl outline-none font-black text-xs text-center text-white transition-all">
                                         <span class="text-xs font-black text-slate-400">{{ form.satuan_dasar }}</span>
                                     </div>
-                                    <button @click="enableNestedUom" class="mt-2 text-[8px] font-black text-blue-400 hover:text-blue-300 uppercase tracking-widest text-left flex items-center gap-1 w-max">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                        Punya kemasan tengah? (Misal: Dus -> Renteng -> Pcs)
-                                    </button>
                                 </div>
                             </div>
 
@@ -372,6 +364,10 @@ const enableNestedUom = () => {
 </template>
 
 <style scoped>
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 )
 
 // FonntePayload menyesuaikan format API Fonnte
@@ -47,4 +48,19 @@ func SendWhatsAppFonnte(token, targetPhone, message string) {
 		body, _ := ioutil.ReadAll(resp.Body)
 		log.Println("Respon Fonnte:", string(body))
 	}()
+}
+
+// 🚀 FUNGSI BARU: Khusus kirim OTP / Notifikasi Sistem pakai Token Sistem milik LU dari .env
+func SendSystemWhatsApp(targetPhone, message string) {
+	// Ambil token sistem rahasia lu langsung dari .env
+	// Pastiin nama key di .env lu sama persis (WA_SYSTEM_TOKEN)
+	systemToken := os.Getenv("WA_SYSTEM_TOKEN")
+	
+	if systemToken == "" {
+		log.Println("⚠️ Peringatan: WA_SYSTEM_TOKEN di .env belum diisi! Gagal mengirim pesan sistem.")
+		return
+	}
+
+	// Panggil fungsi utama di atas, tapi kita suntik pakai token sistem milik lu
+	SendWhatsAppFonnte(systemToken, targetPhone, message)
 }

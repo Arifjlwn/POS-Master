@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { usePos } from '../../composables/usePos.js';
 import api from '../../../../api.js';
+import Swal from 'sweetalert2';
 
 // 🚀 IMPORT PASUKAN SUB-KOMPONEN BARU KITA BEB!
 import PosHeader from '../../components/pos/PosHeader.vue';
@@ -13,21 +14,68 @@ import ReceiptModal from '../../components/pos/ReceiptModal.vue';
 import WaPromptModal from '../../components/pos/WaPromptModal.vue'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-
+const router = useRouter();
 const storeData = ref({});
 
+// 🚀 SATPAM KHUSUS POS & LOAD DATA TOKO
 onMounted(async () => {
     try {
         const res = await api.get('/retail/store/settings');
         storeData.value = res.data.data;
+        
         // Simpen ke localStorage biar Sidebar/Header ikut update
         localStorage.setItem('storeLogo', storeData.value.logo_url || '');
+
+        // 🚀 1. SUNTIK SCRIPT MIDTRANS DINAMIS (BACA .ENV)
+        if (storeData.value.payment_type === 'midtrans' && storeData.value.midtrans_client_key) {
+            if (!document.getElementById('midtrans-script')) {
+                
+                // Cek environment dari .env
+                const midtransEnv = import.meta.env.VITE_MIDTRANS_ENV || 'sandbox';
+                const snapUrl = midtransEnv === 'production' 
+                    ? 'https://app.midtrans.com/snap/snap.js'          // URL ASLI (DUIT BENERAN)
+                    : 'https://app.sandbox.midtrans.com/snap/snap.js'; // URL TESTING
+                
+                const script = document.createElement('script');
+                script.id = 'midtrans-script';
+                script.src = snapUrl; 
+                script.setAttribute('data-client-key', storeData.value.midtrans_client_key);
+                document.head.appendChild(script);
+            }
+        }
+
+        // --- 🚀 BLOK SATPAM (ANTI-KABUR) ---
+        const role = localStorage.getItem('role') || 'owner'; 
+        
+        if (role === 'owner') {
+            let isDead = false;
+
+            // 1. Cek status di-banned backend
+            if (storeData.value.subscription_status !== 'active') {
+                isDead = true;
+            } 
+            // 2. Cek kalau tanggalnya lewat
+            else if (storeData.value.subscription_end) {
+                const endDate = new Date(storeData.value.subscription_end);
+                const today = new Date();
+                const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                if (diffDays <= 0) {
+                    isDead = true;
+                }
+            }
+
+            // Kalo beneran mati, TENDANG BALIK KE PENJARA LAYAR HITAM!
+            if (isDead) {
+                router.push('/retail/account');
+                return; 
+            }
+        }
+        // --- 🚀 AKHIR BLOK SATPAM ---
+
     } catch (e) {
-        console.error("Gagal narik data toko:", e);
+        console.error("Gagal narik data toko / eksekusi satpam POS:", e);
     }
 });
-
-const router = useRouter();
 
 const {
     currentUser, currentSession, currentTime, products, isLoadingProducts, cart, heldOrders,
@@ -47,33 +95,81 @@ const printClosing = () => {
 
 const showWaModal = ref(false);
 
-// 🚀 1. FUNGSI BARU: Cegat pas tombol "Bayar" di sidebar di-klik
-const handleInitialCheckout = () => {
+// 🚀 2. FUNGSI BARU: Otak percabangan Midtrans vs QRIS Statis!
+const handleInitialCheckout = async () => {
     // Validasi Uang Kurang
-    if (payAmount.value < totalBelanja.value) {
+    if (paymentMethod.value === 'Cash' && payAmount.value < totalBelanja.value) {
         Swal.fire({ icon: 'error', title: 'Uang Kurang!', text: `Kurang Rp ${(totalBelanja.value - payAmount.value).toLocaleString('id-ID')}` });
         return;
     }
 
+    // CEK KALAU DIA MILIH QRIS
     if (paymentMethod.value === 'QRIS') {
-        showQrisModal.value = true; // Munculin QRIS dulu buat di-scan pelanggan
+        
+        // 🟢 JIKA TOKO PAKE MIDTRANS (DINAMIS)
+        if (storeData.value?.payment_type === 'midtrans') {
+            
+            if (typeof window.snap === 'undefined') {
+                Swal.fire('Sistem Loading', 'Script Midtrans belum siap, pastikan Client Key terisi di pengaturan Toko.', 'warning');
+                return;
+            }
+
+            isProcessingCheckout.value = true;
+            try {
+                // Tembak API Golang lu
+                const payRes = await api.post('/retail/pos/midtrans-order', {
+                    total: totalBelanja.value
+                });
+                
+                // Panggil Pop-Up Snap Midtrans
+                window.snap.pay(payRes.data.token, {
+                    onSuccess: (result) => {
+                        // 🚀 BUKA GEMBOKNYA DULU DI SINI!
+                        isProcessingCheckout.value = false; 
+
+                        Swal.fire('Berhasil', 'Pembayaran QRIS Diterima!', 'success');
+                        triggerCheckoutFlow(); 
+                    },
+                    onPending: (result) => {
+                        Swal.fire('Menunggu', 'Pelanggan belum bayar.', 'info');
+                        isProcessingCheckout.value = false;
+                    },
+                    onError: (result) => {
+                        Swal.fire('Gagal', 'Pembayaran ditolak bank.', 'error');
+                        isProcessingCheckout.value = false;
+                    },
+                    onClose: () => { 
+                        isProcessingCheckout.value = false; 
+                    }
+                });
+            } catch (error) {
+                Swal.fire('Error Backend', 'Gagal memanggil API Midtrans dari Golang.', 'error');
+                isProcessingCheckout.value = false;
+            }
+
+        } else {
+            // 🟡 JIKA TOKO BUKAN MIDTRANS, BARU BUKA MODAL STATIS!
+            showQrisModal.value = true; 
+        }
+
     } else {
-        triggerCheckoutFlow(); // Kalau tunai, langsung cek mau kirim WA atau nggak
+        // Kalau Tunai / Debit langsung sikat
+        triggerCheckoutFlow(); 
     }
 };
 
-// 🚀 2. FUNGSI CEK WA (Dipanggil setelah Tunai, atau setelah klik Lunas di QRIS)
+// 🚀 3. FUNGSI CEK WA (Dipanggil setelah Tunai, atau setelah sukses Snap Midtrans)
 const triggerCheckoutFlow = () => {
-    showQrisModal.value = false; // Tutup QRIS modal otomatis kalau asalnya dari tombol Lunas
+    showQrisModal.value = false; // Tutup modal otomatis (buat jaga-jaga)
     
     // Cek Kasta Level (Premium / Trial = 3)
     const plan = localStorage.getItem('subscriptionPlan') || 'basic';
-    const isPremium = plan === 'premium' || plan === 'trial' || plan === 'enterprise';
+    const isPremium = plan === 'premium' || plan === 'trial';
     
-    // Cek Validasi WA dari Backend (apakah udah masukin token Fonnte)
+    // Cek Validasi WA dari Backend
     const hasWaToken = storeData.value?.wa_token && storeData.value.wa_token !== '';
 
-    // Logika Percabangan
+    // Logika Percabangan WA
     if (isPremium && hasWaToken) {
         showWaModal.value = true; // Munculin modal WA!
     } else {
@@ -81,20 +177,21 @@ const triggerCheckoutFlow = () => {
     }
 };
 
-// 🚀 3. FINAL EKSEKUSI (Nembak API)
+// 🚀 4. FINAL EKSEKUSI (Nembak API Kasir ke Golang untuk nyimpen transaksi)
 const proceedToFinalCheckout = async () => {
     showWaModal.value = false;
-    await executeCheckout(); // Langsung eksekusi, gak perlu ngecek QRIS/Tunai lagi karena udah di-handle di awal
+    await executeCheckout(); 
 };
 
 const handleWaSubmit = (phone) => {
-    noHpPelanggan.value = phone; // Set nomor hp ke state usePos
-    proceedToFinalCheckout();    // Lanjut eksekusi API Kasir
+    noHpPelanggan.value = phone; 
+    proceedToFinalCheckout();    
 };
 
 const handleWaSkip = () => {
-    noHpPelanggan.value = '';    // Kosongin nomor hp
-    proceedToFinalCheckout();    // Lanjut eksekusi API Kasir
+    noHpPelanggan.value = '';    
+    proceedToFinalCheckout();    
+    showReceipt.value = true;
 };
 
 const finishClosing = () => router.push('/retail/pos/riwayat');

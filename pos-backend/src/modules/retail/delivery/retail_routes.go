@@ -8,6 +8,12 @@ import (
 
 // Master Produk CRUD
 func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
+
+	// =====================================
+	// 🟢 FITUR MIDTRANS USER
+	// =====================================
+	rg.POST("/pos/midtrans-order", h.CreatePosMidtransOrder)
+
 	// =====================================
 	// 🟢 FITUR LEVEL 1 (BASIC)
 	// =====================================
@@ -61,7 +67,7 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 
 
 	// =====================================
-	// 🔴 FITUR LEVEL 3 (PREMIUM / ENTERPRISE)
+	// 🔴 FITUR LEVEL 3 (PREMIUM)
 	// =====================================
 	
 	// Dashboard Analytics Report Owner

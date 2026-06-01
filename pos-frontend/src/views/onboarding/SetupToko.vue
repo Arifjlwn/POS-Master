@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import Swal from 'sweetalert2';
 import api from '../../api.js';
@@ -50,9 +50,26 @@ const loadProvinsi = async () => {
 };
 
 onMounted(() => {
+    // ==============================================================
+    // 🚀 SUNTIK SCRIPT MIDTRANS PAKAI KEY LU (SEBAGAI SAAS OWNER)
+    // ==============================================================
+    if (!document.getElementById('midtrans-script-owner')) {
+        // Cek environment dari .env
+        const midtransEnv = import.meta.env.VITE_MIDTRANS_ENV || 'sandbox';
+        const snapUrl = midtransEnv === 'production' 
+            ? 'https://app.midtrans.com/snap/snap.js'          // URL ASLI
+            : 'https://app.sandbox.midtrans.com/snap/snap.js'; // URL TESTING
+
+        const script = document.createElement('script');
+        script.id = 'midtrans-script-owner';
+        script.src = snapUrl;
+        script.setAttribute('data-client-key', import.meta.env.VITE_MIDTRANS_CLIENT_KEY);
+        document.head.appendChild(script);
+    }
+
     loadProvinsi();
     
-    // Auto-select kategori berdasarkan pilihan di Landing Page
+    // 🚀 Auto-select kategori berdasarkan pilihan di Landing Page (KUNCI MATI)
     if (pendingIndustry === 'fnb') form.value.kategori_bisnis = 'F&B';
     else if (pendingIndustry === 'jasa') form.value.kategori_bisnis = 'Jasa';
     else form.value.kategori_bisnis = 'Retail';
@@ -117,6 +134,11 @@ const form = ref({
 
 const isLoading = ref(false);
 
+// 🚀 COMPUTED BUAT NAMPILIN KATEGORI YANG DIKUNCI
+const activeKategori = computed(() => {
+    return kategoriOptions.find(k => k.id === form.value.kategori_bisnis) || kategoriOptions[0];
+});
+
 watch(() => form.value.kategori_bisnis, (newVal) => {
     form.value.detail_bisnis = detailOptions[newVal][0]; 
 }, { immediate: true });
@@ -157,39 +179,112 @@ const submit = async () => {
 
         const response = await api.post('/setup', payload);
         
+        // Simpan token baru yang udah ada Store ID-nya
         if (response.data && response.data.token) {
             localStorage.setItem('token', response.data.token);
-            localStorage.setItem('storeName', form.value.nama_toko);
-            localStorage.setItem('businessType', finalTipeBisnis); 
-
-            localStorage.setItem('subscriptionPlan', pendingPlan);
-            
-            localStorage.removeItem('pendingIndustry');
-            localStorage.removeItem('pendingPlan');
+            // Update auth state lu jika ada
         }
-        
-        await Swal.fire({
-            icon: 'success',
-            title: 'Infrastruktur Siap!',
-            text: `Selamat datang di era digital, Bos ${localStorage.getItem('name') || ''}!`,
-            confirmButtonColor: '#4f46e5',
-            customClass: { popup: 'rounded-[32px]' }
-        });
-        
-        // --- ROUTING CERDAS ---
-        const kat = form.value.kategori_bisnis; 
-        const det = (form.value.detail_bisnis || '').toLowerCase(); 
 
-        if (kat === 'Retail' || kat === 'Lainnya') {
-            router.push('/retail/dashboard');
-        } else if (kat === 'F&B') {
-            router.push('/fnb/dashboard');
-        } else if (kat === 'Jasa') {
-            if (det.includes('laundry')) router.push('/laundry/laporan');
-            else if (det.includes('bengkel') || det.includes('otomotif')) router.push('/bengkel/dashboard');
-            else if (det.includes('barbershop') || det.includes('salon')) router.push('/salon/dashboard');
-            else if (det.includes('cuci')) router.push('/cuci-kendaraan/dashboard');
-            else router.push('/retail/dashboard');
+        const chosenPlan = pendingPlan.toLowerCase();
+
+        // =============================================================
+        // 🚀 SKENARIO 1: MILIH PAKET BERBAYAR (LANGSUNG BAYAR DI TEMPAT)
+        // =============================================================
+        if (chosenPlan !== 'trial') {
+            isLoading.value = false; // Matikan loading submit lokalan
+
+            // Tentukan harga
+            let harga = 49000;
+            if (chosenPlan === 'pro') harga = 149000;
+            else if (chosenPlan === 'premium') harga = 299000;
+
+            Swal.fire({
+                title: 'Menyiapkan Pembayaran...',
+                text: `Menghubungkan ke gerbang aman Midtrans untuk paket ${pendingPlan.toUpperCase()}...`,
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            try {
+                // 🚀 Minta snap token ke backend (Sesuaikan dengan endpoint order Midtrans lu)
+                // Pastikan token JWT yang dipake buat request ini udah token yang baru (yg ada store_id nya)
+                api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+                
+                const payRes = await api.post('/retail/subscription/upgrade', {
+                    plan_name: chosenPlan,
+                    price: harga
+                });
+                
+                // Ambil token sesuai respons dari backend lu
+                const snapToken = payRes.data.token; 
+                Swal.close();
+
+                // 🎯 PANGGIL SNAP MIDTRANS LANGSUNG DI HALAMAN SETUP TOKO!
+                window.snap.pay(snapToken, {
+                    onSuccess: function(result) {
+                    // 1. Kasir loading sukses yang nutup otomatis setelah 2 detik
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Pembayaran Berhasil!',
+                        text: 'Infrastruktur premium Anda telah aktif sepenuhnya.',
+                        timer: 2000, // Tahan selama 2 detik biar Midtrans selesai fetch!
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                        customClass: { popup: 'rounded-[32px]' }
+                    }).then(() => {
+                        // 2. Hapus jejak
+                        localStorage.removeItem('pendingIndustry');
+                        localStorage.removeItem('pendingPlan');
+                        
+                        // 3. LEMPAR PAKAI HARD RELOAD (PENTING!)
+                        // Biar state Axios dan Vue lu nge-refresh dan make Token Baru yang ada Store ID-nya
+                        window.location.href = '/retail/account'; 
+                    });
+                },
+                    onPending: function(result) {
+                        Swal.fire('Menunggu Pembayaran', 'Segera selesaikan transaksi Anda sebelum invoice kedaluwarsa.', 'info');
+                        router.push('/retail/account');
+                    },
+                    onError: function(result) {
+                        Swal.fire('Pembayaran Gagal', 'Terjadi kesalahan sistem bank.', 'error');
+                        router.push('/retail/account');
+                    },
+                    onClose: function() {
+                        Swal.fire('Pembayaran Ditunda', 'Silakan selesaikan invoice Anda nanti di halaman akun.', 'warning');
+                        // Kalau dia close, lempar ke akun (nanti bakal kena layar gembok karena belum lunas)
+                        router.push('/retail/account');
+                    }
+                });
+            } catch (err) {
+                Swal.fire('Error', 'Gagal memanggil gerbang pembayaran.', 'error');
+                router.push('/retail/account');
+            }
+
+        // =============================================================
+        // 🚀 SKENARIO 2: JIKA USER MILIH TRIAL (LANGSUNG MASUK DASHBOARD)
+        // =============================================================
+        } else {
+            await Swal.fire({
+                icon: 'success',
+                title: 'Infrastruktur Siap!',
+                text: 'Selamat menikmati fasilitas Free Trial selama 14 hari, Bos!',
+                confirmButtonColor: '#4f46e5',
+                customClass: { popup: 'rounded-[32px]' }
+            });
+
+            // Langsung arahkan ke dashboard masing-masing
+            const kat = form.value.kategori_bisnis; 
+            const det = (form.value.detail_bisnis || '').toLowerCase(); 
+
+            if (kat === 'Retail' || kat === 'Lainnya') router.push('/retail/dashboard');
+            else if (kat === 'F&B') router.push('/fnb/dashboard');
+            else if (kat === 'Jasa') {
+                if (det.includes('laundry')) router.push('/laundry/laporan');
+                else if (det.includes('bengkel') || det.includes('otomotif')) router.push('/bengkel/dashboard');
+                else if (det.includes('barbershop') || det.includes('salon')) router.push('/salon/dashboard');
+                else if (det.includes('cuci')) router.push('/cuci-kendaraan/dashboard');
+                else router.push('/retail/dashboard');
+            }
         }
 
     } catch (error) {
@@ -240,16 +335,19 @@ const submit = async () => {
                             </div>
 
                             <div class="md:col-span-2">
-                                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-3 block">Kategori Industri</label>
-                                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                                    <div v-for="kat in kategoriOptions" :key="kat.id" 
-                                         @click="form.kategori_bisnis = kat.id"
-                                         class="p-4 rounded-[20px] border-2 cursor-pointer transition-all flex flex-col items-center text-center gap-3"
-                                         :class="form.kategori_bisnis === kat.id ? 'border-indigo-600 bg-indigo-50 shadow-md shadow-indigo-100' : 'border-slate-100 bg-white hover:border-slate-300 hover:bg-slate-50'">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" :class="form.kategori_bisnis === kat.id ? 'text-indigo-600' : 'text-slate-400'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                            <path :d="kat.icon" />
+                                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Kategori Industri</label>
+                                <div class="p-4 rounded-[20px] border-2 border-indigo-200 bg-indigo-50/50 flex items-center gap-4 select-none opacity-90">
+                                    <div class="w-12 h-12 bg-white rounded-xl shadow-sm border border-indigo-100 flex items-center justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                            <path :d="activeKategori.icon" />
                                         </svg>
-                                        <span class="font-black text-[10px] uppercase tracking-widest" :class="form.kategori_bisnis === kat.id ? 'text-indigo-800' : 'text-slate-500'">{{ kat.label }}</span>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="font-black text-slate-800 uppercase tracking-widest">{{ activeKategori.label }}</span>
+                                        <span class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Pilihan Dari Landing Page</span>
+                                    </div>
+                                    <div class="ml-auto text-slate-400" title="Kategori telah dikunci">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                                     </div>
                                 </div>
                             </div>
@@ -336,7 +434,7 @@ const submit = async () => {
                             <div class="grid grid-cols-2 gap-3">
                                 <div class="relative">
                                     <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block flex items-center gap-1"><span class="truncate">Desa / Kel</span></label>
-                                    <select v-model="regIds.kelurahan" :disabled="!regIds.kecamatan" required class="w-full px-4 py-4 bg-white border-2 border-slate-200 rounded-2xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none font-black text-slate-800 transition-all text-xs cursor-pointer appearance-none disabled:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60">
+                                    <select v-model="regIds.kelurahan" :disabled="!regIds.kecamatan" required class="w-full px-4 py-4 bg-white border-2 border-slate-200 rounded-2xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none font-black text-slate-800 transition-all text-sm cursor-pointer appearance-none disabled:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60">
                                         <option value="" disabled selected hidden>{{ regIds.kecamatan ? 'Pilih Kelurahan...' : 'Pilih Kelurahan' }}</option>
                                         <option v-for="kel in listKelurahan" :key="kel.id" :value="kel.id" class="text-xs">{{ kel.name }}</option>
                                     </select>

@@ -1,9 +1,13 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useSidebar } from '../composables/useSidebar.js';
 import Swal from 'sweetalert2';
+import api from '../../../api.js';
 
+const router = useRouter();
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
 // Inject semua data dan fungsi dari layer composable
 const { route, sidebarOpen, openGroups, user, toggleGroup, logout } = useSidebar();
 
@@ -13,16 +17,16 @@ const subPlan = localStorage.getItem('subscriptionPlan') || 'basic';
 // 🚀 SISTEM KASTA LEVEL PAKET
 const getPlanLevel = (plan) => {
     const p = plan.toLowerCase();
-    if (p === 'premium' || p === 'enterprise' || p === 'trial') return 3;
+    if (p === 'premium' || p === 'trial') return 3;
     if (p === 'pro') return 2;
     return 1; // Basic
 };
 const planLevel = getPlanLevel(subPlan);
 
-// 🚀 FUNGSI POP-UP UPGRADE DINAMIS (Tanpa Emoji)
+// 🚀 FUNGSI POP-UP UPGRADE DINAMIS
 const triggerUpgrade = (fiturName, minLevel) => {
     sidebarOpen.value = false;
-    let targetPlan = minLevel === 2 ? 'PRO' : 'ENTERPRISE';
+    let targetPlan = minLevel === 2 ? 'PRO' : 'PREMIUM'; // 🚀 UBAH JADI PREMIUM
     
     Swal.fire({
         icon: 'warning',
@@ -36,10 +40,48 @@ const triggerUpgrade = (fiturName, minLevel) => {
         customClass: { popup: 'rounded-[32px]' }
     }).then((result) => {
         if (result.isConfirmed) {
-            Swal.fire('Segera Hadir!', 'Halaman Pembayaran sedang disiapkan oleh Tim IT.', 'info');
+            // 🚀 LANGSUNG LEMPAR KE HALAMAN BILLING
+            router.push('/retail/account');
         }
     });
 };
+
+// 🚀 GLOBAL GUARD (SATPAM GLOBAL)
+onMounted(async () => {
+    const role = localStorage.getItem('role') || user.role;
+    
+    if (role === 'owner') {
+        try {
+            const res = await api.get('/retail/store/settings');
+            const data = res.data.data;
+            const status = data.subscription_status;
+            
+            let isDead = false;
+
+            // 1. Cek kalau backend udah mutusin dia INACTIVE
+            if (status !== 'active') {
+                isDead = true;
+            } 
+            // 2. Cek kalau backend telat update, kita hitung selisih harinya
+            else if (data.subscription_end) {
+                const endDate = new Date(data.subscription_end);
+                const today = new Date();
+                const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                if (diffDays <= 0) {
+                    isDead = true;
+                }
+            }
+
+            // 🚀 KALO BENERAN MATI & DIA GAK DI HALAMAN AKUN -> TANGKAP!
+            if (isDead && route.path !== '/retail/account') {
+                router.push('/retail/account');
+            }
+            
+        } catch (e) {
+            console.error("Gagal verifikasi masa aktif global:", e);
+        }
+    }
+});
 </script>
 
 <template>
@@ -53,16 +95,19 @@ const triggerUpgrade = (fiturName, minLevel) => {
                     <div class="w-4 h-0.5 bg-indigo-600 rounded-full group-hover:w-6 transition-all"></div>
                 </button>
                 
-                <div class="flex flex-col justify-center">
-                    <img v-if="user.storeLogo && user.storeLogo !== 'null' && user.storeLogo !== ''" :src="API_BASE_URL + user.storeLogo" class="h-11 sm:h-14 max-w-[200px] object-contain origin-left transition-all" alt="Logo Toko">
-                    <div v-else class="font-black text-lg sm:text-xl text-slate-900 tracking-tighter leading-none flex items-center gap-2">
+                <div class="flex items-center gap-3">
+                    <img v-if="user.storeLogo && user.storeLogo !== 'null' && user.storeLogo !== ''" 
+                         :src="API_BASE_URL + user.storeLogo" 
+                         class="h-11 sm:h-14 max-w-[200px] object-contain origin-left transition-all" 
+                         alt="Logo Toko">
+                    <div v-else class="font-black text-lg sm:text-xl text-slate-900 tracking-tighter leading-none">
                         <span class="text-indigo-600">{{ user.storeName }}</span>
-                        <!-- BADGE PLAN DI HEADER -->
-                        <span class="text-[8px] px-2 py-0.5 rounded-md font-black uppercase tracking-widest text-white shadow-sm"
-                              :class="planLevel === 3 ? 'bg-amber-500' : (planLevel === 2 ? 'bg-indigo-500' : 'bg-slate-400')">
-                            {{ subPlan }}
-                        </span>
                     </div>
+
+                    <span class="text-[8px] px-2 py-0.5 rounded-md font-black uppercase tracking-widest text-white shadow-sm shrink-0 self-center"
+                          :class="planLevel === 3 ? 'bg-amber-500' : (planLevel === 2 ? 'bg-indigo-500' : 'bg-slate-400')">
+                        {{ subPlan }}
+                    </span>
                 </div>
             </div>
             

@@ -317,3 +317,72 @@ func UpdatePassword(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Password berhasil diubah!"})
 }
+
+// ========================================================
+// 🚀 FUNGSI BARU: GENERATE & KIRIM KODE OTP VIA WHATSAPP (FONNTE SISTEM)
+// ========================================================
+func SendOTPWhatsApp(c *gin.Context) {
+	var input struct {
+		Phone string `json:"phone" binding:"required"`
+	}
+
+	// 1. Validasi input request dari Vue
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Nomor WhatsApp wajib diisi!"})
+		return
+	}
+
+	// 🚀 FIX MUTLAK: Bersihkan nomor HP dan pastikan diawali '62'
+	phoneClean := input.Phone
+	// Kalau nomornya dikirim pake '+' (misal +628xxx), buang plus-nya
+	phoneClean = strings.Replace(phoneClean, "+", "", 1)
+	
+	// Kalau nomornya diawali '0' (misal 08xxx), ganti '0'-nya jadi '62'
+	if strings.HasPrefix(phoneClean, "0") {
+		phoneClean = "62" + phoneClean[1:]
+	}
+	
+	// Kalau nomornya murni langsung '8xxx' (tanpa 0 dan tanpa 62), tambahin '62' di depannya
+	if strings.HasPrefix(phoneClean, "8") {
+		phoneClean = "62" + phoneClean
+	}
+
+	// Sekarang phoneClean dijamin isinya bakal '6289666168123'
+
+	// 2. Cari user berdasarkan nomor HP yang sudah berformat 628xx
+	var user models.User
+	if err := src.DB.Where("no_hp = ?", phoneClean).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Nomor WhatsApp tidak terdaftar di sistem kami!"})
+		return
+	}
+
+	// 3. Generate Kode OTP Baru (6 Digit)
+	rand.Seed(time.Now().UnixNano())
+	otp := fmt.Sprintf("%06d", rand.Intn(1000000))
+
+	// 4. Update Kode OTP dan Waktu Expired (3 Menit) ke Database
+	err := src.DB.Model(&user).Updates(map[string]interface{}{
+		"otp_code":    otp,
+		"otp_expired": time.Now().Add(time.Minute * 3),
+	}).Error
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengonfigurasi token verifikasi baru"})
+		return
+	}
+
+	// 5. Susun template pesan OTP
+	message := fmt.Sprintf(
+		"Halo Bos %s!\n\nKode OTP Verifikasi Akun NEXA POS Anda adalah: *%s*\n\nKode ini rahasia dan berlaku selama 3 menit. Jangan bagikan kode ini kepada siapapun demi keamanan infrastruktur bisnis Anda. 😎", 
+		user.Name, 
+		otp,
+	)
+
+	// 6. Tembak Fonnte pake Token Sistem lu lewat utils
+	utils.SendSystemWhatsApp(phoneClean, message)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Kode OTP berhasil dikirim ke WhatsApp Anda! Silakan cek chat masuk.",
+		"phone":   phoneClean,
+	})
+}

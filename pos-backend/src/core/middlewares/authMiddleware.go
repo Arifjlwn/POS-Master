@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"pos-backend/models"
 	src "pos-backend/src/core/config"
@@ -70,7 +71,7 @@ func RequireOwner(c *gin.Context) {
 }
 
 // ========================================================
-// 🚀 SATPAM LAPIS 3: SAAS PLAN GATING (SISTEM KASTA LEVEL)
+// 🚀 SATPAM LAPIS 3: SAAS PLAN GATING & EXPIRED CHECKER
 // ========================================================
 func RequireSaaSLevel(minLevel int) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -88,41 +89,60 @@ func RequireSaaSLevel(minLevel int) gin.HandlerFunc {
 			storeID = val
 		}
 
-		// 1. Tarik Data Kasta Langsung dari Database (Real-time Check)
+		// 1. Tarik Data Kasta & Tanggal Expired Langsung dari Database
 		var store models.Store
-		if err := src.DB.Select("subscription_plan", "subscription_status").First(&store, storeID).Error; err != nil {
+		if err := src.DB.Select("id", "subscription_plan", "subscription_status", "subscription_end").First(&store, storeID).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memverifikasi status langganan toko."})
 			c.Abort()
 			return
 		}
 
-		// 2. Cek Apakah Langganan Mati / Nunggak Bayar
-		if store.SubscriptionStatus != "active" {
-			c.JSON(http.StatusPaymentRequired, gin.H{"error": "Akses dihentikan! Masa berlangganan Anda sudah berakhir. Silakan perpanjang."})
+		// 🚀 2. CEK MASA AKTIF (EXPIRED CHECKER)
+		// Kalau waktu saat ini (time.Now) SUDAH MELEWATI batas SubscriptionEnd
+		if time.Now().After(store.SubscriptionEnd) {
+			
+			// Auto-update status di DB jadi inactive biar rapi
+			if store.SubscriptionStatus == "active" {
+				src.DB.Model(&store).Update("subscription_status", "inactive")
+			}
+
+			// TENDANG REQUESTNYA!
+			c.JSON(http.StatusPaymentRequired, gin.H{
+				"error": "Masa aktif toko telah habis. Silakan perpanjang langganan.",
+				"code": "SUBSCRIPTION_EXPIRED",
+			})
 			c.Abort()
 			return
 		}
 
-		// 3. Konversi Nama Paket ke Level Angka
+		// 3. Cek Apakah Status Langganan Sengaja Dimatikan (Suspend Manual)
+		if store.SubscriptionStatus != "active" {
+			c.JSON(http.StatusPaymentRequired, gin.H{"error": "Akses dihentikan! Status toko Anda tidak aktif."})
+			c.Abort()
+			return
+		}
+
+		// 4. Konversi Nama Paket ke Level Angka
 		currentLevel := 1 // Kasta Sudra (Basic)
 		plan := strings.ToLower(store.SubscriptionPlan)
 		
-		if plan == "premium" || plan == "enterprise" || plan == "trial" {
+		if plan == "premium" || plan == "trial" {
 			currentLevel = 3 // Kasta Dewa
 		} else if plan == "pro" {
 			currentLevel = 2 // Kasta Kesatria
 		}
 
-		// 4. Proses Eksekusi Gembok
+		// 5. Proses Eksekusi Gembok Kasta
 		if currentLevel < minLevel {
 			c.JSON(http.StatusForbidden, gin.H{
 				"error": "Akses API Ditolak 🛑! Fitur ini membutuhkan upgrade paket langganan.",
+				"code": "UPGRADE_REQUIRED",
 			})
 			c.Abort() // Tendang balik ke laut!
 			return
 		}
 
-		// Kasta mencukupi, silakan masuk ke Controller!
+		// Lolos semua seleksi ketat, silakan masuk ke Controller!
 		c.Next()
 	}
 }

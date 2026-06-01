@@ -89,9 +89,9 @@ const handleLogin = async () => {
       } 
       else {
           if (roleUser === 'owner') {
-              router.push('/retail/dashboard');
+              router.push('/retail/pos/riwayat');
           } else {
-              router.push('/retail/sdm/absensi'); 
+              router.push('/retail/pos/riwayat'); 
           }
       }
     }
