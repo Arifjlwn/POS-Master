@@ -1669,23 +1669,23 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 		// 🚀 KIRIM WA DENGAN FORMAT RUPIAH YANG SEMPURNA
 		if input.NoHPPelanggan != "" && store.WaToken != "" {
 			pesanNota := fmt.Sprintf(
-				`🏪 *%s*
-				========================
-				Halo Bosku! Terima kasih sudah berbelanja. Berikut rincian transaksi Anda:
+`🏪 *%s*
+========================
+Halo Bosku! Terima kasih sudah berbelanja. Berikut rincian transaksi Anda:
 
-				🧾 *No. Invoice:* %s
-				📅 *Tanggal:* %s
+🧾 *No. Invoice:* %s
+📅 *Tanggal:* %s
 
-				*Rincian Pesanan:*
-				%s========================
-				💰 *Subtotal:* %s
-				⚖️ *Pajak/Biaya:* %s
-				========================
-				✅ *TOTAL BAYAR: %s*
-				💳 *Metode:* %s
-				💵 *Tunai:* %s
-				💸 *Kembali:* %s
-				========================
+*Rincian Pesanan:*
+%s========================
+💰 *Subtotal:* %s
+⚖️ *Pajak/Biaya:* %s
+========================
+✅ *TOTAL BAYAR: %s*
+💳 *Metode:* %s
+💵 *Tunai:* %s
+💸 *Kembali:* %s
+========================
 				%s`,
 				store.NamaToko,
 				noInvoice,
