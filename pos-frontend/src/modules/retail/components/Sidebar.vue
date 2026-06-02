@@ -140,9 +140,6 @@ onMounted(async () => {
                     </div>
                     <span class="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-1">Enterprise System</span>
                 </div>
-                <button @click="sidebarOpen = false" class="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all shadow-sm active:scale-95">
-                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
             </div>
 
             <nav class="flex-1 px-4 sm:px-6 py-6 space-y-8 overflow-y-auto custom-scrollbar min-h-0">

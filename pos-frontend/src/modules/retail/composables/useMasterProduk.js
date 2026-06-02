@@ -218,6 +218,10 @@ export function useMasterProduk() {
         const isBulkType = product.satuan_dasar === 'GRAM' || product.satuan_dasar === 'ML';
         const acuanQty = isBulkType ? 1000 : 1;
 
+        // 🚀 REVERSE ENGINEER HARGA BELI KARTON
+        // Karena di DB cuma ada harga_modal (ecer), kita kalikan isinya biar harga karton muncul!
+        const hargaBeliKarton = (product.harga_modal || 0) * (product.isi_per_besar || 1);
+
         form.value = {
             name: product.nama_produk || '',
             sku: product.sku || '',
@@ -226,19 +230,37 @@ export function useMasterProduk() {
             price: product.harga_jual || 0,
             stock: product.stok || 0,
             image: null,
+            
             satuan_dasar: product.satuan_dasar || 'PCS',
             has_satuan_besar: !!product.satuan_besar,
             satuan_besar: product.satuan_besar || '',
             isi_per_besar: product.isi_per_besar || null,
-            harga_beli_besar: null,
+            
+            // 🚀 HASIL PERHITUNGAN OTOMATIS DIMASUKIN KE SINI
+            harga_beli_besar: product.satuan_besar ? hargaBeliKarton : null, 
             harga_jual_besar: product.harga_jual_besar || null,
+            
             qty_eceran_tampil: acuanQty,
             harga_eceran_tampil: (product.harga_jual || 0) * acuanQty,
             
-            // 🚀 REVERSE ENGINEER: Kalau GRAM, kita bagi 1000 lagi pas mau nampilin ke kotak KG
-            input_kg: (isBulkType && product.isi_per_besar) ? (product.isi_per_besar / 1000) : null,
-            is_nested_uom: false, satuan_tengah: '', isi_besar_ke_tengah: null, isi_tengah_ke_dasar: null
+            // 🚀 AMANIN PARSING BOOLEAN DARI GOLANG BIAR KEMASAN TENGAH MUNCUL
+            is_nested_uom: product.is_nested_uom === true || product.is_nested_uom === 'true' || product.is_nested_uom === 1,
+            satuan_tengah: product.satuan_tengah || '',
+            isi_besar_ke_tengah: product.isi_besar_ke_tengah || null,
+            isi_tengah_ke_dasar: product.isi_tengah_ke_dasar || null,
+            
+            input_kg: (isBulkType && product.isi_per_besar) ? (product.isi_per_besar / 1000) : null
         };
+
+        // 🚀 REVERSE ENGINEER STOK KARTON & ECERAN
+        // Biar kotak jumlah karton di bawah nggak 0 pas diedit!
+        if (product.satuan_besar && product.isi_per_besar > 0) {
+            stok_dalam_karton.value = Math.floor((product.stok || 0) / product.isi_per_besar);
+            eceran_tambahan.value = (product.stok || 0) % product.isi_per_besar;
+        } else {
+            stok_dalam_karton.value = null;
+            eceran_tambahan.value = null;
+        }
         
         imagePreview.value = getImageUrl(product.gambar);
         showFormModal.value = true;
@@ -256,7 +278,6 @@ export function useMasterProduk() {
         formData.append('kategori', form.value.category);
         formData.append('harga_modal', Number(form.value.cost_price));
         formData.append('harga_jual', Number(form.value.price));
-        formData.append('stok', Number(form.value.stock));
         formData.append('satuan_dasar', form.value.satuan_dasar);
         formData.append('satuan_besar', form.value.has_satuan_besar ? form.value.satuan_besar : '');
         formData.append('isi_per_besar', form.value.has_satuan_besar ? Number(form.value.isi_per_besar) : 0);
@@ -271,6 +292,13 @@ export function useMasterProduk() {
         }
 
         if (form.value.image) formData.append('gambar', form.value.image);
+
+        // 🚀 LOGIC KUNCI: 
+        // HANYA kirim 'stok' ke backend jika sedang TAMBAH BARU (bukan Edit).
+        // Kalau lagi edit, biarkan backend (Golang) MENGABAIKAN update pada kolom stok.
+        if (!isEditing.value) {
+            formData.append('stok', Number(form.value.stock));
+        }
 
         try {
             if (isEditing.value) await productService.updateProduct(editId.value, formData);

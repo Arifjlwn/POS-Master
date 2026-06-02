@@ -408,12 +408,13 @@ func (r *retailRepo) GetTransactionsByRange(storeID uint, start time.Time, end t
 }
 
 func (r *retailRepo) GetClosingByRange(storeID uint, startOfDay, endOfDay time.Time) ([]models.ShiftClosing, error) {
-	var closings []models.ShiftClosing
-	
-	err := r.db.Preload("User").
-		Where("store_id = ? AND created_at >= ? AND created_at < ?", storeID, startOfDay, endOfDay).
-		Order("created_at DESC").
-		Find(&closings).Error
-		
-	return closings, err
+    var closings []models.ShiftClosing 
+    
+    // 🚀 TAMBAHIN .Preload("Store") BIAR LOGO & DATA TOKO KETARIK!
+    err := r.db.Preload("User").Preload("Session").Preload("Store").
+        Where("store_id = ? AND created_at >= ? AND created_at < ?", storeID, startOfDay, endOfDay).
+        Order("created_at DESC").
+        Find(&closings).Error
+        
+    return closings, err
 }

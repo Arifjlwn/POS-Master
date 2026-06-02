@@ -1,8 +1,9 @@
 <script setup>
+import { computed } from 'vue';
 import { useJournal } from '../../composables/useJournal.js';
 import Sidebar from '../../components/Sidebar.vue';
-// 🚀 PERUBAHAN 1: Import file komponen ReceiptModal lu di sini beb!
 import ReceiptModal from '../../components/pos/ReceiptModal.vue';
+import ClosingModal from '../../components/pos/ClosingModal.vue';
 
 const {
     isLoading,
@@ -14,8 +15,28 @@ const {
     formatRupiah,
     openReceipt,
     currentUser,
-    currentSession
+    currentSession,
+
+    activeTab,
+    riwayatClosing,
+    showClosingReceipt,
+    selectedClosing,
+    openClosingReceipt
 } = useJournal();
+
+// 🚀 BIKIN FITUR SEARCH LIVE KHUSUS TAB CLOSING
+const filteredRiwayatClosing = computed(() => {
+    if (!searchQuery.value) return riwayatClosing.value;
+    const query = searchQuery.value.toLowerCase();
+    return riwayatClosing.value.filter(close => 
+        (close.User?.name && close.User.name.toLowerCase().includes(query))
+    );
+});
+
+// 🚀 FUNGSI BUAT TRIGGER PRINT BROWSER
+const handlePrint = () => {
+    window.print();
+};
 </script>
 
 <template>
@@ -34,88 +55,159 @@ const {
                 </div>
             </div>
 
+            <div class="flex gap-2 mb-6 overflow-x-auto custom-scrollbar pb-2">
+                <button @click="activeTab = 'sales'" :class="activeTab === 'sales' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-white text-slate-500 hover:bg-slate-50'" class="px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border border-slate-100 flex-shrink-0 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg>
+                    Riwayat Transaksi (Sales)
+                </button>
+                <button @click="activeTab = 'closing'" :class="activeTab === 'closing' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-white text-slate-500 hover:bg-slate-50'" class="px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border border-slate-100 flex-shrink-0 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+                    Riwayat Tutup Shift (Closing)
+                </button>
+            </div>
+
             <div class="mb-6 relative group">
                 <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 </div>
-                <input v-model="searchQuery" type="text" placeholder="Cari Nomor Invoice atau Nama Kasir..." class="block w-full pl-14 pr-4 py-4 bg-white rounded-2xl border-2 border-slate-100 shadow-sm focus:border-blue-600 outline-none font-bold text-sm transition-all text-slate-700">
+                <input v-model="searchQuery" type="text" :placeholder="activeTab === 'sales' ? 'Cari Nomor Invoice atau Nama Kasir...' : 'Cari Nama Kasir...'" class="block w-full pl-14 pr-4 py-4 bg-white rounded-2xl border-2 border-slate-100 shadow-sm focus:border-blue-600 outline-none font-bold text-sm transition-all text-slate-700">
             </div>
 
-            <div class="md:hidden grid grid-cols-1 gap-4">
-                <div v-for="trx in filteredRiwayat" :key="trx.id" class="bg-white p-5 rounded-[24px] shadow-sm border border-slate-100 flex flex-col gap-3 relative overflow-hidden">
-                    <div class="absolute left-0 top-0 bottom-0 w-1.5" :class="trx.metode_bayar === 'Cash' ? 'bg-emerald-400' : 'bg-blue-500'"></div>
-                    
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <div class="font-mono font-black text-sm text-slate-800 tracking-tighter">{{ trx.no_invoice }}</div>
-                            <div class="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
-                                {{ new Date(trx.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }} • OPR: {{ trx.User?.name ? trx.User.name.split(' ')[0] : 'KASIR' }}
+            <div v-if="activeTab === 'sales'">
+                <div class="md:hidden grid grid-cols-1 gap-4">
+                    <div v-for="trx in filteredRiwayat" :key="trx.id" class="bg-white p-5 rounded-[24px] shadow-sm border border-slate-100 flex flex-col gap-3 relative overflow-hidden">
+                        <div class="absolute left-0 top-0 bottom-0 w-1.5" :class="trx.metode_bayar === 'Cash' ? 'bg-emerald-400' : 'bg-blue-500'"></div>
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="font-mono font-black text-sm text-slate-800 tracking-tighter">{{ trx.no_invoice }}</div>
+                                <div class="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
+                                    {{ new Date(trx.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }} • OPR: {{ trx.User?.name ? trx.User.name.split(' ')[0] : 'KASIR' }}
+                                </div>
                             </div>
+                            <span class="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border" :class="trx.metode_bayar === 'Cash' ? 'border-emerald-100 bg-emerald-50 text-emerald-600' : 'border-blue-100 bg-blue-50 text-blue-600'">
+                                {{ trx.metode_bayar || 'CASH' }}
+                            </span>
                         </div>
-                        <span class="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border" :class="trx.metode_bayar === 'Cash' ? 'border-emerald-100 bg-emerald-50 text-emerald-600' : 'border-blue-100 bg-blue-50 text-blue-600'">
-                            {{ trx.metode_bayar || 'CASH' }}
-                        </span>
-                    </div>
-
-                    <div class="border-t border-dashed border-slate-200 my-1"></div>
-
-                    <div class="flex justify-between items-end">
-                        <div>
-                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Transaksi</p>
-                            <p class="font-black text-slate-800 text-lg">Rp{{ formatRupiah(trx.total_harga) }}</p>
+                        <div class="border-t border-dashed border-slate-200 my-1"></div>
+                        <div class="flex justify-between items-end">
+                            <div>
+                                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Transaksi</p>
+                                <p class="font-black text-slate-800 text-lg">Rp{{ formatRupiah(trx.total_harga) }}</p>
+                            </div>
+                            <button @click="openReceipt(trx)" class="flex items-center justify-center w-10 h-10 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-900 hover:text-white transition-colors active:scale-95 shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                            </button>
                         </div>
-                        <button @click="openReceipt(trx)" class="flex items-center justify-center w-10 h-10 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-900 hover:text-white transition-colors active:scale-95 shadow-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
-                        </button>
                     </div>
+                </div>
+
+                <div v-if="filteredRiwayat.length > 0" class="hidden md:block w-full bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden transition-all">
+                    <table class="w-full text-left border-collapse whitespace-nowrap">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-100">
+                                <th class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">No. Invoice</th>
+                                <th class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Waktu</th>
+                                <th class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Kasir</th>
+                                <th class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Metode</th>
+                                <th class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Total Nominal</th>
+                                <th class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50">
+                            <tr v-for="trx in filteredRiwayat" :key="trx.id" class="hover:bg-blue-50/40 transition-all group">
+                                <td class="px-6 py-4 font-mono font-black text-sm text-slate-700 tracking-tighter">{{ trx.no_invoice }}</td>
+                                <td class="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{{ new Date(trx.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':') }}</td>
+                                <td class="px-6 py-4 text-xs font-black text-slate-700 uppercase">{{ trx.User?.name || 'KASIR' }}</td>
+                                <td class="px-6 py-4">
+                                    <span class="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border" :class="trx.metode_bayar === 'Cash' ? 'border-emerald-100 bg-emerald-50 text-emerald-600' : 'border-blue-100 bg-blue-50 text-blue-600'">
+                                        {{ trx.metode_bayar || 'CASH' }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-right font-black text-slate-800 text-sm">Rp{{ formatRupiah(trx.total_harga) }}</td>
+                                <td class="px-6 py-4 text-center">
+                                    <button @click="openReceipt(trx)" class="inline-flex items-center justify-center gap-2 bg-slate-50 text-slate-500 border border-slate-200 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all active:scale-95 shadow-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                                        Cetak Struk
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <div v-if="filteredRiwayat.length > 0" class="hidden md:block w-full bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden transition-all">
-                <table class="w-full text-left border-collapse whitespace-nowrap">
-                    <thead>
-                        <tr class="bg-slate-50 border-b border-slate-100">
-                            <th class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">No. Invoice</th>
-                            <th class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Waktu</th>
-                            <th class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Kasir</th>
-                            <th class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Metode</th>
-                            <th class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Total Nominal</th>
-                            <th class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-50">
-                        <tr v-for="trx in filteredRiwayat" :key="trx.id" class="hover:bg-blue-50/40 transition-all group">
-                            <td class="px-6 py-4 font-mono font-black text-sm text-slate-700 tracking-tighter">{{ trx.no_invoice }}</td>
-                            <td class="px-6 py-4 text-xs font-bold text-slate-500 uppercase">
-                                {{
-                                    new Date(trx.created_at)
-                                        .toLocaleTimeString('id-ID', {
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                            hour12: false
-                                        })
-                                        .replace('.', ':')
-                                }}
-                            </td>
-                            <td class="px-6 py-4 text-xs font-black text-slate-700 uppercase">{{ trx.User?.name || 'KASIR' }}</td>
-                            <td class="px-6 py-4">
-                                <span class="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border" :class="trx.metode_bayar === 'Cash' ? 'border-emerald-100 bg-emerald-50 text-emerald-600' : 'border-blue-100 bg-blue-50 text-blue-600'">
-                                    {{ trx.metode_bayar || 'CASH' }}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 text-right font-black text-slate-800 text-sm">Rp{{ formatRupiah(trx.total_harga) }}</td>
-                            <td class="px-6 py-4 text-center">
-                                <button @click="openReceipt(trx)" class="inline-flex items-center justify-center gap-2 bg-slate-50 text-slate-500 border border-slate-200 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all active:scale-95 shadow-sm">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
-                                    Cetak Struk
-                                </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div v-if="activeTab === 'closing'">
+                <div class="md:hidden grid grid-cols-1 gap-4">
+                    <div v-for="close in filteredRiwayatClosing" :key="close.id" class="bg-white p-5 rounded-[24px] shadow-sm border border-slate-100 flex flex-col gap-3 relative overflow-hidden">
+                        <div class="absolute left-0 top-0 bottom-0 w-1.5" :class="close.selisih < 0 ? 'bg-rose-500' : (close.selisih > 0 ? 'bg-amber-500' : 'bg-emerald-400')"></div>
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="font-mono font-black text-sm text-slate-800 tracking-tighter">Shift: {{ close.User?.name?.split(' ')[0] || 'KASIR' }}</div>
+                                <div class="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
+                                    END: {{ new Date(close.end_time || close.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }}
+                                </div>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border" :class="close.selisih < 0 ? 'border-rose-100 bg-rose-50 text-rose-600' : (close.selisih > 0 ? 'border-amber-100 bg-amber-50 text-amber-600' : 'border-emerald-100 bg-emerald-50 text-emerald-600')">
+                                {{ close.selisih === 0 ? 'BALANCE' : 'VARIANCE' }}
+                            </span>
+                        </div>
+                        <div class="border-t border-dashed border-slate-200 my-1"></div>
+                        <div class="flex justify-between items-end">
+                            <div>
+                                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Aktual</p>
+                                <p class="font-black text-slate-800 text-lg">Rp{{ formatRupiah(close.total_actual) }}</p>
+                            </div>
+                            <button @click="openClosingReceipt(close)" class="flex items-center justify-center w-10 h-10 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-900 hover:text-white transition-colors active:scale-95 shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="filteredRiwayatClosing && filteredRiwayatClosing.length > 0" class="hidden md:block w-full bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden transition-all">
+                    <table class="w-full text-left border-collapse whitespace-nowrap">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-100">
+                                <th class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Waktu Tutup</th>
+                                <th class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Kasir</th>
+                                <th class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Expected (Sistem)</th>
+                                <th class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actual (Fisik)</th>
+                                <th class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Selisih</th>
+                                <th class="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50">
+                            <tr v-for="close in filteredRiwayatClosing" :key="close.id" class="hover:bg-blue-50/40 transition-all group">
+                                <td class="px-6 py-4 text-xs font-bold text-slate-500 uppercase">
+                                    {{ new Date(close.end_time || close.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':') }}
+                                </td>
+                                <td class="px-6 py-4 text-xs font-black text-slate-700 uppercase">
+                                    {{ close.User?.name || 'KASIR' }}
+                                </td>
+                                <td class="px-6 py-4 text-right font-black text-slate-800 text-sm">
+                                    Rp{{ formatRupiah(close.total_expected) }}
+                                </td>
+                                <td class="px-6 py-4 text-right font-black text-slate-800 text-sm">
+                                    Rp{{ formatRupiah(close.total_actual) }}
+                                </td>
+                                <td class="px-6 py-4 text-right font-black text-sm" :class="close.selisih < 0 ? 'text-rose-500' : (close.selisih > 0 ? 'text-amber-500' : 'text-emerald-500')">
+                                    Rp{{ formatRupiah(close.selisih) }}
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <button @click="openClosingReceipt(close)" class="inline-flex items-center justify-center gap-2 bg-slate-50 text-slate-500 border border-slate-200 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all active:scale-95 shadow-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                                        Reprint
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
+
         </main>
     </Sidebar>
+    
     <ReceiptModal 
         :show="showReceipt" 
         :invoiceData="selectedTrx" 
@@ -124,18 +216,26 @@ const {
         :stationNumber="'01'"
         @close="showReceipt = false" 
     />
+
+    <ClosingModal
+    :show="false"
+    :showReceiptClosing="showClosingReceipt"
+    :pecahan="{}"
+    :totalUangFisik="0"
+    :lastClosingData="selectedClosing"
+    :currentSession="currentSession"
+    :currentUser="selectedClosing?.User || currentUser"
+    :storeData="selectedClosing?.Store || currentSession?.store || currentSession?.Store" 
+    @print-closing="handlePrint"
+    @finish-closing="showClosingReceipt = false"
+    @close="showClosingReceipt = false"
+/>
 </template>
 
 <style scoped>
-/* 🚀 TAMBAHKAN CSS INI BIAR LAYAR BERSIH PAS NGEPRINT */
 @media print {
-    @page { 
-        margin: 0; 
-    }
-    body { 
-        background: white; 
-        -webkit-print-color-adjust: exact; 
-    }
+    @page { margin: 0; }
+    body { background: white; -webkit-print-color-adjust: exact; }
 }
 
 .custom-scrollbar::-webkit-scrollbar { width: 5px; }

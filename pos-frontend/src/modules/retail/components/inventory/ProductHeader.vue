@@ -24,6 +24,13 @@ const onImportClick = () => {
     // tapi kita kasih fallback click langsung jika diperlukan.
     importInput.value.click();
 };
+
+const isCategoryOpen = ref(false);
+const selectCategory = (cat) => {
+    emit('update:selectedCategory', cat);
+    isCategoryOpen.value = false;
+};
+
 </script>
 
 <template>
@@ -66,18 +73,53 @@ const onImportClick = () => {
                 >
             </div>
             <div class="w-full sm:w-64 shrink-0 relative">
-                <select 
-                    :value="selectedCategory" 
-                    @change="emit('update:selectedCategory', $event.target.value)" 
-                    class="block w-full pl-4 pr-10 py-4 bg-white rounded-2xl border-2 border-slate-100 shadow-sm focus:border-blue-600 text-sm font-bold text-slate-700 cursor-pointer outline-none appearance-none transition-all uppercase"
-                >
-                    <option value="">SEMUA KATEGORI</option>
-                    <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
-                </select>
-                <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                </div>
+    
+    <!-- 🚀 OVERLAY GAIB BUAT NUTUP DROPDOWN KALAU KLIK DI LUAR -->
+    <div v-if="isCategoryOpen" @click="isCategoryOpen = false" class="fixed inset-0 z-40"></div>
+
+    <!-- 🚀 TRIGGER BUTTON (PENGGANTI SELECT) -->
+    <div 
+        @click="isCategoryOpen = !isCategoryOpen" 
+        class="relative block w-full pl-4 pr-10 py-4 bg-white rounded-2xl border-2 shadow-sm text-sm font-bold cursor-pointer outline-none transition-all uppercase flex items-center justify-between"
+        :class="isCategoryOpen ? 'z-50 border-blue-600 text-blue-700' : 'z-10 border-slate-100 text-slate-700 hover:border-blue-300'"
+    >
+        <span class="truncate">{{ selectedCategory || 'SEMUA KATEGORI' }}</span>
+        <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none transition-transform duration-300" :class="isCategoryOpen ? 'rotate-180 text-blue-600' : 'text-slate-400'">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+        </div>
+    </div>
+
+    <!-- 🚀 MENU DROPDOWN CUSTOM DENGAN ANIMASI SMOOTH -->
+    <transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="transform scale-95 opacity-0 -translate-y-2"
+        enter-to-class="transform scale-100 opacity-100 translate-y-0"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="transform scale-100 opacity-100 translate-y-0"
+        leave-to-class="transform scale-95 opacity-0 -translate-y-2"
+    >
+        <div v-if="isCategoryOpen" class="absolute z-50 w-full mt-2 bg-white border border-slate-100 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar flex flex-col py-2">
+            
+            <div 
+                @click="selectCategory('')" 
+                class="px-5 py-3.5 hover:bg-blue-50 cursor-pointer text-xs font-black transition-colors uppercase border-b border-slate-50 last:border-0"
+                :class="selectedCategory === '' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-blue-600'"
+            >
+                SEMUA KATEGORI
             </div>
+            
+            <div 
+                v-for="cat in categories" :key="cat"
+                @click="selectCategory(cat)" 
+                class="px-5 py-3.5 hover:bg-blue-50 cursor-pointer text-xs font-black transition-colors uppercase border-b border-slate-50 last:border-0"
+                :class="selectedCategory === cat ? 'text-blue-600 bg-blue-50/50' : 'text-slate-500 hover:text-blue-600'"
+            >
+                {{ cat }}
+            </div>
+
+        </div>
+    </transition>
+</div>
         </div>
     </div>
 </template>

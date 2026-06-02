@@ -40,7 +40,8 @@ func ConnectDatabase() {
         &models.CashierSession{}, 
         &models.Attendance{},     
         &models.Schedule{},       
-        &models.Customer{},       
+        &models.Customer{},
+        &models.ShiftClosing{},       
         
         // ==========================================
         // 🛍️ RETAIL & INVENTORY
