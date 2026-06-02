@@ -47,7 +47,7 @@ const pricingPlans = {
     retail: [
         { id: 'trial', name: 'Starter Trial', price: 'Rp 0', duration: '14 Hari', desc: 'Validasi kesesuaian sistem dengan ekosistem bisnis Anda.', features: ['POS Kasir Retail', 'Master Data Produk', 'Scan Barcode Reader', 'Tanpa Kartu Kredit'] },
         { id: 'basic', name: 'Retail Basic', price: '49k', duration: '/Bulan', desc: 'Solusi solid untuk toko kelontong dengan 1 titik kasir.', features: ['Kasir Tanpa Batas', 'Manajemen Stok Dasar', 'Struk Thermal Bluetooth', 'Laporan Penjualan Harian'] },
-        { id: 'pro', name: 'Retail Pro', price: '149k', duration: '/Bulan', desc: 'Cocok untuk minimarket yang mulai mengelola karyawan.', features: ['Semua Fit Fitur Basic', 'Manajemen Hak Akses Kasir', 'Smart Attendance & Shift', 'Laporan Ekspor (Excel/PDF)'] },
+        { id: 'pro', name: 'Retail Pro', price: '149k', duration: '/Bulan', desc: 'Cocok untuk minimarket yang mulai mengelola karyawan.', features: ['Semua Fitur Basic', 'Manajemen Hak Akses Kasir', 'Smart Attendance & Shift', 'Laporan Ekspor (Excel/PDF)'] },
         { id: 'premium', name: 'Retail Premium', price: '299k', duration: '/Bulan', desc: 'Kendali penuh untuk bisnis multi-cabang & gudang.', features: ['Semua Fitur Pro', 'Sistem Multi-Cabang (HO)', 'Manajemen Multi-Gudang', 'Dedicated Support 24/7'] }
     ],
     fnb: [

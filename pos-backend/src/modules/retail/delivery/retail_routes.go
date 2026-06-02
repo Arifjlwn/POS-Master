@@ -40,6 +40,7 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 	// POS Checkout Transaksi & Struk Nota
 	rg.POST("/checkout", h.CreateTransaction)
 	rg.GET("/transactions", h.GetTransactions)
+	rg.GET("/journal/closing", h.GetDailyClosing)
 
 	// Setting Toko & Akun
 	rg.GET("/store/settings", h.GetStoreSettings)

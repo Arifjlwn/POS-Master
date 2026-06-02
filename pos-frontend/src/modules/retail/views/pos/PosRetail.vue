@@ -81,7 +81,7 @@ const {
     currentUser, currentSession, currentTime, products, isLoadingProducts, cart, heldOrders,
     showHeldModal, payAmount, paymentMethod, showReceipt, showQrisModal, lastTransaction,
     showReceiptClosing, lastClosingData, isMobileCartOpen, searchQuery, searchInput,
-    showScanner, pecahan, filteredProducts, totalBelanja, kembalian, totalUangFisik,
+    showScanner, pecahan, filteredProducts,subTotalBelanja,nilaiPajak, totalBelanja, kembalian, totalUangFisik,
     showClosingModal, isProcessingCheckout,
     getImageUrl, startScanner, stopScanner, handleBarcodeScan, addToCart,toggleUom,
     decreaseQty, increaseQty, validateQty, clearCart, holdTransaction, resumeOrder,
@@ -229,10 +229,16 @@ const goToRiwayat = () => router.push('/retail/pos/riwayat');
                 :cart="cart"
                 :heldOrders="heldOrders"
                 :paymentMethod="paymentMethod"
+
+                :subTotal="subTotalBelanja"
+                :pajak="nilaiPajak"
                 :totalBelanja="totalBelanja"
                 :payAmount="payAmount"
                 :kembalian="kembalian"
+                :isTaxActive="storeData?.is_tax_active"
+                :pajakPersen="storeData?.pajak_persen"
                 :isProcessingCheckout="isProcessingCheckout"
+                
                 @show-held="showHeldModal = true"
                 @hold-order="holdTransaction"
                 @clear-cart="clearCart"
@@ -256,7 +262,7 @@ const goToRiwayat = () => router.push('/retail/pos/riwayat');
         <div v-if="showHeldModal" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-[150] p-4 backdrop-blur-sm print:hidden">
             <div class="bg-white p-6 md:p-8 rounded-[32px] shadow-2xl w-full max-w-xl max-h-[80vh] flex flex-col">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-lg font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">💾 Pesanan Tertunda</h2>
+                    <h2 class="text-lg font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">Pesanan Tertunda</h2>
                     <button @click="showHeldModal = false" class="p-2 bg-slate-100 hover:bg-rose-100 text-slate-400 rounded-xl">✕</button>
                 </div>
                 <div class="flex-1 overflow-y-auto custom-scrollbar pr-2">
@@ -337,6 +343,7 @@ const goToRiwayat = () => router.push('/retail/pos/riwayat');
             :lastClosingData="lastClosingData"
             :currentSession="currentSession"
             :currentUser="currentUser"
+            :storeLogo="storeLogo"
             @close="showClosingModal = false"
             @process-closing="handleClosing"
             @print-closing="printClosing"

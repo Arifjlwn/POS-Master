@@ -37,6 +37,11 @@ onMounted(() => {
     }
 });
 
+// 🚀 FUNGSI KEMBALI KE LANDING PAGE
+const goHome = () => {
+    router.push('/');
+};
+
 // --- VALIDASI NO HP ---
 const formatNoHpRegister = () => {
     let val = String(form.value.no_hp);
@@ -101,7 +106,18 @@ const handleRegister = async () => {
         <div class="absolute -top-24 -right-24 w-96 h-96 bg-blue-100/50 rounded-full blur-3xl"></div>
         <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-indigo-100/50 rounded-full blur-3xl"></div>
         
-        <div class="w-full max-w-2xl relative">
+        <!-- 🚀 TAMBAHAN: Tombol Floating Back ke Beranda -->
+        <button 
+            @click="goHome"
+            class="absolute top-6 left-6 md:top-10 md:left-10 flex items-center gap-2 px-5 py-3 bg-white/60 hover:bg-white backdrop-blur-md border border-slate-200/50 text-slate-500 hover:text-indigo-600 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all hover:shadow-lg hover:-translate-x-1 group z-50"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Kembali ke Beranda
+        </button>
+
+        <div class="w-full max-w-2xl relative mt-12 md:mt-0">
             <div class="bg-white rounded-[40px] p-8 md:p-12 shadow-2xl relative border border-white">
                 
                 <div class="text-center mb-10">

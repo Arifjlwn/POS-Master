@@ -80,8 +80,9 @@ func Register(c *gin.Context) {
 // -- VERIFIKASI OTP --
 func VerifyOTP(c *gin.Context) {
 	var input struct {
-		Email string `json:"email" binding:"required"`
-		OTP   string `json:"otp" binding:"required"`
+		Email  string `json:"email" binding:"required"` // Bisa email atau phone clean
+		OTP    string `json:"otp" binding:"required"`
+		Intent string `json:"intent"` // 🚀 Tangkap intent dari Vue!
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -90,28 +91,69 @@ func VerifyOTP(c *gin.Context) {
 	}
 
 	var user models.User
-	if err := src.DB.Where("email = ?", input.Email).First(&user).Error; err != nil {
+	// Cari akun pake email atau nomor hp
+	if err := src.DB.Where("email = ? OR no_hp = ?", input.Email, input.Email).First(&user).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User tidak ditemukan"})
 		return
 	}
 
+	// 🛑 1. CEK STATUS LOCKOUT PERMANEN 
+	if user.LockedUntil != nil && user.LockedUntil.Year() == 2099 {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Akun Anda telah DI-LOCK PERMANEN karena tindakan mencurigakan. Hubungi Tim IT!"})
+		return
+	}
+
+	// 🛑 2. CEK STATUS LOCKOUT TIMEOUT (1 JAM)
+	if user.LockedUntil != nil && time.Now().Before(*user.LockedUntil) {
+		diff := time.Until(*user.LockedUntil)
+		c.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("Akses dibekukan! Silakan tunggu %d menit lagi.", int(diff.Minutes()))})
+		return
+	}
+
+	// 🛑 3. CEK KADALUARSA OTP
 	if time.Now().After(user.OTPExpired) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Kode OTP sudah kadaluarsa!"})
 		return
 	}
 
+	// 🛑 4. KALO OTP-NYA SALAH, NAIKKIN COUNT ATTEMPTS!
 	if user.OTPCode != input.OTP {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Kode OTP salah!"})
+		newAttempts := user.OTPAttempts + 1
+		updates := map[string]interface{}{"otp_attempts": newAttempts}
+
+		if newAttempts >= 8 {
+			permanentLock := time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC)
+			updates["locked_until"] = permanentLock
+			src.DB.Model(&user).Updates(updates)
+			c.JSON(http.StatusForbidden, gin.H{"error": "Terlalu banyak percobaan! Akun Anda kini DI-LOCK PERMANEN."})
+			return
+		} else if newAttempts >= 4 {
+			lockTime := time.Now().Add(time.Hour * 1)
+			updates["locked_until"] = lockTime
+			src.DB.Model(&user).Updates(updates)
+			c.JSON(http.StatusForbidden, gin.H{"error": "Terlalu banyak percobaan salah! Akses dibekukan selama 1 jam."})
+			return
+		}
+
+		src.DB.Model(&user).Updates(updates)
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Kode OTP salah! Sisa percobaan: %d kali lagi.", 4-newAttempts%4)})
 		return
 	}
 
-	// Update Status Verified
-	src.DB.Model(&user).Updates(map[string]interface{}{
-		"is_verified": true,
-		"otp_code":    "",
-	})
+	// 🎉 KALO LOLOS / BENER
+	updates := map[string]interface{}{
+		"is_verified":  true,
+		"otp_attempts": 0,
+		"locked_until": nil,
+	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Email terverifikasi! Silakan login."})
+	// 🚀 JANGAN HAPUS OTP KALAU LAGI RESET PASSWORD! (Biar bisa diverifikasi lagi di step reset)
+	if input.Intent != "reset-password" {
+		updates["otp_code"] = ""
+	}
+
+	src.DB.Model(&user).Updates(updates)
+	c.JSON(http.StatusOK, gin.H{"message": "Verifikasi sukses!"})
 }
 
 // 2. Struct Login
@@ -385,4 +427,98 @@ func SendOTPWhatsApp(c *gin.Context) {
 		"message": "Kode OTP berhasil dikirim ke WhatsApp Anda! Silakan cek chat masuk.",
 		"phone":   phoneClean,
 	})
+}
+
+// 3. Struct Payload Reset Password
+type ResetPasswordInput struct {
+	Email    string `json:"email" binding:"required"` // Bisa Email atau No. WA
+	Token    string `json:"token" binding:"required"` // OTP
+	Password string `json:"password" binding:"required,min=6"`
+}
+
+// -- 🚀 RESET PASSWORD & GANTI BARU --
+func ResetPassword(c *gin.Context) {
+	var input ResetPasswordInput
+
+	// 1. Validasi input JSON
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format tidak valid atau password kurang dari 6 karakter"})
+		return
+	}
+
+	// 2. Bersihkan inputan kalau ternyata itu Nomor HP (biar formatnya selalu 628xxx)
+	identifierClean := input.Email
+	if !strings.Contains(identifierClean, "@") {
+		identifierClean = strings.Replace(identifierClean, "+", "", 1)
+		if strings.HasPrefix(identifierClean, "0") {
+			identifierClean = "62" + identifierClean[1:]
+		}
+		if strings.HasPrefix(identifierClean, "8") {
+			identifierClean = "62" + identifierClean
+		}
+	}
+
+	var user models.User
+
+	// 3. Cari User berdasarkan (Email ATAU No HP) DAN OTP Code yang cocok
+	err := src.DB.Where("(email = ? OR no_hp = ?) AND otp_code = ?", identifierClean, identifierClean, input.Token).First(&user).Error
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Kode OTP tidak valid atau salah!"})
+		return
+	}
+
+	// 4. Cek apakah OTP sudah kadaluarsa
+	if time.Now().After(user.OTPExpired) {
+		// Opsional: Kosongkan OTP yang kadaluarsa
+		src.DB.Model(&user).Update("otp_code", "")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Kode OTP sudah kedaluwarsa, silakan minta kode baru"})
+		return
+	}
+
+	// 5. Enkripsi Password Baru
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses keamanan password"})
+		return
+	}
+
+	// 6. Update Password & Hanguskan OTP
+	user.Password = string(hashedPassword)
+	user.OTPCode = "" // Hanguskan OTP
+
+	if err := src.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan password baru ke database"})
+		return
+	}
+
+	// 7. Respon Sukses!
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Password berhasil diperbarui secara otomatis. Silakan login kembali.",
+	})
+}
+
+func CheckAccount(c *gin.Context) {
+    var input struct {
+        Identifier string `json:"identifier" binding:"required"`
+    }
+    if err := c.ShouldBindJSON(&input); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Input wajib diisi"})
+        return
+    }
+
+    var user models.User
+    // Cari pake email atau nomor hp yang udah di-format clean
+    cleanID := utils.FormatPhoneNumber(input.Identifier)
+    
+    if err := src.DB.Where("email = ? OR no_hp = ?", input.Identifier, cleanID).First(&user).Error; err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "Akun tidak terdaftar di sistem"})
+        return
+    }
+
+    // Kembalin data asli ke Vue
+    c.JSON(http.StatusOK, gin.H{
+        "email": *user.Email,
+        "phone": user.NoHP,
+    })
 }

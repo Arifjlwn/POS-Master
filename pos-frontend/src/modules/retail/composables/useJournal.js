@@ -2,15 +2,21 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { journalService } from '../services/journalService.js';
 
 export function useJournal() {
-    // --- STATE DATA ---
+    // --- STATE DATA SALES ---
     const riwayat = ref([]);
     const isLoading = ref(true);
     const tanggalDipilih = ref(new Date().toISOString().split('T')[0]); 
 
+    // --- 🚀 STATE DATA CLOSING (BARU) ---
+    const riwayatClosing = ref([]); // Nyimpen data closing
+    const activeTab = ref('sales'); // 'sales' atau 'closing'
+    const selectedClosing = ref(null); // Data closing yang dipilih buat di-print
+    const showClosingReceipt = ref(false); // Modal struk closing
+
     // --- STATE PENCARIAN ---
     const searchQuery = ref('');
 
-    // --- STATE MODAL STRUK ---
+    // --- STATE MODAL STRUK SALES ---
     const showReceipt = ref(false);
     const selectedTrx = ref(null);
 
@@ -23,7 +29,6 @@ export function useJournal() {
             const user = localStorage.getItem('user');
             if (user) currentUser.value = JSON.parse(user);
 
-            // Coba ambil data store/toko (tergantung lu nyimpennya gimana pas login)
             const store = localStorage.getItem('storeData') || localStorage.getItem('store');
             if (store) currentSession.value = { store: JSON.parse(store) };
         } catch (e) {
@@ -32,10 +37,11 @@ export function useJournal() {
     };
 
     const formatRupiah = (angka) => {
+        if (!angka && angka !== 0) return '0';
         return new Intl.NumberFormat('id-ID').format(angka);
     };
 
-    // 🚀 Ambil data dari Service API
+    // 🚀 AMBIL DATA SALES DARI API
     const fetchRiwayat = async () => {
         isLoading.value = true;
         try {
@@ -48,13 +54,31 @@ export function useJournal() {
         }
     };
 
-    onMounted(() => {
-        loadSessionData(); // Panggil fungsi load profil
-        fetchRiwayat();
-    });
-    watch(tanggalDipilih, () => fetchRiwayat());
+    // 🚀 AMBIL DATA CLOSING DARI API (FUNGSI BARU)
+    const fetchRiwayatClosing = async () => {
+        try {
+            // Asumsi di journalService.js lu bikin fungsi getDailyClosing(date)
+            // Kalo belum ada di service-nya, jangan lupa lu buat ya!
+            const response = await journalService.getDailyClosing(tanggalDipilih.value);
+            riwayatClosing.value = response.data.data || [];
+        } catch (error) {
+            console.error("Gagal menarik riwayat closing:", error);
+        }
+    };
 
-    // 🚀 FITUR PENCARIAN REALTIME
+    // 🚀 AUTO-LOAD PAS TANGGAL BERUBAH ATAU PERTAMA KALI MOUNT
+    onMounted(() => {
+        loadSessionData(); 
+        fetchRiwayat();
+        fetchRiwayatClosing(); // Langsung tarik data closing juga
+    });
+
+    watch(tanggalDipilih, () => {
+        fetchRiwayat();
+        fetchRiwayatClosing(); // Kalo tanggal ganti, update dua-duanya
+    });
+
+    // 🚀 FITUR PENCARIAN REALTIME (SALES)
     const filteredRiwayat = computed(() => {
         if (!searchQuery.value) return riwayat.value;
         const query = searchQuery.value.toLowerCase();
@@ -64,16 +88,29 @@ export function useJournal() {
         );
     });
 
+    // 🚀 BUKA MODAL STRUK SALES
     const openReceipt = (trx) => {
         selectedTrx.value = trx;
         showReceipt.value = true;
     };
 
-    // (HAPUS FUNGSI printReceipt KARENA UDAH DI-HANDLE SAMA RECEIPTMODAL KITA)
+    // 🚀 BUKA MODAL STRUK CLOSING (FUNGSI BARU)
+    const openClosingReceipt = (closingData) => {
+        selectedClosing.value = closingData;
+        showClosingReceipt.value = true;
+    };
 
     return {
         riwayat, isLoading, tanggalDipilih, searchQuery, showReceipt, selectedTrx,
         filteredRiwayat, formatRupiah, fetchRiwayat, openReceipt,
-        currentUser, currentSession // 🚀 EXPORT 2 VARIABEL INI BIAR BISA DIPAKE DI VUE
+        currentUser, currentSession,
+
+        // 🚀 PASTIKAN SEMUA STATE & FUNGSI CLOSING DI-EXPORT!
+        activeTab,
+        riwayatClosing,
+        showClosingReceipt,
+        selectedClosing,
+        openClosingReceipt,
+        fetchRiwayatClosing
     };
 }

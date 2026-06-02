@@ -78,6 +78,7 @@ type RetailRepository interface {
 	GetStoreByIDSimple(tx *gorm.DB, storeID uint) (*models.Store, error)
 	CreateTransactionTx(tx *gorm.DB, transaction *models.Transaction) error
 	GetTransactionsByRange(storeID uint, start time.Time, end time.Time) ([]models.Transaction, error)
+	GetClosingByRange(storeID uint, startOfDay time.Time, endOfDay time.Time) ([]models.ShiftClosing, error)
 }
 
 type retailRepo struct {
@@ -404,4 +405,15 @@ func (r *retailRepo) GetTransactionsByRange(storeID uint, start time.Time, end t
 	err := r.db.Preload("User").Preload("Store").Preload("Details").Preload("Details.Product").
 		Where("store_id = ? AND created_at BETWEEN ? AND ?", storeID, start, end).Order("created_at DESC").Find(&list).Error
 	return list, err
+}
+
+func (r *retailRepo) GetClosingByRange(storeID uint, startOfDay, endOfDay time.Time) ([]models.ShiftClosing, error) {
+	var closings []models.ShiftClosing
+	
+	err := r.db.Preload("User").
+		Where("store_id = ? AND created_at >= ? AND created_at < ?", storeID, startOfDay, endOfDay).
+		Order("created_at DESC").
+		Find(&closings).Error
+		
+	return closings, err
 }

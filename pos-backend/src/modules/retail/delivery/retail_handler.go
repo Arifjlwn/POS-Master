@@ -1861,6 +1861,35 @@ func (h *RetailHandler) GetTransactions(c *gin.Context) {
 	})
 }
 
+func (h *RetailHandler) GetDailyClosing(c *gin.Context) {
+	storeID := uint(c.MustGet("store_id").(float64))
+	tanggal := c.Query("tanggal")
+	if tanggal == "" {
+		tanggal = time.Now().Format("2006-01-02")
+	}
+
+	parsedDate, err := time.ParseInLocation("2006-01-02", tanggal, time.Local)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format tanggal tidak valid"})
+		return
+	}
+
+	startOfDay := parsedDate
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	// Panggil repo buat narik data closing
+	closings, err := h.Repo.GetClosingByRange(storeID, startOfDay, endOfDay)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menarik riwayat closing"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Riwayat closing berhasil ditarik!",
+		"data":    closings,
+	})
+}
+
 // ==========================================
 // ⚙️ PENGATURAN TOKO (STORE SETTINGS)
 // ==========================================

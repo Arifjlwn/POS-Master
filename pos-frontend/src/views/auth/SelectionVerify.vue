@@ -7,15 +7,17 @@ const route = useRoute();
 const router = useRouter();
 const email = route.query.email;
 const phone = route.query.phone;
+const intent = route.query.intent || 'register';
 
 const selectMethod = async (method) => {
-    // 🚀 OPSI EMAIL: TETEP PAKE ROUTER PUSH BIASA
+    // 🚀 OPSI EMAIL
     if (method === 'email') {
-        router.push({ path: '/verify-otp', query: { email: email } });
+        // JANGAN LUPA BAWA INTENT-NYA!
+        router.push({ path: '/verify-otp', query: { email: email, phone: phone, method: 'email', intent: intent } });
         return;
     }
     
-    // 🚀 OPSI WHATSAPP: TEMBAK API KE GOLANG LU
+    // 🚀 OPSI WHATSAPP
     if (method === 'whatsapp') {
         Swal.fire({
             title: 'Mengirim OTP...',
@@ -25,16 +27,12 @@ const selectMethod = async (method) => {
         });
 
         try {
-            // Tembak API Go lu
-            await api.post('/auth/send-otp-wa', {
-                phone: phone // Pastikan format nomor HP di backend udah bener (+62 atau 08)
-            });
-
+            await api.post('/auth/send-otp-wa', { phone: phone });
             Swal.close();
             Swal.fire('Berhasil!', 'Kode OTP sudah dikirim ke WhatsApp Anda.', 'success');
             
-            // Setelah berhasil, arahin ke halaman verifikasi
-            router.push({ path: '/verify-otp', query: { email: email, method: 'wa' } });
+            // JANGAN LUPA BAWA INTENT-NYA!
+            router.push({ path: '/verify-otp', query: { email: email, phone: phone, method: 'whatsapp', intent: intent } });
             
         } catch (error) {
             Swal.close();
@@ -62,7 +60,7 @@ const selectMethod = async (method) => {
                     </div>
                     <div class="text-left">
                         <div class="text-sm font-black text-slate-800 uppercase">Kirim via Email</div>
-                        <div class="text-[10px] text-slate-400 font-bold">{{ email }}</div>
+                        <div class="text-xs text-slate-600 font-bold mt-0.5">{{ email }}</div>
                     </div>
                 </button>
 

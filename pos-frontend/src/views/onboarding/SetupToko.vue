@@ -160,14 +160,18 @@ const submit = async () => {
     try {
         const finalTipeBisnis = String(form.value.detail_bisnis || form.value.kategori_bisnis).toLowerCase();
 
+        // 🚀 AMBIL ULANG DARI LOCAL STORAGE TEPAT SEBELUM SUBMIT BIAR FRESH!
+        const currentPendingIndustry = localStorage.getItem('pendingIndustry') || 'retail';
+        const currentPendingPlan = (localStorage.getItem('pendingPlan') || 'trial').toLowerCase();
+
         const payload = {
             nama_toko: form.value.nama_toko,
             telepon: `62${form.value.telepon}`,
             business_type: finalTipeBisnis, 
             
             // 🚀 KIRIM DATA SAAS KE BACKEND
-            industry: pendingIndustry,
-            plan: pendingPlan,
+            industry: currentPendingIndustry,
+            plan: currentPendingPlan,
 
             alamat_toko: form.value.alamat,
             provinsi: form.value.provinsi,
@@ -179,68 +183,61 @@ const submit = async () => {
 
         const response = await api.post('/setup', payload);
         
-        // Simpan token baru yang udah ada Store ID-nya
         if (response.data && response.data.token) {
             localStorage.setItem('token', response.data.token);
-            // Update auth state lu jika ada
         }
-
-        const chosenPlan = pendingPlan.toLowerCase();
 
         // =============================================================
         // 🚀 SKENARIO 1: MILIH PAKET BERBAYAR (LANGSUNG BAYAR DI TEMPAT)
         // =============================================================
-        if (chosenPlan !== 'trial') {
-            isLoading.value = false; // Matikan loading submit lokalan
+        // Pastikan hanya PRO, PREMIUM, atau BASIC yang masuk jalur pembayaran!
+        if (currentPendingPlan === 'basic' || currentPendingPlan === 'pro' || currentPendingPlan === 'premium') {
+            isLoading.value = false;
 
-            // Tentukan harga
-            let harga = 49000;
-            if (chosenPlan === 'pro') harga = 149000;
-            else if (chosenPlan === 'premium') harga = 299000;
+            // 🚀 TENTUKAN HARGA LEBIH TEGAS
+            let harga = 0;
+            if (currentPendingPlan === 'basic') harga = 49000;
+            else if (currentPendingPlan === 'pro') harga = 149000;
+            else if (currentPendingPlan === 'premium') harga = 299000;
+
+            // Kalau harganya 0 (error logika), jangan dilanjutin bayar!
+            if (harga === 0) throw new Error("Paket tidak valid untuk pembayaran.");
 
             Swal.fire({
                 title: 'Menyiapkan Pembayaran...',
-                text: `Menghubungkan ke gerbang aman Midtrans untuk paket ${pendingPlan.toUpperCase()}...`,
+                text: `Menghubungkan ke gerbang aman Midtrans untuk paket ${currentPendingPlan.toUpperCase()}...`,
                 allowOutsideClick: false,
                 didOpen: () => { Swal.showLoading(); }
             });
 
             try {
-                // 🚀 Minta snap token ke backend (Sesuaikan dengan endpoint order Midtrans lu)
-                // Pastikan token JWT yang dipake buat request ini udah token yang baru (yg ada store_id nya)
                 api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
                 
                 const payRes = await api.post('/retail/subscription/upgrade', {
-                    plan_name: chosenPlan,
+                    plan_name: currentPendingPlan,
                     price: harga
                 });
                 
-                // Ambil token sesuai respons dari backend lu
                 const snapToken = payRes.data.token; 
                 Swal.close();
 
-                // 🎯 PANGGIL SNAP MIDTRANS LANGSUNG DI HALAMAN SETUP TOKO!
+                // 🎯 PANGGIL SNAP MIDTRANS
                 window.snap.pay(snapToken, {
                     onSuccess: function(result) {
-                    // 1. Kasir loading sukses yang nutup otomatis setelah 2 detik
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Pembayaran Berhasil!',
-                        text: 'Infrastruktur premium Anda telah aktif sepenuhnya.',
-                        timer: 2000, // Tahan selama 2 detik biar Midtrans selesai fetch!
-                        showConfirmButton: false,
-                        allowOutsideClick: false,
-                        customClass: { popup: 'rounded-[32px]' }
-                    }).then(() => {
-                        // 2. Hapus jejak
-                        localStorage.removeItem('pendingIndustry');
-                        localStorage.removeItem('pendingPlan');
-                        
-                        // 3. LEMPAR PAKAI HARD RELOAD (PENTING!)
-                        // Biar state Axios dan Vue lu nge-refresh dan make Token Baru yang ada Store ID-nya
-                        window.location.href = '/retail/account'; 
-                    });
-                },
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Pembayaran Berhasil!',
+                            text: 'Infrastruktur premium Anda telah aktif sepenuhnya.',
+                            timer: 2000, 
+                            showConfirmButton: false,
+                            allowOutsideClick: false,
+                            customClass: { popup: 'rounded-[32px]' }
+                        }).then(() => {
+                            localStorage.removeItem('pendingIndustry');
+                            localStorage.removeItem('pendingPlan');
+                            window.location.href = '/retail/account'; 
+                        });
+                    },
                     onPending: function(result) {
                         Swal.fire('Menunggu Pembayaran', 'Segera selesaikan transaksi Anda sebelum invoice kedaluwarsa.', 'info');
                         router.push('/retail/account');
@@ -251,7 +248,6 @@ const submit = async () => {
                     },
                     onClose: function() {
                         Swal.fire('Pembayaran Ditunda', 'Silakan selesaikan invoice Anda nanti di halaman akun.', 'warning');
-                        // Kalau dia close, lempar ke akun (nanti bakal kena layar gembok karena belum lunas)
                         router.push('/retail/account');
                     }
                 });
@@ -261,9 +257,13 @@ const submit = async () => {
             }
 
         // =============================================================
-        // 🚀 SKENARIO 2: JIKA USER MILIH TRIAL (LANGSUNG MASUK DASHBOARD)
+        // 🚀 SKENARIO 2: JIKA USER MILIH TRIAL (ATAU PLAN GAK DIKENAL)
         // =============================================================
         } else {
+            // Bersihin storage dulu biar rapi
+            localStorage.removeItem('pendingIndustry');
+            localStorage.removeItem('pendingPlan');
+
             await Swal.fire({
                 icon: 'success',
                 title: 'Infrastruktur Siap!',
@@ -272,7 +272,6 @@ const submit = async () => {
                 customClass: { popup: 'rounded-[32px]' }
             });
 
-            // Langsung arahkan ke dashboard masing-masing
             const kat = form.value.kategori_bisnis; 
             const det = (form.value.detail_bisnis || '').toLowerCase(); 
 
@@ -291,7 +290,7 @@ const submit = async () => {
         Swal.fire({
             icon: 'error',
             title: 'Gagal Setup Toko',
-            text: error.response?.data?.error || 'Terjadi kesalahan sistem.',
+            text: error.response?.data?.error || error.message || 'Terjadi kesalahan sistem.',
             confirmButtonColor: '#ef4444'
         });
     } finally {

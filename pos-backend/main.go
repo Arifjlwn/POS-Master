@@ -78,6 +78,8 @@ func main() {
 	r.POST("/api/verify-otp", auth.VerifyOTP)
 	r.POST("/api/login", auth.Login)
 	r.POST("/api/auth/send-otp-wa", auth.SendOTPWhatsApp)
+	r.POST("/api/reset-password", auth.ResetPassword)
+	r.POST("/api/auth/check-account", auth.CheckAccount)
 
 	// 1. TAMBAHKAN INI: Inisialisasi Retail Handler di sini (di luar rute terproteksi)
     retailRepo := retailRepository.NewRetailRepo(src.DB)

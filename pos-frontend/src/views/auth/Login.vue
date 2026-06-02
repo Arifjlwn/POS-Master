@@ -12,6 +12,14 @@ const showPassword = ref(false);
 const errorMessage = ref('');
 const isLoading = ref(false);
 
+const goHome = () => {
+    router.push('/');
+};
+
+const goToForgotPassword = () => {
+    router.push('/forgot-password');
+};
+
 const handleLogin = async () => {
   isLoading.value = true;
   errorMessage.value = '';
@@ -55,14 +63,12 @@ const handleLogin = async () => {
       text: 'Selamat datang di sistem manajemen.'
     });
 
-    // 🚀 FIX: Redirect ke /setup-toko jika toko belum di-onboarding (Sesuai index.js)
     if (data.has_setup_store === false) {
       router.push('/setup-toko');
     } else {
       const roleUser = data.role.toLowerCase();
       let tipeBisnis = (data.business_type || data.tipe_bisnis || '').toLowerCase();
 
-      // 🚀 HACK SAKTI JAGA-JAGA
       if (!tipeBisnis || tipeBisnis === '') {
         if (identifier.value.toLowerCase().includes('laundry')) {
             tipeBisnis = 'laundry';
@@ -71,7 +77,6 @@ const handleLogin = async () => {
         }
       }
 
-      // 🚀 LOGIKA ROUTING CLEAN & LANGSUNG TEMBAK!
       if (tipeBisnis.includes('laundry')) {
           router.push(roleUser === 'owner' ? '/laundry/laporan' : '/laundry/pos');
       } 
@@ -88,11 +93,7 @@ const handleLogin = async () => {
           router.push(roleUser === 'owner' ? '/fnb/laporan' : '/fnb/kasir'); 
       } 
       else {
-          if (roleUser === 'owner') {
-              router.push('/retail/pos/riwayat');
-          } else {
-              router.push('/retail/pos/riwayat'); 
-          }
+          router.push('/retail/pos/riwayat'); 
       }
     }
 
@@ -119,12 +120,12 @@ const handleLogin = async () => {
     <div class="absolute -top-24 -left-24 w-96 h-96 bg-blue-100/50 rounded-full blur-3xl"></div>
     <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-indigo-100/50 rounded-full blur-3xl"></div>
 
-    <div class="w-full max-w-md relative group">
+    <div class="w-full max-w-md relative group mt-10 md:mt-0 z-10">
       <div class="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[40px] blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
       
       <div class="bg-white rounded-[40px] p-8 md:p-12 shadow-2xl relative border border-white flex flex-col">
         
-        <div class="text-center mb-10">
+        <div class="text-center mb-10 relative">
           <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-3xl shadow-xl shadow-blue-200 mb-6 transform -rotate-6 group-hover:rotate-0 transition-transform duration-500">
              <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/><path d="M22 7v3a2 2 0 0 1-2 2v0a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12v0a2 2 0 0 1-2-2V7"/></svg>
           </div>
@@ -151,7 +152,7 @@ const handleLogin = async () => {
           <div class="space-y-2">
             <div class="flex justify-between items-center px-1">
               <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Password</label>
-              <a href="#" class="text-[10px] font-black text-blue-600 uppercase hover:underline">Lupa Password?</a>
+              <a href="#" @click.prevent="goToForgotPassword" class="text-[10px] font-black text-blue-600 uppercase hover:underline">Lupa Password?</a>
             </div>
             <div class="relative group">
               <div class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors">
@@ -194,7 +195,17 @@ const handleLogin = async () => {
           </button>
         </form>
 
-        <div class="mt-12 text-center">
+        <button 
+            @click="goHome"
+            class="mt-6 w-full py-3 rounded-xl bg-slate-50 text-slate-500 font-bold text-[10px] uppercase tracking-widest hover:bg-slate-100 hover:text-blue-600 transition-all flex items-center justify-center gap-2"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Kembali ke Halaman Utama
+        </button>
+
+        <div class="mt-8 text-center">
           <p class="text-[9px] font-black text-slate-300 uppercase tracking-[0.4em]">Integrated Business Intelligence &copy; 2026</p>
         </div>
 
