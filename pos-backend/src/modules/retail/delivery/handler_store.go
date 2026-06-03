@@ -176,16 +176,16 @@ func (h *RetailHandler) CreateUpgradePayment(c *gin.Context) {
 		return
 	}
 
-	// 1. SETUP KUNCI RAHASIA MIDTRANS (Pakai Server Key Sandbox Lu)
-	// Nanti ganti pakai Server Key asli dari dashboard Midtrans lu
 	midtrans.ServerKey = os.Getenv("MIDTRANS_SERVER_KEY")
-	midtrans.Environment = midtrans.Sandbox // Default aman
+	midtrans.Environment = midtrans.Sandbox
 	if os.Getenv("APP_ENV") == "production" {
 		midtrans.Environment = midtrans.Production
 	}
 
-	// 2. BIKIN KERANJANG TAGIHAN
-	orderID := fmt.Sprintf("UPGRADE-TOKO-%d-%s-%d", storeID, strings.ToUpper(input.PlanName), time.Now().Unix())
+	// FIX: Hilangkan spasi dari nama plan! (Contoh: "Terminal Tambahan" -> "TERMINALTAMBAHAN")
+	planCode := strings.ReplaceAll(strings.ToUpper(input.PlanName), " ", "")
+
+	orderID := fmt.Sprintf("UPGRADE-TOKO-%d-%s-%d", storeID, planCode, time.Now().Unix())
 
 	req := &snap.Request{
 		TransactionDetails: midtrans.TransactionDetails{
@@ -194,7 +194,7 @@ func (h *RetailHandler) CreateUpgradePayment(c *gin.Context) {
 		},
 		Items: &[]midtrans.ItemDetails{
 			{
-				ID:    "SUB-" + strings.ToUpper(input.PlanName),
+				ID:    "SUB-" + planCode,
 				Price: input.Price,
 				Qty:   1,
 				Name:  "Langganan Paket " + input.PlanName,
@@ -202,14 +202,12 @@ func (h *RetailHandler) CreateUpgradePayment(c *gin.Context) {
 		},
 	}
 
-	// 3. MINTA TOKEN KE MIDTRANS
 	snapResp, err := snap.CreateTransaction(req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghubungi Payment Gateway"})
 		return
 	}
 
-	// 4. KASIH TOKENNYA KE VUE
 	c.JSON(http.StatusOK, gin.H{"token": snapResp.Token, "order_id": orderID})
 }
 
@@ -223,27 +221,39 @@ func (h *RetailHandler) MidtransWebhook(c *gin.Context) {
 	orderID, _ := payload["order_id"].(string)
 	transactionStatus, _ := payload["transaction_status"].(string)
 
+	fmt.Println("🔔 WEBHOOK MASUK! Order ID:", orderID, "| Status:", transactionStatus)
+
 	if transactionStatus == "settlement" || transactionStatus == "capture" {
 		parts := strings.Split(orderID, "-")
 
-		// A. CEK UPGRADE PAKET
+		// CEK APAKAH INI TRANSAKSI UPGRADE (UPGRADE-TOKO-{ID}-{PLAN}-{TIME})
 		if len(parts) >= 5 && parts[0] == "UPGRADE" {
 			storeID := parts[2]
-			planName := parts[3]
-			endDate := time.Now().AddDate(0, 1, 0)
+			planName := parts[3] // Ini sekarang isinya "TERMINALTAMBAHAN" tanpa spasi
 			db := h.Repo.GetDB()
-			db.Exec("UPDATE stores SET subscription_status = ?, subscription_end = ?, subscription_plan = ? WHERE id = ?",
-				"active", endDate, strings.ToLower(planName), storeID)
 
-			// B. CEK TRANSAKSI POS (KASIR)
+			if planName == "TERMINALTAMBAHAN" {
+				err := db.Exec("UPDATE stores SET quota_terminal = quota_terminal + 1 WHERE id = ?", storeID).Error
+				if err != nil {
+					fmt.Println("❌ GAGAL UPDATE KUOTA TERMINAL:", err)
+				} else {
+					fmt.Println("✅ SUKSES! Kuota Kasir Toko", storeID, "berhasil ditambah 1!")
+				}
+			} else {
+				// Ini buat Upgrade Basic/Pro/Premium
+				endDate := time.Now().AddDate(0, 1, 0)
+				err := db.Exec("UPDATE stores SET subscription_status = ?, subscription_end = ?, subscription_plan = ? WHERE id = ?",
+					"active", endDate, strings.ToLower(planName), storeID).Error
+				if err != nil {
+					fmt.Println("❌ GAGAL UPDATE PAKET:", err)
+				} else {
+					fmt.Println("✅ SUKSES! Paket Toko", storeID, "berubah jadi", planName)
+				}
+			}
+
 		} else if len(parts) >= 2 && parts[0] == "POS" {
 			db := h.Repo.GetDB()
-			err := db.Exec("UPDATE transactions SET status_bayar = ? WHERE no_invoice = ?",
-				"LUNAS", orderID).Error
-
-			if err != nil {
-				fmt.Println("❌ GAGAL UPDATE TRANSAKSI:", err)
-			}
+			db.Exec("UPDATE transactions SET status_bayar = ? WHERE no_invoice = ?", "LUNAS", orderID)
 		}
 	}
 

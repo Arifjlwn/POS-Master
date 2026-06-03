@@ -4,18 +4,19 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"gorm.io/gorm"
-	"pos-backend/src/core/config"
 	"pos-backend/controllers/auth"
-	"pos-backend/src/core/middlewares"
 	"pos-backend/models"
-	"time"
+	src "pos-backend/src/core/config"
+	"pos-backend/src/core/middlewares"
 	"strings"
+	"time"
+
+	"gorm.io/gorm"
 
 	// 🚀 ALIAS DIBAWAH INI KUNCI BIAR GAK COLLISION
 	fnbDelivery "pos-backend/src/modules/fnb/delivery"
 	fnbRepository "pos-backend/src/modules/fnb/repository"
-	
+
 	laundryDelivery "pos-backend/src/modules/jasalayanan/laundry/delivery"
 	laundryRepository "pos-backend/src/modules/jasalayanan/laundry/repository"
 
@@ -40,14 +41,14 @@ func main() {
 
 	// Setup router baru dari GIN
 	r := gin.Default()
-	
+
 	// --- PERBAIKAN CORS ---
 	r.Use(cors.New(cors.Config{
 		AllowOriginFunc: func(origin string) bool {
 			if origin == "http://localhost:5173" || origin == "http://localhost:5174" {
 				return true
 			}
-			return true 
+			return true
 		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Requested-With", "Accept"},
@@ -82,8 +83,8 @@ func main() {
 	r.POST("/api/auth/check-account", auth.CheckAccount)
 
 	// 1. TAMBAHKAN INI: Inisialisasi Retail Handler di sini (di luar rute terproteksi)
-    retailRepo := retailRepository.NewRetailRepo(src.DB)
-    retailHandler := retailDelivery.NewRetailHandler(retailRepo)
+	retailRepo := retailRepository.NewRetailRepo(src.DB)
+	retailHandler := retailDelivery.NewRetailHandler(retailRepo)
 	r.POST("/api/retail/midtrans/webhook", retailHandler.MidtransWebhook)
 
 	// -- Rute Terproteksi (Butuh Karcis JWT) --
@@ -93,53 +94,58 @@ func main() {
 		// --- RUTE SETUP TOKO (Global - Masih inline) ---
 		api.GET("/me", auth.GetMe)
 		api.PUT("/profile", auth.UpdateProfile)
-        api.PUT("/password", auth.UpdatePassword)
-		
+		api.PUT("/password", auth.UpdatePassword)
+		api.POST("/auth/select-store", auth.SelectStore)
+
 		// --- UPDATE INTEGRASI RUTE SETUP TOKO ---
 		api.POST("/setup", func(c *gin.Context) {
-            userIDRaw, exists := c.Get("user_id")
-            if !exists {
-                c.JSON(http.StatusUnauthorized, gin.H{"error": "User tidak valid"})
-                return
-            }
-            userID := uint(userIDRaw.(float64))
+			userIDRaw, exists := c.Get("user_id")
+			if !exists {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "User tidak valid"})
+				return
+			}
+			userID := uint(userIDRaw.(float64))
 
-            // 🚀 1. TANGKEP DATA DARI VUE TERMASUK INDUSTRY & PLAN SAAS
-            var input struct {
-                NamaToko      string   `json:"nama_toko" binding:"required"`
-                Telepon       string   `json:"telepon"`
-                Business_type string   `json:"business_type" binding:"required"` 
-                Industry      string   `json:"industry"` // Titipan Landing Page: retail/fnb/jasa
-                Plan          string   `json:"plan"`     // Titipan Landing Page: trial/basic/pro/premium
-                AlamatJalan   string   `json:"alamat_toko"`                     
-                Provinsi      string   `json:"provinsi"`
-                Kota          string   `json:"kota"`
-                Kecamatan     string   `json:"kecamatan"`
-                Kelurahan     string   `json:"kelurahan"`
-                KodePos       string   `json:"kode_pos"`
-            }
-            
-            if err := c.ShouldBindJSON(&input); err != nil {
-                c.JSON(http.StatusBadRequest, gin.H{"error": "Format data salah, pastikan form terisi lengkap"})
-                return
-            }
+			// 🚀 1. TANGKEP DATA DARI VUE TERMASUK INDUSTRY & PLAN SAAS
+			var input struct {
+				NamaToko      string `json:"nama_toko" binding:"required"`
+				Telepon       string `json:"telepon"`
+				Business_type string `json:"business_type" binding:"required"`
+				Industry      string `json:"industry"` // Titipan Landing Page: retail/fnb/jasa
+				Plan          string `json:"plan"`     // Titipan Landing Page: trial/basic/pro/premium
+				AlamatJalan   string `json:"alamat_toko"`
+				Provinsi      string `json:"provinsi"`
+				Kota          string `json:"kota"`
+				Kecamatan     string `json:"kecamatan"`
+				Kelurahan     string `json:"kelurahan"`
+				KodePos       string `json:"kode_pos"`
+			}
 
-            var user models.User
-            if err := src.DB.First(&user, userID).Error; err != nil {
-                c.JSON(http.StatusNotFound, gin.H{"error": "User tidak ditemukan"})
-                return
-            }
-            if user.StoreID != nil {
-                c.JSON(http.StatusConflict, gin.H{"error": "Sistem mendeteksi Anda sudah memiliki toko yang terdaftar."})
-                return
-            }
+			if err := c.ShouldBindJSON(&input); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Format data salah, pastikan form terisi lengkap"})
+				return
+			}
 
-            // 🚀 2. LOGIKA SUBSCRIPTION (SAAS)
-            subPlan := strings.ToLower(input.Plan)
-			if subPlan == "" { subPlan = "trial" }
+			var user models.User
+			if err := src.DB.First(&user, userID).Error; err != nil {
+				c.JSON(http.StatusNotFound, gin.H{"error": "User tidak ditemukan"})
+				return
+			}
+			if user.StoreID != nil {
+				c.JSON(http.StatusConflict, gin.H{"error": "Sistem mendeteksi Anda sudah memiliki toko yang terdaftar."})
+				return
+			}
+
+			// 🚀 2. LOGIKA SUBSCRIPTION (SAAS)
+			subPlan := strings.ToLower(input.Plan)
+			if subPlan == "" {
+				subPlan = "trial"
+			}
 
 			subIndustry := input.Industry
-			if subIndustry == "" { subIndustry = "retail" }
+			if subIndustry == "" {
+				subIndustry = "retail"
+			}
 
 			var subEnd time.Time
 			subStatus := "inactive" // 🚀 Default berbayar adalah inactive (Nunggak)
@@ -149,7 +155,7 @@ func main() {
 				subEnd = time.Now().AddDate(0, 0, 14) // Trial 14 Hari
 			} else {
 				// Kalau berbayar, set expired-nya detik ini juga (biar ke-lock sebelum bayar)
-				subEnd = time.Now() 
+				subEnd = time.Now()
 			}
 
 			// 🚀 SETTING FITUR
@@ -162,6 +168,7 @@ func main() {
 
 			// 🚀 SUSUN MODEL DATABASE TOKO BARU
 			newStore := models.Store{
+				OwnerID:            userID,
 				NamaToko:           input.NamaToko,
 				Telepon:            input.Telepon,
 				BusinessType:       input.Business_type,
@@ -170,55 +177,55 @@ func main() {
 				SubscriptionStatus: subStatus, // 🚀 Gunakan status dinamis hasil filter di atas!
 				SubscriptionEnd:    subEnd,
 				FiturAktif:         fiturAktif,
-				Alamat:             input.AlamatJalan, 
-				Provinsi:           input.Provinsi, 
+				Alamat:             input.AlamatJalan,
+				Provinsi:           input.Provinsi,
 				Kota:               input.Kota,
 				Kecamatan:          input.Kecamatan,
 				Kelurahan:          input.Kelurahan,
 				KodePos:            input.KodePos,
 			}
-            
-            // 🚀 5. TRANSAKSI DATABASE (Simpan Toko + Update ID di User)
-            errTx := src.DB.Transaction(func(tx *gorm.DB) error {
-                if err := tx.Create(&newStore).Error; err != nil {
-                    return err
-                }
-                if err := tx.Model(&models.User{}).Where("id = ?", userID).Update("store_id", newStore.ID).Error; err != nil {
-                    return err
-                }
-                return nil
-            })
 
-            if errTx != nil {
-                c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan infrastruktur toko baru. Hubungi tim teknis."})
-                return
-            }
+			// 🚀 5. TRANSAKSI DATABASE (Simpan Toko + Update ID di User)
+			errTx := src.DB.Transaction(func(tx *gorm.DB) error {
+				if err := tx.Create(&newStore).Error; err != nil {
+					return err
+				}
+				if err := tx.Model(&models.User{}).Where("id = ?", userID).Update("store_id", newStore.ID).Error; err != nil {
+					return err
+				}
+				return nil
+			})
 
-            // 🚀 6. TERBITIN KARTU AKSES (JWT) BARU YANG UDAH ADA STORE ID-NYA
-            newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-                "user_id":  userID,
-                "store_id": newStore.ID,
-                "role":     "owner",
-                "exp":      time.Now().Add(time.Hour * 72).Unix(),
-            })
+			if errTx != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan infrastruktur toko baru. Hubungi tim teknis."})
+				return
+			}
 
-            tokenString, err := newToken.SignedString([]byte("KUNCI_RAHASIA_SUPER_KUAT_123"))
-            if err != nil {
-                c.JSON(http.StatusInternalServerError, gin.H{"error": "Toko sukses dibuat, namun gagal memperbarui token akses"})
-                return
-            }
+			// 🚀 6. TERBITIN KARTU AKSES (JWT) BARU YANG UDAH ADA STORE ID-NYA
+			newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+				"user_id":  userID,
+				"store_id": newStore.ID,
+				"role":     "owner",
+				"exp":      time.Now().Add(time.Hour * 72).Unix(),
+			})
 
-            // 🚀 7. RESPONSE KEMBALI KE VUE
-            c.JSON(http.StatusOK, gin.H{
-                "message":       "Konfigurasi sistem siap! Selamat datang di platform POS SaaS.",
-                "store_id":      newStore.ID,
-                "token":         tokenString,
-                "data": gin.H{
-                    "nama_toko":     newStore.NamaToko,
-                    "business_type": newStore.BusinessType, 
-                },
-            })
-        })
+			tokenString, err := newToken.SignedString([]byte("KUNCI_RAHASIA_SUPER_KUAT_123"))
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Toko sukses dibuat, namun gagal memperbarui token akses"})
+				return
+			}
+
+			// 🚀 7. RESPONSE KEMBALI KE VUE
+			c.JSON(http.StatusOK, gin.H{
+				"message":  "Konfigurasi sistem siap! Selamat datang di platform POS SaaS.",
+				"store_id": newStore.ID,
+				"token":    tokenString,
+				"data": gin.H{
+					"nama_toko":     newStore.NamaToko,
+					"business_type": newStore.BusinessType,
+				},
+			})
+		})
 
 		// ==========================================
 		// 🛒 RUTE KHUSUS RETAIL (VERSI BERSIH MODULAR)
@@ -236,11 +243,11 @@ func main() {
 		// 🧺 RUTE KHUSUS LAUNDRY (MODULAR LAYER - OPSI B)
 		// ==========================================
 		laundryAPI := api.Group("/laundry")
-		
+
 		// Inisialisasi Dependency Pake Nama Alias Repository & Delivery Khusus Laundry
 		laundryRepo := laundryRepository.NewLaundryRepo(src.DB)
 		laundryHandler := &laundryDelivery.LaundryHandler{Repo: laundryRepo}
-		
+
 		// Daftarkan rute laundry
 		laundryDelivery.RegisterLaundryRoutes(laundryAPI, laundryHandler)
 
@@ -253,7 +260,7 @@ func main() {
 		// Init Master Menu Pake Alias Fnb
 		fnbMenuRepo := fnbRepository.NewMenuRepo(src.DB)
 		fnbMenuHandler := &fnbDelivery.MenuHandler{Repo: fnbMenuRepo}
-		
+
 		// Init Transaksi & Dapur Pake Alias Fnb
 		fnbOrderRepo := fnbRepository.NewOrderRepo(src.DB)
 		fnbOrderHandler := fnbDelivery.NewOrderHandler(fnbOrderRepo)

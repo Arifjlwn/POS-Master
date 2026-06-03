@@ -14,39 +14,62 @@ import (
 )
 
 func RequireAuth(c *gin.Context) {
-	// Cek apakah ada karcis di kantong (Header Auth)
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Akses ditolak ! Anda belum login."})
-		c.Abort() //Langsung Usir, Jangan kasih masuk
-		return
-	}
-
-	// Format Karcis biasanya diawali "Bearer ", jadi potong sisa kode token aja
-	tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
-
-	// Cek Keaslian Karcis pakai kunci rahasia saat login
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("metode token tidak valid")
-		}
-		return []byte("KUNCI_RAHASIA_SUPER_KUAT_123"), nil // harus Sama Persis dengan di authController
-	})
-
-	if err != nil || !token.Valid {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token tidak valid atau sudah hangus !"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Akses ditolak! Anda belum login."})
 		c.Abort()
 		return
 	}
 
-	// Kalau karcis asli, bongkar isi nya (Ambil ID User, ID TOKO, dan Role)
+	tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("metode token tidak valid")
+		}
+		return []byte("KUNCI_RAHASIA_SUPER_KUAT_123"), nil
+	})
+
+	if err != nil || !token.Valid {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token tidak valid atau sudah hangus!"})
+		c.Abort()
+		return
+	}
+
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		// Simpan data ini kedalam "Context" agar bisa dibaca oleh controller nanti
+
+		// 🚀 PROTEKSI TOKEN SEMENTARA (TEMPORARY TOKEN)
+		// Cek apakah ini token yang cuma boleh dipake buat milih cabang
+		isSelectToken := false
+		if isSelectRaw, exists := claims["is_select"]; exists {
+			isSelectToken = isSelectRaw.(bool)
+		}
+
+		// Kalau ini token sementara, tapi dia mencoba buka rute SELAIN /api/auth/select-store, TENDANG!
+		currentPath := c.Request.URL.Path
+		if isSelectToken && currentPath != "/api/auth/select-store" {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "Akses ditolak! Anda harus memilih cabang terlebih dahulu.",
+				"code":  "REQUIRE_STORE_SELECTION",
+			})
+			c.Abort()
+			return
+		}
+
 		c.Set("user_id", claims["user_id"])
-		c.Set("store_id", claims["store_id"])
 		c.Set("role", claims["role"])
 
-		c.Next() // Silahkan Masuk !
+		// Hanya set store_id dan plan_type jika token ini BUKAN token sementara
+		if !isSelectToken {
+			if storeID, exists := claims["store_id"]; exists {
+				c.Set("store_id", storeID)
+			}
+			if planType, exists := claims["plan_type"]; exists {
+				c.Set("plan_type", planType)
+			}
+		}
+
+		c.Next()
 	} else {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Gagal membaca data dari token"})
 		c.Abort()
@@ -56,17 +79,14 @@ func RequireAuth(c *gin.Context) {
 
 // --- SATPAM RUANG VIP (KHUSUS OWNER) ---
 func RequireOwner(c *gin.Context) {
-	// Ambil data role yang udah ditaruh di kantong (Context) sama satpam RequireAuth
 	roleRaw, exists := c.Get("role")
-	
-	// Kalau datanya ga ada, atau rolenya BUKAN owner, langsung tendang!
+
 	if !exists || roleRaw.(string) != "owner" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Akses Ditolak! Fitur ini khusus untuk Bos (Owner) 😎"})
-		c.Abort() // Usir! Jangan kasih lanjut ke controller
+		c.JSON(http.StatusForbidden, gin.H{"error": "Akses Ditolak! Fitur ini khusus untuk Bos (Owner)"})
+		c.Abort()
 		return
 	}
 
-	// Kalau dia beneran owner, silakan lewat Bosku!
 	c.Next()
 }
 
@@ -89,7 +109,6 @@ func RequireSaaSLevel(minLevel int) gin.HandlerFunc {
 			storeID = val
 		}
 
-		// 1. Tarik Data Kasta & Tanggal Expired Langsung dari Database
 		var store models.Store
 		if err := src.DB.Select("id", "subscription_plan", "subscription_status", "subscription_end").First(&store, storeID).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memverifikasi status langganan toko."})
@@ -97,52 +116,43 @@ func RequireSaaSLevel(minLevel int) gin.HandlerFunc {
 			return
 		}
 
-		// 🚀 2. CEK MASA AKTIF (EXPIRED CHECKER)
-		// Kalau waktu saat ini (time.Now) SUDAH MELEWATI batas SubscriptionEnd
 		if time.Now().After(store.SubscriptionEnd) {
-			
-			// Auto-update status di DB jadi inactive biar rapi
 			if store.SubscriptionStatus == "active" {
 				src.DB.Model(&store).Update("subscription_status", "inactive")
 			}
 
-			// TENDANG REQUESTNYA!
 			c.JSON(http.StatusPaymentRequired, gin.H{
 				"error": "Masa aktif toko telah habis. Silakan perpanjang langganan.",
-				"code": "SUBSCRIPTION_EXPIRED",
+				"code":  "SUBSCRIPTION_EXPIRED",
 			})
 			c.Abort()
 			return
 		}
 
-		// 3. Cek Apakah Status Langganan Sengaja Dimatikan (Suspend Manual)
 		if store.SubscriptionStatus != "active" {
 			c.JSON(http.StatusPaymentRequired, gin.H{"error": "Akses dihentikan! Status toko Anda tidak aktif."})
 			c.Abort()
 			return
 		}
 
-		// 4. Konversi Nama Paket ke Level Angka
-		currentLevel := 1 // Kasta Sudra (Basic)
+		currentLevel := 1
 		plan := strings.ToLower(store.SubscriptionPlan)
-		
+
 		if plan == "premium" || plan == "trial" {
-			currentLevel = 3 // Kasta Dewa
+			currentLevel = 3
 		} else if plan == "pro" {
-			currentLevel = 2 // Kasta Kesatria
+			currentLevel = 2
 		}
 
-		// 5. Proses Eksekusi Gembok Kasta
 		if currentLevel < minLevel {
 			c.JSON(http.StatusForbidden, gin.H{
-				"error": "Akses API Ditolak 🛑! Fitur ini membutuhkan upgrade paket langganan.",
-				"code": "UPGRADE_REQUIRED",
+				"error": "Akses API Ditolak! Fitur ini membutuhkan upgrade paket langganan.",
+				"code":  "UPGRADE_REQUIRED",
 			})
-			c.Abort() // Tendang balik ke laut!
+			c.Abort()
 			return
 		}
 
-		// Lolos semua seleksi ketat, silakan masuk ke Controller!
 		c.Next()
 	}
 }

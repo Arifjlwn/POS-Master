@@ -1,30 +1,30 @@
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref } from "vue";
+import { useRouter } from "vue-router";
 // 🚀 1. Arahkan import dengan benar ke posService, sesuaikan relative path foldernya
-import { posService } from '../services/posService.js'; 
-import Swal from 'sweetalert2';
+import Swal from "sweetalert2";
+import { posService } from "../services/posService.js";
 
 export function useBukaKasir() {
     const router = useRouter();
-    
+
     // Metadata User & Store dari LocalStorage
-    const role = ref(localStorage.getItem('role'));
-    const name = ref(localStorage.getItem('name') || 'Operator');
-    const storeName = ref(localStorage.getItem('storeName') || 'POS UMKM');
-    
+    const role = ref(localStorage.getItem("role"));
+    const name = ref(localStorage.getItem("name") || "Operator");
+    const storeName = ref(localStorage.getItem("storeName") || "POS UMKM");
+
     // Sesi Input States
-    const stationNumber = ref('01');
+    const stationNumber = ref("01");
     const modalAwal = ref(0);
     const loading = ref(false);
 
     // 🔍 Cek Sesi Aktif pas Halaman Pertama Kali Dibuka
     const checkExistingSession = async () => {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem("token");
         try {
             // 🚀 2. Ganti ke posService.checkSession dan kirim tokennya
             const res = await posService.checkSession(token);
             if (res.has_session) {
-                router.push('/retail/pos');
+                router.push("/retail/pos");
             }
         } catch (error) {
             console.error("Gagal cek session:", error);
@@ -33,7 +33,7 @@ export function useBukaKasir() {
 
     // Filter input agar murni angka saja yang masuk
     const handleInputModal = (e) => {
-        const val = e.target.value.replace(/\D/g, '');
+        const val = e.target.value.replace(/\D/g, "");
         modalAwal.value = val ? parseInt(val, 10) : 0;
     };
 
@@ -41,10 +41,10 @@ export function useBukaKasir() {
     const handleBukaKasir = async () => {
         if (modalAwal.value <= 0) {
             return Swal.fire({
-                icon: 'warning',
-                title: 'Modal Kosong?',
-                text: 'Masukkan nominal modal awal untuk uang kembalian di laci kasir.',
-                confirmButtonColor: '#2563eb'
+                icon: "warning",
+                title: "Modal Kosong?",
+                text: "Masukkan nominal modal awal untuk uang kembalian di laci kasir.",
+                confirmButtonColor: "#2563eb",
             });
         }
 
@@ -53,40 +53,49 @@ export function useBukaKasir() {
             // 🚀 3. Ganti ke objek posService yang valid
             await posService.openSession({
                 station_number: stationNumber.value,
-                modal_awal: parseFloat(modalAwal.value)
+                modal_awal: parseFloat(modalAwal.value),
             });
 
             await Swal.fire({
-                icon: 'success',
-                title: 'SESSION OPENED',
+                icon: "success",
+                title: "SESSION OPENED",
                 text: `Kasir Station ${stationNumber.value} berhasil dibuka. Selamat bertugas!`,
                 timer: 1500,
                 showConfirmButton: false,
-                customClass: { popup: 'rounded-[32px]' }
+                customClass: { popup: "rounded-[32px]" },
             });
 
-            router.push('/retail/pos');
-
+            router.push("/retail/pos");
         } catch (error) {
-            const msg = error.response?.data?.error || 'Gagal membuka kasir';
-            
+            // 🚀 BYPASS KHUSUS UNTUK ERROR KUOTA PENUH (SATPAM)
+            // Lempar errornya ke BukaKasir.vue biar modal Midtrans muncul!
+            if (
+                error.response &&
+                error.response.status === 403 &&
+                error.response.data?.error_code === "QUOTA_FULL"
+            ) {
+                throw error;
+            }
+
+            const msg = error.response?.data?.error || "Gagal membuka kasir";
+
             // 📸 Interseptor Otorisasi Absensi Face AI / PIN
-            if (msg.toLowerCase().includes('absen')) {
+            if (msg.toLowerCase().includes("absen")) {
                 Swal.fire({
-                    title: 'Otorisasi Gagal',
-                    text: 'Sistem mendeteksi Anda belum melakukan absensi masuk shift hari ini.',
-                    icon: 'error',
+                    title: "Otorisasi Gagal",
+                    text: "Sistem mendeteksi Anda belum melakukan absensi masuk shift hari ini.",
+                    icon: "error",
                     showCancelButton: true,
-                    confirmButtonText: 'Absen Sekarang 📸',
-                    confirmButtonColor: '#2563eb',
-                    customClass: { popup: 'rounded-[32px]' }
+                    confirmButtonText: "Absen Sekarang 📸",
+                    confirmButtonColor: "#2563eb",
+                    customClass: { popup: "rounded-[32px]" },
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        router.push('/retail/absensi');
+                        router.push("/retail/sdm/absensi");
                     }
                 });
             } else {
-                Swal.fire('Error', msg, 'error');
+                Swal.fire("Error", msg, "error");
             }
         } finally {
             loading.value = false;
@@ -102,6 +111,6 @@ export function useBukaKasir() {
         loading,
         checkExistingSession,
         handleInputModal,
-        handleBukaKasir
+        handleBukaKasir,
     };
 }
