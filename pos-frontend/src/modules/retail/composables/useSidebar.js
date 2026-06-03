@@ -51,10 +51,16 @@ export function useSidebar() {
         // Biar kalau lu update data di halaman Pengaturan/Akun, Sidebar auto ganti tanpa refresh!
         window.addEventListener('storage', () => {
             user.value.name = localStorage.getItem('name') || 'User';
-
-            // 🚀 BUNGKUS PAKAI getImageUrl JUGA DI SINI (Biar update-an langsung nampilin jalur yang bener)
             user.value.storeLogo = getImageUrl(localStorage.getItem('storeLogo'));
             user.value.foto_url = getImageUrl(localStorage.getItem('foto_url'));
+        });
+        window.addEventListener('profile-updated', () => {
+            user.value.name = localStorage.getItem('name') || 'User';
+            user.value.foto_url = getImageUrl(localStorage.getItem('foto_url'));
+        });
+        window.addEventListener('store-updated', () => {
+            user.value.storeName = localStorage.getItem('storeName') || 'POS UMKM';
+            user.value.storeLogo = getImageUrl(localStorage.getItem('storeLogo'));
         });
     });
 
@@ -94,15 +100,14 @@ export function useSidebar() {
             }
         }).then((result) => {
             if (result.isConfirmed) {
-                // 🚀 SKENARIO GANTI CABANG (Cuma apus token final)
-                localStorage.removeItem('token');
+                // 🚀 SKENARIO GANTI CABANG (JANGAN HAPUS TOKEN!)
+                // Biarin token tetep ada biar Vue Router ngijinin lu masuk ke Select Store
                 router.push('/select-store');
             } else if (result.isDenied) {
                 // 🚀 SKENARIO KELUAR TOTAL (Bersihin semua memory)
                 localStorage.clear();
                 router.push('/login');
             }
-            // Kalau "Batal" (result.isDismissed), popup otomatis nutup, gak perlu kode apa-apa.
         });
     };
 

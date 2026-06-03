@@ -1,10 +1,11 @@
 <script setup>
 import Swal from 'sweetalert2';
 import { computed, onMounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from "vue-router";
 import api from '../../api.js';
 
 const router = useRouter();
+const route = useRoute();
 const isExpansion = route.query.is_expansion === 'true';
 
 // 🚀 AMBIL TITIPAN DARI LANDING PAGE

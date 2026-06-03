@@ -453,7 +453,12 @@ func UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Profil berhasil diperbarui!", "data": user})
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Profil berhasil diperbarui!",
+		"data": gin.H{
+			"name":          user.Name,
+			"foto_url":      user.FotoURL,
+		}})
 }
 
 // -- UPDATE PASSWORD --

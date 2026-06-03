@@ -1,7 +1,6 @@
-import Swal from 'sweetalert2'; // 🚀 WAJIB IMPORT INI BUAT POP-UP SATPAM
+import Swal from 'sweetalert2';
 import { createRouter, createWebHistory } from 'vue-router';
 
-// Import rute modular yang sudah kita pisah-pisah
 // import fnbRoutes from '@/modules/fnb/router/index.js'
 import retailRoutes from '../modules/retail/router/retail_routes.js';
 // import laundryRoutes from '@/modules/jasalayanan/laundry/router/laundry_routes.js'
@@ -54,11 +53,6 @@ const baseRoutes = [
         component: () => import('../views/auth/SelectStore.vue'),
         meta: { requiresAuth: true }
     }
-    // {
-    //   path: '/:pathMatch(.*)*',
-    //   name: 'NotFound',
-    //   component: () => import('../views/errors/NotFound.vue')
-    // }
 ];
 
 const router = createRouter({
@@ -77,8 +71,17 @@ router.beforeEach((to, from) => {
     const userRole = localStorage.getItem('role') || 'staff';
 
     // 🚀 1. LOGIKA ANTI-MUNDUR (GUEST GUARD)
-    const guestRoutes = ['/login', '/register', '/select-verify', '/verify-otp', '/'];
-    if (token && guestRoutes.includes(to.path)) {
+    const guestRoutes = ['/login', '/register', '/select-verify', '/verify-otp'];
+
+    // Kalau dia mau balik ke landing page, TAPI niatnya buat EKSPANSI, izinkan!
+    if (to.path === '/' && to.query.action === 'expansion') {
+        // Biarkan lewat (jangan return apa-apa di block ini)
+    }
+    // Kalau dia mau ke landing page atau route guest lain tapi BUKAN ekspansi, lempar!
+    else if (token && (guestRoutes.includes(to.path) || to.path === '/')) {
+        // Kalau dia owner lempar ke select store aja (biar lebih rapi)
+        if (userRole === 'owner') return '/select-store';
+        // Kalau kasir, lempar ke POS
         return '/retail/pos';
     }
 
@@ -88,7 +91,6 @@ router.beforeEach((to, from) => {
     }
 
     // 🚀 3. CEK OTORISASI JABATAN (KASIR VS OWNER)
-    // Kalau halaman ini khusus owner, tapi yang login bukan owner, TENDANG!
     if (to.meta.role === 'owner' && userRole !== 'owner') {
         Swal.fire({
             icon: 'error',
@@ -97,7 +99,7 @@ router.beforeEach((to, from) => {
             confirmButtonColor: '#ef4444',
             customClass: { popup: 'rounded-[32px]' }
         });
-        return '/retail/pos/riwayat'; // Tendang balik ke tempat aman
+        return '/retail/pos/riwayat';
     }
 
     // 🚀 4. LOGIKA SATPAM SAAS (SISTEM KASTA LEVEL)
@@ -108,12 +110,11 @@ router.beforeEach((to, from) => {
             const p = plan.toLowerCase();
             if (p === 'premium' || p === 'trial') return 3;
             if (p === 'pro') return 2;
-            return 1; // Basic
+            return 1;
         };
 
         const currentLevel = getPlanLevel(subPlan);
 
-        // Kalau kasta user kurang dari syarat halaman
         if (currentLevel < to.meta.minPlanLevel) {
             Swal.fire({
                 icon: 'error',

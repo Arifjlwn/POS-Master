@@ -45,8 +45,8 @@ const selectBranch = async (storeId) => {
         localStorage.setItem('foto_url', res.data.foto_url || '');
 
         // 2. BERSIHKAN MEMORY SEMENTARA
-        localStorage.removeItem('temp_stores');
-        localStorage.removeItem('temp_name');
+        // localStorage.removeItem('temp_stores');
+        // localStorage.removeItem('temp_name');
 
         // 3. MASUK KE DASHBOARD UTAMA
         router.push('/retail/dashboard');

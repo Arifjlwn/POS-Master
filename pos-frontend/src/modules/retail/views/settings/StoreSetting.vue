@@ -6,9 +6,9 @@ import SettingPayment from '../../components/settings/SettingPayment.vue';
 import SettingReceiptTax from '../../components/settings/SettingReceiptTax.vue';
 import { useStoreSetting } from '../../composables/useStoreSetting.js';
 
-const { 
-    isLoading, isSaving, activeTab, form, logoPreview, qrisPreview, 
-    handleFileChange, removeLogo, removeQris, fetchSettings, saveSettings 
+const {
+    isLoading, isSaving, activeTab, form, logoPreview, qrisPreview,
+    handleFileChange, removeLogo, removeQris, fetchSettings, saveSettings
 } = useStoreSetting();
 
 const tabs = [
@@ -21,7 +21,7 @@ const tabs = [
 <template>
     <Sidebar>
         <div class="p-4 md:p-8 lg:p-10 max-w-5xl mx-auto font-sans bg-[#f8fafc] min-h-screen">
-            
+
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
                     <h1 class="text-2xl md:text-3xl font-black text-slate-800 tracking-tighter uppercase">Pengaturan Toko</h1>
@@ -40,9 +40,9 @@ const tabs = [
             </div>
 
             <div v-else class="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden flex flex-col md:flex-row">
-                
+
                 <div class="w-full md:w-64 bg-slate-50/50 border-r border-slate-100 p-6 flex flex-row md:flex-col gap-2 overflow-x-auto custom-scrollbar">
-                    <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id" 
+                    <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
                         :class="[
                             'flex items-center gap-3 p-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap',
                             activeTab === tab.id ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:bg-slate-100'
@@ -55,23 +55,23 @@ const tabs = [
                 </div>
 
                 <div class="flex-1 p-6 md:p-8 overflow-hidden">
-                    <SettingBasicInfo 
-                        v-show="activeTab === 'basic'" 
-                        :form="form" 
-                        :logoPreview="logoPreview" 
+                    <SettingBasicInfo
+                        v-show="activeTab === 'basic'"
+                        :form="form"
+                        :logoPreview="logoPreview"
                         @update-file="handleFileChange"
-                        @remove-logo="removeLogo" 
+                        @remove-logo="removeLogo"
                     />
-                    <SettingPayment 
-                        v-show="activeTab === 'payment'" 
-                        :form="form" 
-                        :qrisPreview="qrisPreview" 
+                    <SettingPayment
+                        v-show="activeTab === 'payment'"
+                        :form="form"
+                        :qrisPreview="qrisPreview"
                         @update-file="handleFileChange"
-                        @remove-qris="removeQris" 
+                        @remove-qris="removeQris"
                     />
-                    <SettingReceiptTax 
-                        v-show="activeTab === 'tax'" 
-                        :form="form" 
+                    <SettingReceiptTax
+                        v-show="activeTab === 'tax'"
+                        :form="form"
                     />
                 </div>
 

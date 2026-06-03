@@ -27,7 +27,7 @@ export function useAccount() {
             // Narik data dari fungsi GetMe di Golang lu
             const response = await api.get('/me');
             const data = response.data;
-            
+
             role.value = data.role;
             profileForm.value.name = data.name || '';
             profileForm.value.no_hp = data.no_hp || '';
@@ -55,26 +55,53 @@ export function useAccount() {
 
     const saveProfile = async () => {
         isSaving.value = true;
-        const formData = new FormData();
-        
-        formData.append('name', profileForm.value.name);
-        formData.append('no_hp', profileForm.value.no_hp);
-        formData.append('tempat_lahir', profileForm.value.tempat_lahir);
-        formData.append('tanggal_lahir', profileForm.value.tanggal_lahir);
-        
-        if (profileForm.value.foto instanceof File) formData.append('foto', profileForm.value.foto);
-        if (profileForm.value.biometric_file instanceof File) formData.append('biometric_file', profileForm.value.biometric_file);
-
         try {
-            // Asumsi rute ini bakal kita buat di Golang nanti
-            await api.put('/profile', formData);
-            Swal.fire({ icon: 'success', title: 'Tersimpan!', text: 'Profil berhasil diperbarui.', timer: 2000, showConfirmButton: false });
-            
-            // Update nama di LocalStorage biar di Sidebar langsung berubah
-            localStorage.setItem('name', profileForm.value.name);
-            window.dispatchEvent(new Event('storage')); 
+            const formData = new FormData();
+            formData.append('name', profileForm.value.name);
+            formData.append('no_hp', profileForm.value.no_hp);
+            formData.append('tempat_lahir', profileForm.value.tempat_lahir);
+            formData.append('tanggal_lahir', profileForm.value.tanggal_lahir);
+
+            if (profileForm.value.foto) {
+                formData.append('foto', profileForm.value.foto);
+            }
+
+            const res = await api.put('/profile', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            // 🚀 ANTISIPASI FORMAT RESPONSE GOLANG (Bisa res.data.data atau res.data langsung)
+            const responseData = res.data.data || res.data;
+
+            // 1. Simpan nama baru
+            if (responseData.name) {
+                localStorage.setItem('name', responseData.name);
+            }
+
+            // 2. Simpan URL foto baru (Ini yang bikin refresh balik lagi kalau gagal)
+            if (responseData.foto_url) {
+                localStorage.setItem('foto_url', responseData.foto_url);
+            }
+
+            // 3. TEMBAK SINYAL CUSTOM KE SIDEBAR!
+            window.dispatchEvent(new Event('profile-updated'));
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Profil Diperbarui!',
+                text: 'Perubahan telah disimpan ke dalam sistem.',
+                confirmButtonColor: '#4f46e5',
+                customClass: { popup: 'rounded-[32px]' }
+            });
+
         } catch (error) {
-            Swal.fire('Gagal Menyimpan', error.response?.data?.error || 'Terjadi kesalahan', 'error');
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Menyimpan',
+                text: error.response?.data?.error || 'Terjadi kesalahan sistem',
+                confirmButtonColor: '#ef4444',
+                customClass: { popup: 'rounded-[32px]' }
+            });
         } finally {
             isSaving.value = false;
         }

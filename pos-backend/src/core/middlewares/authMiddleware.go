@@ -45,15 +45,22 @@ func RequireAuth(c *gin.Context) {
 			isSelectToken = isSelectRaw.(bool)
 		}
 
-		// Kalau ini token sementara, tapi dia mencoba buka rute SELAIN /api/auth/select-store, TENDANG!
-		currentPath := c.Request.URL.Path
-		if isSelectToken && currentPath != "/api/auth/select-store" {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "Akses ditolak! Anda harus memilih cabang terlebih dahulu.",
-				"code":  "REQUIRE_STORE_SELECTION",
-			})
-			c.Abort()
-			return
+		if isSelectToken {
+			currentPath := c.Request.URL.Path
+
+			// Daftar rute yang BOLEH diakses pakai Token Sementara (is_select=true)
+			// Sesuaikan dengan exact path yang lu pake di postman/frontend
+			isAllowed := currentPath == "/api/auth/select-store" ||
+						 currentPath == "/api/setup"
+
+			if !isAllowed {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "GAGAL SETUP TOKO ANDA HARUS MEMILIH CABANG DULU",
+					"code":  "REQUIRE_STORE_SELECTION",
+				})
+				c.Abort()
+				return
+			}
 		}
 
 		c.Set("user_id", claims["user_id"])
