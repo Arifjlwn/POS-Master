@@ -1,269 +1,272 @@
 <script setup>
-  import { ref, watch, onMounted } from 'vue';
+import { onMounted, ref, watch } from "vue";
 
-  const props = defineProps({
-    form: Object,
-    logoPreview: String,
-  });
+const props = defineProps({
+  form: Object,
+  logoPreview: String,
+});
 
-  const emit = defineEmits(['update-file', 'remove-logo']);
-  const fileInput = ref(null);
+const emit = defineEmits(["update-file", "remove-logo"]);
+const fileInput = ref(null);
 
-  const onLogoSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert('Maksimal ukuran file adalah 2MB');
-        return;
-      }
-      emit('update-file', 'logo', file, URL.createObjectURL(file));
+const onLogoSelect = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Maksimal ukuran file adalah 2MB");
+      return;
     }
-  };
+    emit("update-file", "logo", file, URL.createObjectURL(file));
+  }
+};
 
-  const removeImage = () => {
-    emit('remove-logo');
-    if (fileInput.value) fileInput.value.value = '';
-  };
+const removeImage = () => {
+  emit("remove-logo");
+  if (fileInput.value) fileInput.value.value = "";
+};
 
-  // ==========================================
-  // 🚀 INTEGRASI API WILAYAH INDONESIA
-  // ==========================================
-  const provinces = ref([]);
-  const regencies = ref([]);
-  const districts = ref([]);
-  const villages = ref([]);
+const isEditingLocation = ref(false);
+const toggleEditLocation = () => {
+  isEditingLocation.value = !isEditingLocation.value;
+};
 
-  const isLoading = ref({ reg: false, dist: false, vil: false });
-  const apiWilayah = 'https://www.emsifa.com/api-wilayah-indonesia/api';
+// ==========================================
+// 🚀 INTEGRASI API WILAYAH (IBNUX) - SAMA KAYA SETUP TOKO!
+// ==========================================
+const listProvinsi = ref([]);
+const listKota = ref([]);
+const listKecamatan = ref([]);
+const listKelurahan = ref([]);
 
-  // Fungsi sakti buat bersihin spasi dan nge-uppercase string
-  const cleanStr = (str) => {
-    return str ? String(str).trim().toUpperCase() : '';
-  };
+const regIds = ref({ provinsi: "", kota: "", kecamatan: "", kelurahan: "" });
+const isLoading = ref({ reg: false, dist: false, vil: false });
 
-  const matchWilayah = (apiName, dbName) => {
-    const api = cleanStr(apiName)
-      .replace('KABUPATEN ', '')
-      .replace('KOTA ', '');
+const cleanStr = (str) => {
+  return str ? String(str).trim().toUpperCase() : "";
+};
 
-    const db = cleanStr(dbName).replace('KABUPATEN ', '').replace('KOTA ', '');
+const matchWilayah = (apiName, dbName) => {
+  if (!apiName || !dbName) return false;
+  // Benerin biar "Daerah Khusus Ibukota Jakarta" bisa match sama "DKI JAKARTA"
+  let api = cleanStr(apiName)
+    .replace(/KABUPATEN |KOTA |ADMINISTRASI /g, "")
+    .replace("DAERAH KHUSUS IBUKOTA JAKARTA", "DKI JAKARTA")
+    .trim();
+  let db = cleanStr(dbName)
+    .replace(/KABUPATEN |KOTA |ADMINISTRASI /g, "")
+    .replace("DAERAH KHUSUS IBUKOTA JAKARTA", "DKI JAKARTA")
+    .trim();
+  return api === db;
+};
 
-    return api === db;
-  };
-
-  // ==========================================
-  // LOAD DATA WILAYAH
-  // ==========================================
-
-  const loadRegencies = async (provinsiName) => {
-    const prov = provinces.value.find(
-      (p) => cleanStr(p.name) === cleanStr(provinsiName)
+// ==========================================
+// LOAD DATA WILAYAH DARI IBNUX
+// ==========================================
+const loadKota = async (idProvinsi, targetName = null) => {
+  isLoading.value.reg = true;
+  try {
+    const res = await fetch(
+      `https://ibnux.github.io/data-indonesia/kabupaten/${idProvinsi}.json`,
     );
+    const data = await res.json();
+    listKota.value = data.map((item) => ({
+      id: item.id,
+      name: item.nama.toUpperCase(),
+    }));
 
-    if (!prov) return false;
-
-    isLoading.value.reg = true;
-
-    try {
-      const res = await fetch(`${apiWilayah}/regencies/${prov.id}.json`);
-
-      regencies.value = await res.json();
-
-      if (props.form.kota) {
-        const found = regencies.value.find((r) =>
-          matchWilayah(r.name, props.form.kota)
-        );
-
-        if (found) {
-          props.form.kota = found.name;
-        }
+    if (targetName) {
+      const found = listKota.value.find((r) =>
+        matchWilayah(r.name, targetName),
+      );
+      if (found) {
+        regIds.value.kota = found.id;
+        props.form.kota = found.name;
+        return found.id;
       }
-
-      return true;
-    } catch (err) {
-      console.error(err);
-      return false;
-    } finally {
-      isLoading.value.reg = false;
     }
-  };
+    return null;
+  } catch (err) {
+    console.error(err);
+    return null;
+  } finally {
+    isLoading.value.reg = false;
+  }
+};
 
-  const loadDistricts = async (kotaName) => {
-    const reg = regencies.value.find((r) => matchWilayah(r.name, kotaName));
-
-    if (!reg) return false;
-
-    isLoading.value.dist = true;
-
-    try {
-      const res = await fetch(`${apiWilayah}/districts/${reg.id}.json`);
-
-      districts.value = await res.json();
-
-      if (props.form.kecamatan) {
-        const found = districts.value.find((d) =>
-          matchWilayah(d.name, props.form.kecamatan)
-        );
-
-        if (found) {
-          props.form.kecamatan = found.name;
-        }
-      }
-
-      return true;
-    } catch (err) {
-      console.error(err);
-      return false;
-    } finally {
-      isLoading.value.dist = false;
-    }
-  };
-
-  const loadVillages = async (kecamatanName) => {
-    const dist = districts.value.find((d) =>
-      matchWilayah(d.name, kecamatanName)
+const loadKecamatan = async (idKota, targetName = null) => {
+  isLoading.value.dist = true;
+  try {
+    const res = await fetch(
+      `https://ibnux.github.io/data-indonesia/kecamatan/${idKota}.json`,
     );
+    const data = await res.json();
+    listKecamatan.value = data.map((item) => ({
+      id: item.id,
+      name: item.nama.toUpperCase(),
+    }));
 
-    if (!dist) return false;
-
-    isLoading.value.vil = true;
-
-    try {
-      const res = await fetch(`${apiWilayah}/villages/${dist.id}.json`);
-
-      villages.value = await res.json();
-
-      if (props.form.kelurahan) {
-        const found = villages.value.find((v) =>
-          matchWilayah(v.name, props.form.kelurahan)
-        );
-
-        if (found) {
-          props.form.kelurahan = found.name;
-        }
+    if (targetName) {
+      const found = listKecamatan.value.find((d) =>
+        matchWilayah(d.name, targetName),
+      );
+      if (found) {
+        regIds.value.kecamatan = found.id;
+        props.form.kecamatan = found.name;
+        return found.id;
       }
-
-      return true;
-    } catch (err) {
-      console.error(err);
-      return false;
-    } finally {
-      isLoading.value.vil = false;
     }
-  };
+    return null;
+  } catch (err) {
+    console.error(err);
+    return null;
+  } finally {
+    isLoading.value.dist = false;
+  }
+};
 
-  // ==========================================
-  // INIT DARI DATABASE
-  // ==========================================
+const loadKelurahan = async (idKecamatan, targetName = null) => {
+  isLoading.value.vil = true;
+  try {
+    const res = await fetch(
+      `https://ibnux.github.io/data-indonesia/kelurahan/${idKecamatan}.json`,
+    );
+    const data = await res.json();
+    listKelurahan.value = data.map((item) => ({
+      id: item.id,
+      name: item.nama.toUpperCase(),
+    }));
 
-  const initializeWilayah = async () => {
-    if (!props.form.provinsi) return;
-
-    const loadedReg = await loadRegencies(props.form.provinsi);
-
-    if (!loadedReg) return;
-
-    if (!props.form.kota) return;
-
-    const loadedDist = await loadDistricts(props.form.kota);
-
-    if (!loadedDist) return;
-
-    if (!props.form.kecamatan) return;
-
-    await loadVillages(props.form.kecamatan);
-  };
-
-  // ==========================================
-  // LOAD PROVINSI
-  // ==========================================
-
-  onMounted(async () => {
-    try {
-      const res = await fetch(`${apiWilayah}/provinces.json`);
-
-      provinces.value = await res.json();
-
-      await initializeWilayah();
-    } catch (e) {
-      console.error('Gagal load provinsi', e);
-    }
-  });
-
-  // ==========================================
-  // AUTO DETEKSI DATA DB DARI SUPABASE
-  // ==========================================
-
-  watch(
-    () => ({
-      provinsi: props.form.provinsi,
-      kota: props.form.kota,
-      kecamatan: props.form.kecamatan,
-      kelurahan: props.form.kelurahan,
-      provincesLoaded: provinces.value.length,
-    }),
-    async (val) => {
-      if (
-        val.provinsi &&
-        val.provincesLoaded > 0 &&
-        regencies.value.length === 0
-      ) {
-        await initializeWilayah();
+    if (targetName) {
+      const found = listKelurahan.value.find((v) =>
+        matchWilayah(v.name, targetName),
+      );
+      if (found) {
+        regIds.value.kelurahan = found.id;
+        props.form.kelurahan = found.name;
+        return found.id;
       }
-    },
-    {
-      immediate: true,
-      deep: true,
     }
+    return null;
+  } catch (err) {
+    console.error(err);
+    return null;
+  } finally {
+    isLoading.value.vil = false;
+  }
+};
+
+const initializeWilayah = async () => {
+  if (!props.form.provinsi) return;
+  const prov = listProvinsi.value.find((p) =>
+    matchWilayah(p.name, props.form.provinsi),
   );
+  if (!prov) return;
 
-  // ==========================================
-  // USER GANTI PROVINSI
-  // ==========================================
+  regIds.value.provinsi = prov.id;
+  props.form.provinsi = prov.name;
 
-  const handleProvinsiChange = async () => {
-    regencies.value = [];
-    districts.value = [];
-    villages.value = [];
+  if (!props.form.kota) return;
+  const idKota = await loadKota(prov.id, props.form.kota);
+  if (!idKota) return;
 
-    props.form.kota = '';
-    props.form.kecamatan = '';
-    props.form.kelurahan = '';
+  if (!props.form.kecamatan) return;
+  const idKecamatan = await loadKecamatan(idKota, props.form.kecamatan);
+  if (!idKecamatan) return;
 
-    if (!props.form.provinsi) return;
+  if (props.form.kelurahan) {
+    await loadKelurahan(idKecamatan, props.form.kelurahan);
+  }
+};
 
-    await loadRegencies(props.form.provinsi);
-  };
+onMounted(async () => {
+  try {
+    const res = await fetch(
+      `https://ibnux.github.io/data-indonesia/provinsi.json`,
+    );
+    const data = await res.json();
+    listProvinsi.value = data.map((item) => ({
+      id: item.id,
+      name: item.nama.toUpperCase(),
+    }));
+  } catch (e) {
+    console.error("Gagal load provinsi dari IBNUX:", e);
+  }
+});
 
-  // ==========================================
-  // USER GANTI KOTA
-  // ==========================================
+watch(
+  () => ({
+    provinsi: props.form.provinsi,
+    provincesLoaded: listProvinsi.value.length,
+  }),
+  async (val) => {
+    if (val.provinsi && val.provincesLoaded > 0 && !regIds.value.provinsi) {
+      await initializeWilayah();
+    }
+  },
+  { immediate: true, deep: true },
+);
 
-  const handleKotaChange = async () => {
-    districts.value = [];
-    villages.value = [];
+// ==========================================
+// HANDLE SELECT CHANGE OLEH USER
+// ==========================================
+const handleProvinsiChange = async () => {
+  regIds.value.kota = "";
+  regIds.value.kecamatan = "";
+  regIds.value.kelurahan = "";
+  listKota.value = [];
+  listKecamatan.value = [];
+  listKelurahan.value = [];
+  props.form.kota = "";
+  props.form.kecamatan = "";
+  props.form.kelurahan = "";
 
-    props.form.kecamatan = '';
-    props.form.kelurahan = '';
+  const prov = listProvinsi.value.find((p) => p.id === regIds.value.provinsi);
+  if (prov) props.form.provinsi = prov.name;
 
-    if (!props.form.kota) return;
+  if (regIds.value.provinsi) {
+    await loadKota(regIds.value.provinsi);
+  }
+};
 
-    await loadDistricts(props.form.kota);
-  };
+const handleKotaChange = async () => {
+  regIds.value.kecamatan = "";
+  regIds.value.kelurahan = "";
+  listKecamatan.value = [];
+  listKelurahan.value = [];
+  props.form.kecamatan = "";
+  props.form.kelurahan = "";
 
-  // ==========================================
-  // USER GANTI KECAMATAN
-  // ==========================================
+  const kota = listKota.value.find((k) => k.id === regIds.value.kota);
+  if (kota) props.form.kota = kota.name;
 
-  const handleKecamatanChange = async () => {
-    villages.value = [];
+  if (regIds.value.kota) {
+    await loadKecamatan(regIds.value.kota);
+  }
+};
 
-    props.form.kelurahan = '';
+const handleKecamatanChange = async () => {
+  regIds.value.kelurahan = "";
+  listKelurahan.value = [];
+  props.form.kelurahan = "";
 
-    if (!props.form.kecamatan) return;
+  const kec = listKecamatan.value.find((k) => k.id === regIds.value.kecamatan);
+  if (kec) props.form.kecamatan = kec.name;
 
-    await loadVillages(props.form.kecamatan);
-  };
+  if (regIds.value.kecamatan) {
+    await loadKelurahan(regIds.value.kecamatan);
+  }
+};
+
+const handleKelurahanChange = () => {
+  const kel = listKelurahan.value.find((k) => k.id === regIds.value.kelurahan);
+  if (kel) props.form.kelurahan = kel.name;
+};
+
+const forceUppercase = (field) => {
+  if (props.form[field]) {
+    props.form[field] = props.form[field].toUpperCase();
+  }
+};
 </script>
 
 <template>
@@ -344,6 +347,7 @@
           >
           <input
             v-model="form.nama_toko"
+            @input="forceUppercase('nama_toko')"
             type="text"
             class="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:bg-white focus:border-blue-600 focus:shadow-lg focus:shadow-blue-500/10 outline-none font-bold text-sm text-slate-800 transition-all"
           />
@@ -371,7 +375,7 @@
           >
             <span
               class="font-black text-xs text-slate-400 uppercase tracking-widest"
-              >{{ form.business_type || 'RETAIL' }}</span
+              >{{ form.business_type || "RETAIL" }}</span
             >
             <svg
               class="w-4 h-4 text-slate-300"
@@ -391,39 +395,116 @@
       </div>
     </div>
 
+    <!-- BARIS 2: LOKASI OPERASIONAL -->
     <div class="border-t border-slate-100 pt-6 space-y-4 w-full">
-      <h4
-        class="font-black text-slate-800 uppercase tracking-widest text-sm mb-2"
-      >
-        Lokasi Operasional
-      </h4>
+      <div class="flex items-center justify-between mb-2">
+        <h4 class="font-black text-slate-800 uppercase tracking-widest text-sm">
+          Lokasi Operasional
+        </h4>
+        <button
+          @click.prevent="toggleEditLocation"
+          class="text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-colors"
+          :class="
+            isEditingLocation
+              ? 'text-rose-500 hover:text-rose-600'
+              : 'text-blue-500 hover:text-blue-600'
+          "
+        >
+          <svg
+            v-if="!isEditingLocation"
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
+          </svg>
+          <svg
+            v-else
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+          {{ isEditingLocation ? "Batal Ubah" : "Ubah Lokasi" }}
+        </button>
+      </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
-        <div class="md:col-span-2 lg:col-span-3">
+      <div
+        v-if="isEditingLocation"
+        class="bg-amber-50 border border-amber-200 text-amber-700 p-3 rounded-xl text-xs font-bold flex items-start gap-2 mb-4"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-5 w-5 shrink-0"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
+        </svg>
+        <p>
+          Mengubah lokasi akan mempengaruhi sistem ongkir dan data pajak daerah.
+          Pastikan data yang dimasukkan akurat.
+        </p>
+      </div>
+
+      <!-- 🚀 PEMBARUAN GRID RESPONSIVE BERDASARKAN TOTAL 12 KOLOM -->
+      <div
+        class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-4 w-full"
+        :class="{ 'opacity-60 pointer-events-none': !isEditingLocation }"
+      >
+        <!-- Alamat Lengkap makan 12 kolom penuh -->
+        <div class="col-span-1 sm:col-span-2 md:col-span-12">
           <label
             class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2"
             >Alamat Lengkap (Jalan / Patokan)</label
           >
           <textarea
             v-model="form.alamat"
+            @input="forceUppercase('alamat')"
+            :disabled="!isEditingLocation"
             rows="2"
-            class="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:bg-white focus:border-blue-600 focus:shadow-lg focus:shadow-blue-500/10 outline-none font-bold text-sm text-slate-800 transition-all resize-none"
+            class="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:bg-white focus:border-blue-600 focus:shadow-lg focus:shadow-blue-500/10 outline-none font-bold text-sm text-slate-800 transition-all resize-none disabled:bg-slate-100/50"
             placeholder="Contoh: Jl. Sudirman No. 123..."
           ></textarea>
         </div>
 
-        <div class="relative">
+        <!-- Provinsi makan 5 kolom karena teksnya panjang (ex: DAERAH KHUSUS IBUKOTA JAKARTA) -->
+        <div
+          class="relative w-full min-w-0 col-span-1 sm:col-span-1 md:col-span-5"
+        >
           <label
             class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2"
             >Provinsi</label
           >
           <select
-            v-model="form.provinsi"
+            v-model="regIds.provinsi"
             @change="handleProvinsiChange"
-            class="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:bg-white focus:border-blue-600 focus:shadow-lg focus:shadow-blue-500/10 outline-none font-bold text-sm text-slate-800 transition-all appearance-none cursor-pointer"
+            :disabled="!isEditingLocation"
+            class="w-full p-4 pr-10 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:bg-white focus:border-blue-600 focus:shadow-lg focus:shadow-blue-500/10 outline-none font-bold text-sm text-slate-800 transition-all appearance-none cursor-pointer disabled:bg-slate-100/50"
           >
             <option value="" disabled>Pilih Provinsi</option>
-            <option v-for="p in provinces" :key="p.id" :value="p.name">
+            <option v-for="p in listProvinsi" :key="p.id" :value="p.id">
               {{ p.name }}
             </option>
           </select>
@@ -446,21 +527,24 @@
           </div>
         </div>
 
-        <div class="relative">
+        <!-- Kota/Kabupaten makan 7 kolom sisanya di baris pertama -->
+        <div
+          class="relative w-full min-w-0 col-span-1 sm:col-span-1 md:col-span-7"
+        >
           <label
             class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2"
             >Kota / Kabupaten</label
           >
           <select
-            v-model="form.kota"
+            v-model="regIds.kota"
             @change="handleKotaChange"
-            :disabled="!form.provinsi || isLoading.reg"
-            class="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:bg-white focus:border-blue-600 focus:shadow-lg focus:shadow-blue-500/10 outline-none font-bold text-sm text-slate-800 transition-all appearance-none disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+            :disabled="!regIds.provinsi || isLoading.reg || !isEditingLocation"
+            class="w-full p-4 pr-10 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:bg-white focus:border-blue-600 focus:shadow-lg focus:shadow-blue-500/10 outline-none font-bold text-sm text-slate-800 transition-all appearance-none disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer disabled:bg-slate-100/50"
           >
             <option value="" disabled>
-              {{ isLoading.reg ? 'Loading...' : 'Pilih Kota/Kab' }}
+              {{ isLoading.reg ? "Loading..." : "Pilih Kota/Kab" }}
             </option>
-            <option v-for="r in regencies" :key="r.id" :value="r.name">
+            <option v-for="r in listKota" :key="r.id" :value="r.id">
               {{ r.name }}
             </option>
           </select>
@@ -483,21 +567,24 @@
           </div>
         </div>
 
-        <div class="relative">
+        <!-- Kecamatan makan 4 kolom di baris kedua -->
+        <div
+          class="relative w-full min-w-0 col-span-1 sm:col-span-1 md:col-span-4"
+        >
           <label
             class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2"
             >Kecamatan</label
           >
           <select
-            v-model="form.kecamatan"
+            v-model="regIds.kecamatan"
             @change="handleKecamatanChange"
-            :disabled="!form.kota || isLoading.dist"
-            class="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:bg-white focus:border-blue-600 focus:shadow-lg focus:shadow-blue-500/10 outline-none font-bold text-sm text-slate-800 transition-all appearance-none disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+            :disabled="!regIds.kota || isLoading.dist || !isEditingLocation"
+            class="w-full p-4 pr-10 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:bg-white focus:border-blue-600 focus:shadow-lg focus:shadow-blue-500/10 outline-none font-bold text-sm text-slate-800 transition-all appearance-none disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer disabled:bg-slate-100/50"
           >
             <option value="" disabled>
-              {{ isLoading.dist ? 'Loading...' : 'Pilih Kecamatan' }}
+              {{ isLoading.dist ? "Loading..." : "Pilih Kecamatan" }}
             </option>
-            <option v-for="d in districts" :key="d.id" :value="d.name">
+            <option v-for="d in listKecamatan" :key="d.id" :value="d.id">
               {{ d.name }}
             </option>
           </select>
@@ -520,20 +607,24 @@
           </div>
         </div>
 
-        <div class="relative">
+        <!-- Kelurahan makan 5 kolom di baris kedua -->
+        <div
+          class="relative w-full min-w-0 col-span-1 sm:col-span-1 md:col-span-5"
+        >
           <label
             class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2"
             >Kelurahan / Desa</label
           >
           <select
-            v-model="form.kelurahan"
-            :disabled="!form.kecamatan || isLoading.vil"
-            class="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:bg-white focus:border-blue-600 focus:shadow-lg focus:shadow-blue-500/10 outline-none font-bold text-sm text-slate-800 transition-all appearance-none disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+            v-model="regIds.kelurahan"
+            @change="handleKelurahanChange"
+            :disabled="!regIds.kecamatan || isLoading.vil || !isEditingLocation"
+            class="w-full p-4 pr-10 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:bg-white focus:border-blue-600 focus:shadow-lg focus:shadow-blue-500/10 outline-none font-bold text-sm text-slate-800 transition-all appearance-none disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer disabled:bg-slate-100/50"
           >
             <option value="" disabled>
-              {{ isLoading.vil ? 'Loading...' : 'Pilih Kelurahan' }}
+              {{ isLoading.vil ? "Loading..." : "Pilih Kelurahan" }}
             </option>
-            <option v-for="v in villages" :key="v.id" :value="v.name">
+            <option v-for="v in listKelurahan" :key="v.id" :value="v.id">
               {{ v.name }}
             </option>
           </select>
@@ -556,15 +647,17 @@
           </div>
         </div>
 
-        <div>
+        <!-- Kode Pos makan 3 kolom sisa terakhir -->
+        <div class="w-full min-w-0 col-span-1 sm:col-span-2 md:col-span-3">
           <label
             class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2"
             >Kode Pos</label
           >
           <input
             v-model="form.kode_pos"
+            :disabled="!isEditingLocation"
             type="text"
-            class="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:bg-white focus:border-blue-600 focus:shadow-lg focus:shadow-blue-500/10 outline-none font-bold text-sm text-slate-800 transition-all"
+            class="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:bg-white focus:border-blue-600 focus:shadow-lg focus:shadow-blue-500/10 outline-none font-bold text-sm text-slate-800 transition-all disabled:bg-slate-100/50"
             placeholder="Masukkan kode pos"
           />
         </div>
@@ -574,17 +667,17 @@
 </template>
 
 <style scoped>
-  .animate-fade-in-up {
-    animation: fadeInUp 0.4s ease-out;
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out;
+}
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
+}
 </style>
