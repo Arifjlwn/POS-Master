@@ -2,7 +2,7 @@ package domain
 
 import (
 	"time"
-	"pos-backend/models" // Import Product global
+	"pos-backend/models"
 )
 
 // ==========================================
@@ -11,12 +11,17 @@ import (
 
 type StockOpname struct {
 	ID        uint                `gorm:"primaryKey" json:"id"`
+	PublicID  string              `gorm:"size:26;uniqueIndex;not null" json:"public_id"` // 🚀 Masking ID eksternal via ULID
+
 	StoreID   uint                `gorm:"index;not null" json:"store_id"`
-	UserID    uint                `json:"user_id"` 
-	Notes     string              `json:"notes"`   
-	Status    string              `gorm:"type:varchar(50);default:'PENDING_APPROVAL'" json:"status"` // PENDING_APPROVAL / APPROVED
+	UserID    uint                `gorm:"not null;index" json:"user_id"`
+
+	Notes     string              `gorm:"type:text" json:"notes"`
+	Status    string              `gorm:"type:varchar(50);default:'PENDING_APPROVAL';index" json:"status"` // PENDING_APPROVAL / APPROVED
+	BuktiBar  string              `gorm:"type:text" json:"bukti_bar"` // URL Panjang Supabase aman tanpa takut truncate
+
 	CreatedAt time.Time           `json:"created_at"`
-	BuktiBar string `gorm:"column:bukti_bar;type:varchar(255)" json:"bukti_bar"`
+	UpdatedAt time.Time           `json:"updated_at"`
 	Details   []StockOpnameDetail `gorm:"foreignKey:OpnameID" json:"details"`
 }
 
@@ -24,40 +29,53 @@ func (StockOpname) TableName() string { return "retail_stock_opnames" }
 
 type StockOpnameDetail struct {
 	ID        uint           `gorm:"primaryKey" json:"id"`
+	// 🚀 HYBRID OPTIMAL: PublicID ULID dibuang dari detail, hemat space index database!
+
 	OpnameID  uint           `gorm:"index;not null" json:"opname_id"`
-	ProductID uint           `json:"product_id"`
-	SystemQty int            `json:"system_qty"` 
-	ActualQty int            `json:"actual_qty"` 
-	Selisih   int            `json:"selisih"`    
+	ProductID uint           `gorm:"not null;index" json:"product_id"`
+
+	SystemQty int            `gorm:"not null" json:"system_qty"`
+	ActualQty int            `gorm:"not null" json:"actual_qty"`
+	Selisih   int            `gorm:"not null" json:"selisih"`
+	NilaiUang float64        `gorm:"type:decimal(18,2);not null;default:0" json:"nilai_uang"` // Nominal kerugian/keuntungan rupiah stok
+
 	Alasan    string         `gorm:"type:text" json:"alasan"`
 	Product   models.Product `gorm:"foreignKey:ProductID" json:"product"`
 }
 
-func (StockOpnameDetail) TableName() string { return "retail_stock_opname_details" }
+func (StockOpnameDetail) TableName() string { return "retail_stock_stock_opname_details" }
 
 // ==========================================
-// 2. MODEL CONFIG UNIT: KLAIM BARANG NYEMPIL
+// 2. MODEL CONFIG UNIT: KLAIM BARANG NYEMPIL (ADJUSTMENT)
 // ==========================================
 
 type StockAdjustment struct {
-    ID        uint                    `gorm:"primaryKey" json:"id"`
-    StoreID   uint                    `gorm:"index;not null" json:"store_id"` // Biar aman per cabang toko
-    UserID    uint                    `json:"user_id"`                        // Siapa kasir/karyawan yang nemu
-    Notes     string                  `json:"notes"`                          // Default: "Klaim Barang Nyempil"
-    Status    string                  `gorm:"type:varchar(50);default:'PENDING_APPROVAL'" json:"status"` // Owner wajib approve dulu baru stok nambah
-    CreatedAt time.Time               `json:"created_at"` // 🚀 INI UDAH DIBERSIHIN
-	BuktiBar string `gorm:"column:bukti_bar;type:varchar(255)" json:"bukti_bar"`
-    Details   []StockAdjustmentDetail `gorm:"foreignKey:AdjustmentID" json:"details"`
+	ID        uint                    `gorm:"primaryKey" json:"id"`
+	PublicID  string                  `gorm:"size:26;uniqueIndex;not null" json:"public_id"` // 🚀 Masking ID eksternal via ULID
+
+	StoreID   uint                    `gorm:"index;not null" json:"store_id"`
+	UserID    uint                    `gorm:"not null;index" json:"user_id"`
+
+	Notes     string                  `gorm:"type:text" json:"notes"` // Default: "Klaim Barang Nyempil"
+	Status    string                  `gorm:"type:varchar(50);default:'PENDING_APPROVAL';index" json:"status"` // PENDING_APPROVAL / APPROVED
+	BuktiBar  string                  `gorm:"type:text" json:"bukti_bar"` // URL Panjang Supabase aman
+
+	CreatedAt time.Time               `json:"created_at"`
+	UpdatedAt time.Time               `json:"updated_at"`
+	Details   []StockAdjustmentDetail `gorm:"foreignKey:AdjustmentID" json:"details"`
 }
 
 func (StockAdjustment) TableName() string { return "retail_stock_adjustments" }
 
 type StockAdjustmentDetail struct {
 	ID           uint           `gorm:"primaryKey" json:"id"`
+	// 🚀 HYBRID OPTIMAL: PublicID ULID dibuang dari detail, hemat space index database!
+
 	AdjustmentID uint           `gorm:"index;not null" json:"adjustment_id"`
-	ProductID    uint           `json:"product_id"`
-	Qty          int            `json:"qty"`                     // Jumlah fisik yang ga sengaja ketemu
-	Alasan       string         `gorm:"type:text" json:"alasan"` // Ketemu di mana / rak mana
+	ProductID    uint           `gorm:"not null;index" json:"product_id"`
+
+	Qty          int            `gorm:"not null" json:"qty"` // Jumlah fisik tak sengaja ketemu
+	Alasan       string         `gorm:"type:text" json:"alasan"`
 	Product      models.Product `gorm:"foreignKey:ProductID" json:"product"`
 }
 

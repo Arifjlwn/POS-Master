@@ -20,7 +20,10 @@ func (h *RetailHandler) GetDashboardReport(c *gin.Context) {
 		return
 	}
 
-	storeID := uint(c.MustGet("store_id").(float64))
+	var storeID uint
+	storeIDRaw := c.MustGet("store_id")
+	if val, ok := storeIDRaw.(float64); ok { storeID = uint(val) } else if val, ok := storeIDRaw.(uint); ok { storeID = val }
+
 	startDateStr := c.Query("start_date")
 	endDateStr := c.Query("end_date")
 
@@ -39,7 +42,6 @@ func (h *RetailHandler) GetDashboardReport(c *gin.Context) {
 		end = end.Add(24 * time.Hour)
 	}
 
-	// 🚀 STRUCT DI-UPDATE BUAT NAMPUNG DATA KLAIM & FINAL NETTO
 	var report struct {
 		TotalOmzet         float64 `json:"total_omzet"`
 		TotalLaba          float64 `json:"total_laba"`
@@ -48,18 +50,12 @@ func (h *RetailHandler) GetDashboardReport(c *gin.Context) {
 		AvgTransaksi       float64 `json:"avg_transaksi"`
 		TotalReturQty      float64 `json:"total_retur_qty"`
 		TotalReturLoss     float64 `json:"total_retur_loss"`
-
-		// Data SO Asli
-		TotalSOQty  float64 `json:"total_so_qty"`
-		TotalSOLoss float64 `json:"total_so_loss"`
-
-		// Data Klaim Barang Nyempil
-		TotalKlaimQty   float64 `json:"total_klaim_qty"`
-		TotalKlaimValue float64 `json:"total_klaim_value"`
-
-		// 🚀 HASIL AKHIR (FINAL) SETELAH DIKURANGI KLAIM
-		NetSOQty  float64 `json:"net_so_qty"`
-		NetSOLoss float64 `json:"net_so_loss"`
+		TotalSOQty         float64 `json:"total_so_qty"`
+		TotalSOLoss        float64 `json:"total_so_loss"`
+		TotalKlaimQty      float64 `json:"total_klaim_qty"`
+		TotalKlaimValue    float64 `json:"total_klaim_value"`
+		NetSOQty           float64 `json:"net_so_qty"`
+		NetSOLoss          float64 `json:"net_so_loss"`
 	}
 
 	omzet, qty, _ := h.Repo.GetDashboardSummary(storeID, start, end)
@@ -80,28 +76,22 @@ func (h *RetailHandler) GetDashboardReport(c *gin.Context) {
 	report.TotalReturQty = returQty
 	report.TotalReturLoss = returLoss
 
-	// 🚀 1. TARIK DATA SO AWAL
 	soQty, soLoss, _ := h.Repo.GetDashboardSOSummary(storeID, start, end)
 	report.TotalSOQty = soQty
 	report.TotalSOLoss = soLoss
 
-	// 🚀 2. TARIK DATA KLAIM YANG UDAH DI-APPROVE
 	klaimQty, klaimValue, _ := h.Repo.GetDashboardKlaimSummary(storeID, start, end)
 	report.TotalKlaimQty = klaimQty
 	report.TotalKlaimValue = klaimValue
 
-	// 🚀 3. HITUNG HASIL FINAL (NETTO RUGI)
 	report.NetSOQty = soQty - klaimQty
-	if report.NetSOQty < 0 {
-		report.NetSOQty = 0
-	} // Biar gak minus kalau anomali
+	if report.NetSOQty < 0 { report.NetSOQty = 0 }
 
 	report.NetSOLoss = soLoss - klaimValue
-	if report.NetSOLoss < 0 {
-		report.NetSOLoss = 0
-	} // Biar gak minus kalau anomali
+	if report.NetSOLoss < 0 { report.NetSOLoss = 0 }
 
 	lowStock, _ := h.Repo.GetLowStockProducts(storeID, 10)
+	bestSellers, _ := h.Repo.GetTopBestSellers(storeID, start, end)
 
 	type GrafikData struct {
 		Tanggal   string  `json:"tanggal"`
@@ -109,30 +99,12 @@ func (h *RetailHandler) GetDashboardReport(c *gin.Context) {
 		Laba      float64 `json:"laba"`
 		ReturLoss float64 `json:"retur_loss"`
 	}
-	var grafikPenjualan []GrafikData
 
-	days := int(end.Sub(start).Hours() / 24)
-	if days <= 0 {
-		days = 1
+	// 🚀 SANGAR: Sikat semua data harian pake single query agregat via repo bray (Anti N+1 loop)
+	grafikPenjualan, err := h.Repo.GetAggregatedDailySales(storeID, start, end)
+	if err != nil || len(grafikPenjualan) == 0 {
+		grafikPenjualan = make([]map[string]interface{}, 0)
 	}
-	if days > 31 {
-		days = 31
-	}
-
-	for i := 0; i < days; i++ {
-		tgl := start.AddDate(0, 0, i)
-		tglEnd := tgl.Add(24 * time.Hour)
-
-		dailyOmzet, dailyLaba, dailyReturLoss, _ := h.Repo.GetDailySalesReport(storeID, tgl, tglEnd)
-		grafikPenjualan = append(grafikPenjualan, GrafikData{
-			Tanggal:   tgl.Format("02 Jan"),
-			Omzet:     dailyOmzet,
-			Laba:      dailyLaba,
-			ReturLoss: dailyReturLoss,
-		})
-	}
-
-	bestSellers, _ := h.Repo.GetTopBestSellers(storeID, start, end)
 
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{

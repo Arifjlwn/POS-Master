@@ -2,50 +2,75 @@ package models
 
 import "time"
 
-// 1. Model untuk Kepala Struk Global (Header)
+// ======================================================
+// TRANSACTION HEADER
+// ======================================================
+
 type Transaction struct {
-	ID            uint                `gorm:"primaryKey" json:"id"`
-	SessionID     uint                `gorm:"not null" json:"session_id"` // 🚀 KUNCI UTAMA UNTUK CLOSING
-	StoreID       uint                `gorm:"not null" json:"store_id"`
-	Store         Store               `gorm:"foreignKey:StoreID" json:"Store"`
-	UserID        uint                `gorm:"not null" json:"user_id"`
-	NoInvoice     string              `gorm:"type:varchar(50);uniqueIndex;not null" json:"no_invoice"`
+	ID       uint   `gorm:"primaryKey" json:"id"`
+	PublicID string `gorm:"size:26;uniqueIndex;not null" json:"public_id"`
 
-	SubTotal      float64             `gorm:"type:decimal(10,2);not null" json:"sub_total"`
-	Pajak         float64             `gorm:"type:decimal(10,2);default:0" json:"pajak"`
-	Pembulatan    float64             `gorm:"type:decimal(10,2);default:0" json:"pembulatan"`
-	TotalHarga    float64             `gorm:"type:decimal(10,2);not null" json:"total_harga"`
-	
-	MetodeBayar   string              `gorm:"type:varchar(20);not null;default:'Cash'" json:"metode_bayar"`
-	StatusBayar   string              `gorm:"type:varchar(20);not null;default:'LUNAS'" json:"status_bayar"`
-	
-	// 🚀 GLOBAL FITUR: Default disesuaikan lewat input controller/frontend
-	TipeBisnis    string              `gorm:"type:varchar(20);not null;default:'RETAIL'" json:"tipe_bisnis"`   // RETAIL, LAUNDRY, FNB
-	StatusPesanan string              `gorm:"type:varchar(50);default:'SELESAI'" json:"status_pesanan"`       // SELESAI, ANTRI, PROSES
-	
-	BuktiTransfer string              `gorm:"type:varchar(255)" json:"bukti_transfer"`
-	NominalBayar  float64             `gorm:"type:decimal(10,2);not null" json:"nominal_bayar"`
-	Kembalian     float64             `gorm:"type:decimal(10,2);not null" json:"kembalian"`
-	CreatedAt     time.Time           `json:"created_at"`
+	SessionID uint `gorm:"not null;index" json:"session_id"`
 
-	Details       []TransactionDetail `gorm:"foreignKey:TransactionID" json:"details"`
-	User          User                `gorm:"foreignKey:UserID" json:"User"`
+	StoreID uint `gorm:"not null;index" json:"store_id"`
+	Store   Store `gorm:"foreignKey:StoreID" json:"store"`
+
+	UserID uint `gorm:"not null;index" json:"user_id"`
+	User   User `gorm:"foreignKey:UserID" json:"user"`
+
+	NoInvoice string `gorm:"type:varchar(50);not null;index" json:"no_invoice"`
+
+	SubTotal   float64 `gorm:"type:decimal(18,2);not null" json:"sub_total"`
+	Pajak      float64 `gorm:"type:decimal(18,2);default:0" json:"pajak"`
+	Pembulatan float64 `gorm:"type:decimal(18,2);default:0" json:"pembulatan"`
+
+	TotalHarga float64 `gorm:"type:decimal(18,2);not null" json:"total_harga"`
+
+	MetodeBayar string `gorm:"type:varchar(20);not null;default:'Cash';index" json:"metode_bayar"`
+
+	StatusBayar string `gorm:"type:varchar(20);not null;default:'LUNAS';index" json:"status_bayar"`
+
+	TipeBisnis string `gorm:"type:varchar(20);not null;default:'RETAIL';index" json:"tipe_bisnis"`
+
+	StatusPesanan string `gorm:"type:varchar(50);default:'SELESAI';index" json:"status_pesanan"`
+
+	BuktiTransfer string `gorm:"type:text" json:"bukti_transfer"`
+
+	NominalBayar float64 `gorm:"type:decimal(18,2);not null" json:"nominal_bayar"`
+
+	Kembalian float64 `gorm:"type:decimal(18,2);not null" json:"kembalian"`
+
+	Details []TransactionDetail `gorm:"foreignKey:TransactionID" json:"details"`
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// 2. Model untuk Rincian Barang di Struk Global (Body)
+// ======================================================
+// TRANSACTION DETAIL
+// ======================================================
+
 type TransactionDetail struct {
-	ID            uint    `gorm:"primaryKey" json:"id"`
-	TransactionID uint    `gorm:"not null" json:"transaction_id"`
-	ProductID     uint    `gorm:"not null" json:"product_id"`
-	HargaSatuan   float64 `gorm:"type:decimal(10,2);not null" json:"harga_satuan"`
-	Kuantitas     int     `gorm:"not null" json:"kuantitas"`
+	ID uint `gorm:"primaryKey" json:"id"`
 
-	// 🚀 TRICK ARCHITECTURE: Hapus NamaParfum & HargaParfum, ganti dengan 2 kolom sakti ini:
-	ItemType      string  `gorm:"type:varchar(30);default:'PRODUCT'" json:"item_type"` // PRODUCT, SERVICE, MENU
-	DetailNotes   string  `gorm:"type:text" json:"detail_notes"`                       // Buat nyimpen catatan (ex: "Parfum: Premium, Wangi Lily" atau "F&B: Level 5")
-	
-	SubTotal      float64 `gorm:"type:decimal(10,2);not null" json:"sub_total"`
+	TransactionID uint `gorm:"not null;index" json:"transaction_id"`
 
-	// Relasi untuk narik nama produk
-	Product       Product `gorm:"foreignKey:ProductID" json:"product"`
+	ProductID uint `gorm:"not null;index" json:"product_id"`
+
+	Product Product `gorm:"foreignKey:ProductID" json:"product"`
+
+	// Snapshot data
+	NamaProdukSnapshot string `gorm:"type:varchar(150);not null" json:"nama_produk_snapshot"`
+
+	SKUProductSnapshot string `gorm:"type:varchar(50)" json:"sku_product_snapshot"`
+
+	HargaSatuan float64 `gorm:"type:decimal(18,2);not null" json:"harga_satuan"`
+
+	Kuantitas int `gorm:"not null" json:"kuantitas"`
+
+	ItemType string `gorm:"type:varchar(30);default:'PRODUCT';index" json:"item_type"`
+
+	DetailNotes string `gorm:"type:text" json:"detail_notes"`
+
+	SubTotal float64 `gorm:"type:decimal(18,2);not null" json:"sub_total"`
 }

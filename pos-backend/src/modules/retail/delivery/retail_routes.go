@@ -1,55 +1,48 @@
 package delivery
 
 import (
-	"pos-backend/src/core/middlewares" // 🚀 IMPORT MIDDLEWARE LU DI SINI
+	"pos-backend/src/core/middlewares"
 
 	"github.com/gin-gonic/gin"
 )
 
-// Master Produk CRUD
 func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 
 	// =====================================
-	// 🟢 FITUR MIDTRANS USER
-	// =====================================
-	rg.POST("/pos/midtrans-order", h.CreatePosMidtransOrder)
-
-	// =====================================
-	// 🟢 FITUR LEVEL 1 (BASIC)
+	// 🟢 FITUR LEVEL 1 (BASIC & CORE PAYMENT)
 	// =====================================
 	
-	// Master Produk & Kategori
-	rg.POST("/products", h.CreateProduct)
-	rg.GET("/products", h.GetProducts)
-	rg.PUT("/products/:id", h.UpdateProduct)
-	rg.DELETE("/products/:id", h.DeleteProduct)
-	rg.GET("/categories", h.GetCategories)
-	
-	// Impor & Ekspor Barang
-	rg.GET("/products/export", h.ExportProducts)
-	rg.POST("/products/import", h.ImportProducts)
+	rg.POST("/pos/midtrans-order", middlewares.RequireSaaSLevel(1), h.CreatePosMidtransOrder)
+	rg.POST("/subscription/upgrade", middlewares.RequireSaaSLevel(1), h.CreateUpgradePayment)
 
-	// Laporan Penerimaan Barang / LPB (Bisa dipake Basic)
-	rg.POST("/purchases", h.CreateLPB)
+	// Master Produk & Kategori Catalog
+	rg.POST("/products", middlewares.RequireSaaSLevel(1), h.CreateProduct)
+	rg.GET("/products", middlewares.RequireSaaSLevel(1), h.GetProducts)
+	rg.PUT("/products/:id", middlewares.RequireSaaSLevel(1), h.UpdateProduct)
+	rg.DELETE("/products/:id", middlewares.RequireSaaSLevel(1), h.DeleteProduct)
+	rg.GET("/categories", middlewares.RequireSaaSLevel(1), h.GetCategories)
+	rg.GET("/products/export", middlewares.RequireSaaSLevel(1), h.ExportProducts)
+	rg.POST("/products/import", middlewares.RequireSaaSLevel(1), h.ImportProducts)
 
-	// Shift POS / Cashier Session (Open-Close Kasir)
-	rg.POST("/pos/open-session", h.OpenSession)
-	rg.GET("/pos/check-session", h.CheckSessionStatus)
-	rg.POST("/pos/close-session/:id", h.CloseSession)
+	// Laporan Penerimaan Barang / LPB (Supplier)
+	rg.POST("/purchases", middlewares.RequireSaaSLevel(1), h.CreateLPB)
 
-	// POS Checkout Transaksi & Struk Nota
-	rg.POST("/checkout", h.CreateTransaction)
-	rg.GET("/transactions", h.GetTransactions)
-	rg.GET("/journal/closing", h.GetDailyClosing)
+	// Shift POS / Cashier Session
+	rg.POST("/pos/open-session", middlewares.RequireSaaSLevel(1), h.OpenSession)
+	rg.GET("/pos/check-session", middlewares.RequireSaaSLevel(1), h.CheckSessionStatus)
+	rg.POST("/pos/close-session/:id", middlewares.RequireSaaSLevel(1), h.CloseSession)
 
-	// Setting Toko & Akun
-	rg.GET("/store/settings", h.GetStoreSettings)
-	rg.PUT("/store/settings", h.UpdateStoreSettings)
-	rg.POST("/subscription/upgrade", h.CreateUpgradePayment)
+	// POS Checkout Transaksi Kasir
+	rg.POST("/checkout", middlewares.RequireSaaSLevel(1), h.CreateTransaction)
+	rg.GET("/transactions", middlewares.RequireSaaSLevel(1), h.GetTransactions)
+	rg.GET("/journal/closing", middlewares.RequireSaaSLevel(1), h.GetDailyClosing)
 
+	// Store Profiles Settings
+	rg.GET("/store/settings", middlewares.RequireSaaSLevel(1), h.GetStoreSettings)
+	rg.PUT("/store/settings", middlewares.RequireSaaSLevel(1), h.UpdateStoreSettings)
 
 	// =====================================
-	// 🟡 FITUR LEVEL 2 (PRO)
+	// 🟡 FITUR LEVEL 2 (PRO - TIM & ABSENSI)
 	// =====================================
 	
 	// Absensi Karyawan
@@ -62,13 +55,12 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 	rg.GET("/employees", middlewares.RequireSaaSLevel(2), h.GetEmployees)
 	rg.PUT("/employees/:id", middlewares.RequireSaaSLevel(2), h.UpdateEmployee)
 
-	// Jadwal Kerja / Rostering Karyawan
+	// Jadwal Kerja / Rostering
 	rg.POST("/schedules/bulk", middlewares.RequireSaaSLevel(2), h.SaveSchedules)
 	rg.GET("/schedules", middlewares.RequireSaaSLevel(2), h.GetSchedules)
 
-
 	// =====================================
-	// 🔴 FITUR LEVEL 3 (PREMIUM)
+	// 🔴 FITUR LEVEL 3 (PREMIUM - ANALYTICS & INVENTORY AUDIT)
 	// =====================================
 	
 	// Dashboard Analytics Report Owner
@@ -81,6 +73,7 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 	rg.GET("/stock-opname/history", middlewares.RequireSaaSLevel(3), h.GetStockOpnameHistory)
 	rg.PATCH("/stock-opname/:id/approve", middlewares.RequireSaaSLevel(3), h.ApproveStockOpname)
 	
+	// Klaim Penemuan Barang Nyempil (Adjustment)
 	rg.POST("/stock-adjustment/request", middlewares.RequireSaaSLevel(3), h.SubmitKlaimBarang)
 	rg.GET("/stock-adjustment/history", middlewares.RequireSaaSLevel(3), h.GetStockAdjustmentHistory)
 	rg.PATCH("/stock-adjustment/:id/approve", middlewares.RequireSaaSLevel(3), h.ApproveStockAdjustment)

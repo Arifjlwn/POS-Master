@@ -3,6 +3,7 @@ package middlewares
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -22,12 +23,13 @@ func RequireAuth(c *gin.Context) {
 	}
 
 	tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
+	jwtSecret := os.Getenv("JWT_SECRET")
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("metode token tidak valid")
 		}
-		return []byte("KUNCI_RAHASIA_SUPER_KUAT_123"), nil
+		return []byte(jwtSecret), nil
 	})
 
 	if err != nil || !token.Valid {
@@ -37,9 +39,6 @@ func RequireAuth(c *gin.Context) {
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-
-		// 🚀 PROTEKSI TOKEN SEMENTARA (TEMPORARY TOKEN)
-		// Cek apakah ini token yang cuma boleh dipake buat milih cabang
 		isSelectToken := false
 		if isSelectRaw, exists := claims["is_select"]; exists {
 			isSelectToken = isSelectRaw.(bool)
@@ -47,11 +46,7 @@ func RequireAuth(c *gin.Context) {
 
 		if isSelectToken {
 			currentPath := c.Request.URL.Path
-
-			// Daftar rute yang BOLEH diakses pakai Token Sementara (is_select=true)
-			// Sesuaikan dengan exact path yang lu pake di postman/frontend
-			isAllowed := currentPath == "/api/auth/select-store" ||
-						 currentPath == "/api/setup"
+			isAllowed := currentPath == "/api/auth/select-store" || currentPath == "/api/setup"
 
 			if !isAllowed {
 				c.JSON(http.StatusForbidden, gin.H{
@@ -64,16 +59,12 @@ func RequireAuth(c *gin.Context) {
 		}
 
 		c.Set("user_id", claims["user_id"])
+		c.Set("public_id", claims["public_id"]) // 🚀 AMAN: inject ke konteks untuk tracking folder Supabase
 		c.Set("role", claims["role"])
 
-		// Hanya set store_id dan plan_type jika token ini BUKAN token sementara
 		if !isSelectToken {
-			if storeID, exists := claims["store_id"]; exists {
-				c.Set("store_id", storeID)
-			}
-			if planType, exists := claims["plan_type"]; exists {
-				c.Set("plan_type", planType)
-			}
+			if storeID, exists := claims["store_id"]; exists { c.Set("store_id", storeID) }
+			if planType, exists := claims["plan_type"]; exists { c.Set("plan_type", planType) }
 		}
 
 		c.Next()
@@ -84,37 +75,27 @@ func RequireAuth(c *gin.Context) {
 	}
 }
 
-// --- SATPAM RUANG VIP (KHUSUS OWNER) ---
 func RequireOwner(c *gin.Context) {
 	roleRaw, exists := c.Get("role")
-
 	if !exists || roleRaw.(string) != "owner" {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Akses Ditolak! Fitur ini khusus untuk Bos (Owner)"})
 		c.Abort()
 		return
 	}
-
 	c.Next()
 }
 
-// ========================================================
-// 🚀 SATPAM LAPIS 3: SAAS PLAN GATING & EXPIRED CHECKER
-// ========================================================
 func RequireSaaSLevel(minLevel int) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		storeIDRaw, exists := c.Get("store_id")
 		if !exists || storeIDRaw == nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Akses ditolak! Data toko tidak ditemukan di sesi Anda."})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Akses ditolak! Data toko tidak ditemukan."})
 			c.Abort()
 			return
 		}
 
 		var storeID uint
-		if val, ok := storeIDRaw.(float64); ok {
-			storeID = uint(val)
-		} else if val, ok := storeIDRaw.(uint); ok {
-			storeID = val
-		}
+		if val, ok := storeIDRaw.(float64); ok { storeID = uint(val) } else if val, ok := storeIDRaw.(uint); ok { storeID = val }
 
 		var store models.Store
 		if err := src.DB.Select("id", "subscription_plan", "subscription_status", "subscription_end").First(&store, storeID).Error; err != nil {
@@ -123,15 +104,9 @@ func RequireSaaSLevel(minLevel int) gin.HandlerFunc {
 			return
 		}
 
-		if time.Now().After(store.SubscriptionEnd) {
-			if store.SubscriptionStatus == "active" {
-				src.DB.Model(&store).Update("subscription_status", "inactive")
-			}
-
-			c.JSON(http.StatusPaymentRequired, gin.H{
-				"error": "Masa aktif toko telah habis. Silakan perpanjang langganan.",
-				"code":  "SUBSCRIPTION_EXPIRED",
-			})
+		if store.SubscriptionEnd != nil && time.Now().After(*store.SubscriptionEnd) {
+			if store.SubscriptionStatus == "active" { src.DB.Model(&store).Update("subscription_status", "inactive") }
+			c.JSON(http.StatusPaymentRequired, gin.H{"error": "Masa aktif toko telah habis. Silakan perpanjang langganan.", "code": "SUBSCRIPTION_EXPIRED"})
 			c.Abort()
 			return
 		}
@@ -144,18 +119,10 @@ func RequireSaaSLevel(minLevel int) gin.HandlerFunc {
 
 		currentLevel := 1
 		plan := strings.ToLower(store.SubscriptionPlan)
-
-		if plan == "premium" || plan == "trial" {
-			currentLevel = 3
-		} else if plan == "pro" {
-			currentLevel = 2
-		}
+		if plan == "premium" || plan == "trial" { currentLevel = 3 } else if plan == "pro" { currentLevel = 2 }
 
 		if currentLevel < minLevel {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "Akses API Ditolak! Fitur ini membutuhkan upgrade paket langganan.",
-				"code":  "UPGRADE_REQUIRED",
-			})
+			c.JSON(http.StatusForbidden, gin.H{"error": "Akses API Ditolak! Fitur ini membutuhkan upgrade paket langganan.", "code": "UPGRADE_REQUIRED"})
 			c.Abort()
 			return
 		}
