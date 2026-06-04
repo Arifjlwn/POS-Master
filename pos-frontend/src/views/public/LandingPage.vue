@@ -13,7 +13,6 @@ onMounted(() => {
         isScrolled.value = window.scrollY > 20;
     });
 
-    // Otomatis scroll ke harga kalau niatnya ekspansi cabang
     if (route.query.action === 'expansion') {
         setTimeout(() => {
             scrollToSection('pricing');
@@ -21,7 +20,6 @@ onMounted(() => {
     }
 });
 
-// Fitur disesuaikan dengan arsitektur sistem NEXA POS
 const features = [
     {
         title: 'Sistem Kasir Pintar',
@@ -51,24 +49,25 @@ const industries = [
     { id: 'jasa', title: 'Layanan & Jasa', desc: 'Laundry, Barbershop, Bengkel', icon: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.27 6.96L12 12.01l8.73-5.05' }
 ];
 
+// 🚀 SINKRONISASI ENTERPRISE: Menyesuaikan teks deskripsi fitur agar sinkron dengan gembok RequireSaaSLevel di backend Go
 const pricingPlans = {
     retail: [
         { id: 'trial', name: 'Starter Trial', price: 'Rp 0', duration: '14 Hari', desc: 'Validasi kesesuaian sistem dengan ekosistem bisnis Anda.', features: ['POS Kasir Retail', 'Master Data Produk', 'Scan Barcode Reader', 'Tanpa Kartu Kredit'] },
-        { id: 'basic', name: 'Retail Basic', price: '49k', duration: '/Bulan', desc: 'Solusi solid untuk toko dengan skala operasional ringan.', features: ['Kasir Tanpa Batas', 'Manajemen Stok Dasar', 'Struk Thermal Bluetooth', 'Laporan Penjualan Harian'] },
-        { id: 'pro', name: 'Retail Pro', price: '149k', duration: '/Bulan', desc: 'Cocok untuk minimarket yang mulai mengelola staf.', features: ['Semua Fitur Basic', 'Manajemen Absensi & Shift', 'Audit Stock Opname', 'Laporan Ekspor (Excel/PDF)'] },
-        { id: 'premium', name: 'Retail Premium', price: '299k', duration: '/Bulan', desc: 'Kendali penuh untuk bisnis multi-cabang & manajemen limbah.', features: ['Semua Fitur Pro', 'Sistem Multi-Cabang (HO)', 'Manajemen Retur & Waste', 'Notifikasi WhatsApp'] }
+        { id: 'basic', name: 'Retail Basic', price: '49k', duration: '/Bulan', desc: 'Solusi solid untuk toko dengan skala operasional ringan.', features: ['Kasir Tanpa Batas', 'Manajemen Stok & LPB', 'Struk Thermal Bluetooth', 'Laporan Penjualan Harian'] },
+        { id: 'pro', name: 'Retail Pro', price: '149k', duration: '/Bulan', desc: 'Cocok untuk toko ritel yang mulai mengelola staf operasional.', features: ['Semua Fitur Basic', 'Manajemen Staf & HR', 'Absensi & Rostering Shift', 'Laporan Ekspor (CSV/Excel)'] },
+        { id: 'premium', name: 'Retail Premium', price: '299k', duration: '/Bulan', desc: 'Kendali penuh untuk bisnis skala besar & audit inventaris ketat.', features: ['Semua Fitur Pro', 'Audit Stock Opname', 'Klaim Adjustment & Retur', 'Notifikasi WhatsApp System'] }
     ],
     fnb: [
         { id: 'trial', name: 'Starter Trial', price: 'Rp 0', duration: '14 Hari', desc: 'Validasi kesesuaian sistem dengan alur dapur Anda.', features: ['POS Kasir F&B', 'Manajemen Menu & Kategori', 'Hold/Simpan Pesanan', 'Tanpa Kartu Kredit'] },
         { id: 'basic', name: 'F&B Basic', price: '59k', duration: '/Bulan', desc: 'Sistem operasional efisien untuk kedai atau coffee shop.', features: ['Manajemen Layout Meja', 'Cetak Tiket Dapur (Kitchen)', 'Pajak & Service Charge', 'Struk Thermal Bluetooth'] },
-        { id: 'pro', name: 'F&B Pro', price: '169k', duration: '/Bulan', desc: 'Untuk restoran dengan kontrol bahan baku ketat.', features: ['Semua Fitur Basic', 'Resep Bahan Baku (BOM)', 'Split Bill & Gabung Meja', 'Manajemen Absensi & Shift'] },
-        { id: 'premium', name: 'F&B Premium', price: '349k', duration: '/Bulan', desc: 'Skalabilitas franchise dengan analitik terpusat.', features: ['Semua Fitur Pro', 'Manajemen Franchise (HO)', 'Self-Order QR Menu', 'Notifikasi WhatsApp'] }
+        { id: 'pro', name: 'F&B Pro', price: '169k', duration: '/Bulan', desc: 'Untuk restoran dengan kontrol manajemen staf teratur.', features: ['Semua Fitur Basic', 'Manajemen Staf & HR', 'Absensi & Shift Kerja', 'Split Bill & Gabung Meja'] },
+        { id: 'premium', name: 'F&B Premium', price: '349k', duration: '/Bulan', desc: 'Skalabilitas franchise dengan kontrol bahan baku ketat.', features: ['Semua Fitur Pro', 'Resep Bahan Baku (BOM)', 'Self-Order QR Menu', 'Notifikasi WhatsApp System'] }
     ],
     jasa: [
         { id: 'trial', name: 'Starter Trial', price: 'Rp 0', duration: '14 Hari', desc: 'Coba modul layanan untuk bengkel, salon, atau laundry.', features: ['POS Layanan Jasa', 'Database Pelanggan Dasar', 'Penerimaan Pesanan', 'Tanpa Kartu Kredit'] },
         { id: 'basic', name: 'Service Basic', price: '49k', duration: '/Bulan', desc: 'Sistem tracking pesanan yang rapi untuk bisnis jasa kecil.', features: ['Tracking Status Pesanan', 'Cetak Nota / Resi Barcode', 'Manajemen Layanan & Tarif', 'Laporan Pendapatan'] },
-        { id: 'pro', name: 'Service Pro', price: '159k', duration: '/Bulan', desc: 'Sistem otomatisasi performa teknisi dan staf.', features: ['Semua Fitur Basic', 'Bagi Hasil / Komisi Karyawan', 'Manajemen Absensi & Shift', 'Audit Laporan Layanan'] },
-        { id: 'premium', name: 'Service Premium', price: '329k', duration: '/Bulan', desc: 'Manajemen tingkat lanjut dengan pengingat otomatis.', features: ['Semua Fitur Pro', 'Sistem Booking & Reservasi', 'Sistem Multi-Cabang (HO)', 'Notifikasi WhatsApp'] }
+        { id: 'pro', name: 'Service Pro', price: '159k', duration: '/Bulan', desc: 'Sistem otomatisasi performa operasional tim staf.', features: ['Semua Fitur Basic', 'Manajemen Staf & HR', 'Absensi & Shift Kerja', 'Laporan Kinerja Bulanan'] },
+        { id: 'premium', name: 'Service Premium', price: '329k', duration: '/Bulan', desc: 'Manajemen tingkat lanjut dengan komisi dan sistem booking.', features: ['Semua Fitur Pro', 'Bagi Hasil & Komisi Teknisi', 'Sistem Booking Reservasi', 'Notifikasi WhatsApp System'] }
     ]
 };
 
@@ -78,11 +77,8 @@ const scrollToSection = (id) => {
     if (el) el.scrollIntoView({ behavior: 'smooth' });
 };
 
-// Logika Pemilihan Paket yang Terintegrasi
 const handlePilihPaket = (industry, planId) => {
-    if (route.query.action === 'expansion' && planId === 'trial') {
-        return; // Tombol trial sudah diblokir via template, tapi ini proteksi ganda.
-    }
+    if (route.query.action === 'expansion' && planId === 'trial') return;
 
     localStorage.setItem('pendingIndustry', industry);
     localStorage.setItem('pendingPlan', planId);
