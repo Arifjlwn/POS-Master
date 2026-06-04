@@ -21,6 +21,16 @@ export function useAccount() {
     const fotoPreview = ref(null);
     const bioPreview = ref(null);
 
+    // 🚀 HELPER FUNGSI: Biar bisa ngebaca link Cloud Supabase (https://...) ATAU sisa data Lokal
+    const getCleanUrl = (url) => {
+        if (!url) return null;
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+            return url; // Sudah dari Cloud, balikin mentah!
+        }
+        // Jika data lama lokal (misal: /uploads/foto.png), gabungin sama API Base URL
+        return API_BASE_URL + url;
+    };
+
     const fetchProfile = async () => {
         isLoading.value = true;
         try {
@@ -34,8 +44,10 @@ export function useAccount() {
             profileForm.value.tempat_lahir = data.tempat_lahir || '';
             profileForm.value.tanggal_lahir = data.tanggal_lahir ? data.tanggal_lahir.substring(0, 10) : '';
 
-            if (data.foto_url) fotoPreview.value = API_BASE_URL + data.foto_url;
-            if (data.biometric_url) bioPreview.value = API_BASE_URL + data.biometric_url;
+            // 🚀 PAKE HELPER BARU!
+            fotoPreview.value = getCleanUrl(data.foto_url);
+            bioPreview.value = getCleanUrl(data.biometric_url);
+            
         } catch (error) {
             Swal.fire('Gagal', 'Tidak dapat mengambil data profil', 'error');
         } finally {
@@ -78,7 +90,7 @@ export function useAccount() {
                 localStorage.setItem('name', responseData.name);
             }
 
-            // 2. Simpan URL foto baru (Ini yang bikin refresh balik lagi kalau gagal)
+            // 2. Simpan URL foto baru
             if (responseData.foto_url) {
                 localStorage.setItem('foto_url', responseData.foto_url);
             }

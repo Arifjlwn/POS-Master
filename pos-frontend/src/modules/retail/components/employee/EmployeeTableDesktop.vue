@@ -11,12 +11,10 @@ const emit = defineEmits(['edit', 'delete']);
 const formatNoHP = (phone) => {
     if (!phone) return 'Belum Diatur';
     let str = String(phone);
-    // Kalau depannya 62, potong 62-nya, ganti jadi 0
     if (str.startsWith('62')) return '0' + str.slice(2);
     if (str.startsWith('+62')) return '0' + str.slice(3);
     return str;
 };
-
 </script>
 
 <template>
@@ -36,25 +34,17 @@ const formatNoHP = (phone) => {
                     <tr v-for="user in filteredKaryawan" :key="user.id" class="hover:bg-slate-50/50 transition-colors group">
                         <td class="px-6 py-5">
                             <div class="flex items-center gap-4">
-                                <img v-if="user.foto_url" :src="API_BASE_URL + user.foto_url" class="w-14 h-14 rounded-[14px] object-cover border-2 border-slate-100 shadow-sm">
+                                <img v-if="user.foto_url" :src="(user.foto_url.startsWith('http://') || user.foto_url.startsWith('https://')) ? user.foto_url : API_BASE_URL + user.foto_url" class="w-14 h-14 rounded-[14px] object-cover border-2 border-slate-100 shadow-sm">
                                 <div v-else class="w-14 h-14 rounded-[14px] bg-slate-100 flex items-center justify-center text-slate-400 border-2 border-slate-200">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                                 </div>
                                 <div>
                                     <div class="text-slate-800 font-black text-sm uppercase tracking-tight">{{ user.name }}</div>
                                     <div class="mt-1.5">
-                                        <span v-if="user.role === 'owner'" class="inline-flex items-center gap-1 bg-slate-900 text-white font-black px-2.5 py-0.5 rounded text-[9px] uppercase tracking-widest shadow-sm">
-                                            Owner
-                                        </span>
-                                        <span v-else-if="user.role === 'manager'" class="inline-flex items-center gap-1 bg-purple-50 text-purple-600 border border-purple-100 font-black px-2.5 py-0.5 rounded text-[9px] uppercase tracking-widest">
-                                            Manager
-                                        </span>
-                                        <span v-else-if="user.role === 'supervisor'" class="inline-flex items-center gap-1 bg-blue-50 text-blue-600 border border-blue-100 font-black px-2.5 py-0.5 rounded text-[9px] uppercase tracking-widest">
-                                            Supervisor
-                                        </span>
-                                        <span v-else class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-600 border border-emerald-100 font-black px-2.5 py-0.5 rounded text-[9px] uppercase tracking-widest">
-                                            Staff
-                                        </span>
+                                        <span v-if="user.role === 'owner'" class="inline-flex items-center gap-1 bg-slate-900 text-white font-black px-2.5 py-0.5 rounded text-[9px] uppercase tracking-widest shadow-sm">Owner</span>
+                                        <span v-else-if="user.role === 'manager'" class="inline-flex items-center gap-1 bg-purple-50 text-purple-600 border border-purple-100 font-black px-2.5 py-0.5 rounded text-[9px] uppercase tracking-widest">Manager</span>
+                                        <span v-else-if="user.role === 'supervisor'" class="inline-flex items-center gap-1 bg-blue-50 text-blue-600 border border-blue-100 font-black px-2.5 py-0.5 rounded text-[9px] uppercase tracking-widest">Supervisor</span>
+                                        <span v-else class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-600 border border-emerald-100 font-black px-2.5 py-0.5 rounded text-[9px] uppercase tracking-widest">Staff</span>
                                     </div>
                                 </div>
                             </div>

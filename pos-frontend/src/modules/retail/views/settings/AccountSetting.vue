@@ -7,18 +7,7 @@ import AccountProfile from "../../components/settings/account/AccountProfile.vue
 import AccountSecurity from "../../components/settings/account/AccountSecurity.vue";
 import { useAccount } from "../../composables/useAccount.js";
 
-const {
-  isLoading,
-  isSaving,
-  activeTab,
-  role,
-  profileForm,
-  passwordForm,
-  fotoPreview,
-  handleFileChange,
-  saveProfile,
-  updatePassword,
-} = useAccount();
+const { isLoading, isSaving, activeTab, role, profileForm, passwordForm, fotoPreview, handleFileChange, saveProfile, updatePassword } = useAccount();
 
 const tabs = [
   {
@@ -60,10 +49,7 @@ const sinkronisasiStatusBerlangganan = async () => {
     quotaTerminal.value = storeData.quota_terminal || 1;
 
     if (storeData.subscription_plan) {
-      localStorage.setItem(
-        "subscriptionPlan",
-        storeData.subscription_plan.toLowerCase(),
-      );
+      localStorage.setItem("subscriptionPlan", storeData.subscription_plan.toLowerCase());
     }
 
     if (storeData.subscription_end) {
@@ -75,9 +61,7 @@ const sinkronisasiStatusBerlangganan = async () => {
       });
 
       const today = new Date();
-      const diffDays = Math.ceil(
-        (dateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-      );
+      const diffDays = Math.ceil((dateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
       if (diffDays > 0 && subStatus.value === "active") {
         isExpired.value = false; // Buka gembok layar full screen otomatis!
@@ -103,18 +87,12 @@ onMounted(async () => {
   // Suntik Script Midtrans
   if (!document.getElementById("midtrans-script-owner")) {
     const midtransEnv = import.meta.env.VITE_MIDTRANS_ENV || "sandbox";
-    const snapUrl =
-      midtransEnv === "production"
-        ? "https://app.midtrans.com/snap/snap.js"
-        : "https://app.sandbox.midtrans.com/snap/snap.js";
+    const snapUrl = midtransEnv === "production" ? "https://app.midtrans.com/snap/snap.js" : "https://app.sandbox.midtrans.com/snap/snap.js";
 
     const script = document.createElement("script");
     script.id = "midtrans-script-owner";
     script.src = snapUrl;
-    script.setAttribute(
-      "data-client-key",
-      import.meta.env.VITE_MIDTRANS_CLIENT_KEY,
-    );
+    script.setAttribute("data-client-key", import.meta.env.VITE_MIDTRANS_CLIENT_KEY);
     document.head.appendChild(script);
   }
 
@@ -173,26 +151,14 @@ const handleUpgrade = async (planName, price) => {
         activeTab.value = "billing";
       },
       onPending: function (result) {
-        Swal.fire(
-          "Menunggu Pembayaran",
-          "Silakan selesaikan pembayaran Anda.",
-          "info",
-        );
+        Swal.fire("Menunggu Pembayaran", "Silakan selesaikan pembayaran Anda.", "info");
       },
       onError: function (result) {
-        Swal.fire(
-          "Pembayaran Gagal",
-          "Terjadi kesalahan saat memproses pembayaran.",
-          "error",
-        );
+        Swal.fire("Pembayaran Gagal", "Terjadi kesalahan saat memproses pembayaran.", "error");
       },
       onClose: function () {
         if (isExpired.value) {
-          Swal.fire(
-            "Pembayaran Tertunda",
-            "Silakan selesaikan invoice Anda kapan saja untuk membuka gembok toko.",
-            "warning",
-          );
+          Swal.fire("Pembayaran Tertunda", "Silakan selesaikan invoice Anda kapan saja untuk membuka gembok toko.", "warning");
         }
       },
     });
@@ -226,11 +192,7 @@ const beliLisensiTambahan = async () => {
         await sinkronisasiStatusBerlangganan();
 
         Swal.close();
-        Swal.fire(
-          "Berhasil!",
-          "Pembayaran sukses! Kuota Mesin Kasir Anda telah bertambah.",
-          "success",
-        );
+        Swal.fire("Berhasil!", "Pembayaran sukses! Kuota Mesin Kasir Anda telah bertambah.", "success");
         loadingPayment.value = false;
       },
       onPending: function (result) {
@@ -246,11 +208,7 @@ const beliLisensiTambahan = async () => {
       },
     });
   } catch (error) {
-    Swal.fire(
-      "Gagal!",
-      error.response?.data?.error || "Gagal menghubungi Payment Gateway.",
-      "error",
-    );
+    Swal.fire("Gagal!", error.response?.data?.error || "Gagal menghubungi Payment Gateway.", "error");
     loadingPayment.value = false;
   }
 };
@@ -258,23 +216,10 @@ const beliLisensiTambahan = async () => {
 
 <template>
   <Sidebar>
-    <div
-      v-if="isExpired"
-      class="fixed inset-0 z-[9999] bg-slate-900 flex flex-col items-center justify-center p-4 md:p-8 overflow-y-auto"
-    >
-      <div
-        class="text-center mt-32 md:mt-10 mb-10 max-w-2xl mx-auto animate-pulse"
-      >
-        <div
-          class="w-20 h-20 bg-rose-500/20 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_40px_rgba(244,63,94,0.3)]"
-        >
-          <svg
-            class="w-10 h-10"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2.5"
-          >
+    <div v-if="isExpired" class="fixed inset-0 z-[9999] bg-slate-900 flex flex-col items-center justify-center p-4 md:p-8 overflow-y-auto">
+      <div class="text-center mt-32 md:mt-10 mb-10 max-w-2xl mx-auto animate-pulse">
+        <div class="w-20 h-20 bg-rose-500/20 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_40px_rgba(244,63,94,0.3)]">
+          <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -283,15 +228,9 @@ const beliLisensiTambahan = async () => {
           </svg>
         </div>
 
-        <h1
-          class="text-3xl md:text-5xl text-white font-black uppercase tracking-tight mb-4"
-        >
-          Masa Aktif Berakhir
-        </h1>
+        <h1 class="text-3xl md:text-5xl text-white font-black uppercase tracking-tight mb-4">Masa Aktif Berakhir</h1>
 
-        <p
-          class="text-slate-400 font-bold tracking-widest text-xs md:text-sm uppercase"
-        >
+        <p class="text-slate-400 font-bold tracking-widest text-xs md:text-sm uppercase">
           Operasional sistem POS dihentikan sementara.
 
           <br />
@@ -301,14 +240,8 @@ const beliLisensiTambahan = async () => {
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl w-full mb-20">
-        <div
-          class="bg-slate-800 rounded-[24px] p-6 border border-slate-700 flex flex-col text-center"
-        >
-          <div
-            class="text-[10px] font-black text-sky-400 uppercase tracking-widest mb-1"
-          >
-            Retail Basic
-          </div>
+        <div class="bg-slate-800 rounded-[24px] p-6 border border-slate-700 flex flex-col text-center">
+          <div class="text-[10px] font-black text-sky-400 uppercase tracking-widest mb-1">Retail Basic</div>
 
           <h3 class="text-2xl font-black text-white uppercase mb-3">Basic</h3>
 
@@ -339,11 +272,7 @@ const beliLisensiTambahan = async () => {
             Paling Laris
           </div>
 
-          <div
-            class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1 mt-2"
-          >
-            Retail Pro
-          </div>
+          <div class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1 mt-2">Retail Pro</div>
 
           <h3 class="text-2xl font-black text-white uppercase mb-3">Pro</h3>
 
@@ -365,14 +294,8 @@ const beliLisensiTambahan = async () => {
           </button>
         </div>
 
-        <div
-          class="bg-slate-800 rounded-[24px] p-6 border border-slate-700 flex flex-col text-center"
-        >
-          <div
-            class="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-1"
-          >
-            Retail Premium
-          </div>
+        <div class="bg-slate-800 rounded-[24px] p-6 border border-slate-700 flex flex-col text-center">
+          <div class="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-1">Retail Premium</div>
 
           <h3 class="text-2xl font-black text-white uppercase mb-3">Premium</h3>
 
@@ -396,50 +319,23 @@ const beliLisensiTambahan = async () => {
       </div>
     </div>
 
-    <div
-      v-if="!isExpired"
-      class="p-4 md:p-8 lg:p-10 max-w-5xl mx-auto font-sans bg-[#f8fafc] min-h-screen"
-    >
-      <div
-        class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8"
-      >
+    <div v-if="!isExpired" class="p-4 md:p-8 lg:p-10 max-w-5xl mx-auto font-sans bg-[#f8fafc] min-h-screen">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1
-            class="text-2xl md:text-3xl font-black text-slate-800 tracking-tighter uppercase"
-          >
-            Akun Saya
-          </h1>
+          <h1 class="text-2xl md:text-3xl font-black text-slate-800 tracking-tighter uppercase">Akun Saya</h1>
 
-          <p
-            class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest mt-1"
-          >
-            Kelola Informasi Pribadi dan Keamanan Akun
-          </p>
+          <p class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest mt-1">Kelola Informasi Pribadi dan Keamanan Akun</p>
         </div>
       </div>
 
-      <div
-        v-if="isLoading"
-        class="py-20 flex flex-col items-center justify-center bg-white rounded-[32px] border border-slate-100 shadow-sm"
-      >
-        <div
-          class="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"
-        ></div>
+      <div v-if="isLoading" class="py-20 flex flex-col items-center justify-center bg-white rounded-[32px] border border-slate-100 shadow-sm">
+        <div class="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
 
-        <p
-          class="text-slate-400 font-black text-[10px] uppercase tracking-widest animate-pulse"
-        >
-          Menyiapkan Profil...
-        </p>
+        <p class="text-slate-400 font-black text-[10px] uppercase tracking-widest animate-pulse">Menyiapkan Profil...</p>
       </div>
 
-      <div
-        v-else
-        class="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden flex flex-col lg:flex-row min-h-[500px]"
-      >
-        <div
-          class="w-full lg:w-64 bg-slate-50/50 border-r border-slate-100 p-6 flex flex-row lg:flex-col gap-2 overflow-x-auto custom-scrollbar shrink-0"
-        >
+      <div v-else class="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden flex flex-col lg:flex-row min-h-[500px]">
+        <div class="w-full lg:w-64 bg-slate-50/50 border-r border-slate-100 p-6 flex flex-row lg:flex-col gap-2 overflow-x-auto custom-scrollbar shrink-0">
           <button
             v-for="tab in tabs"
             :key="tab.id"
@@ -447,24 +343,11 @@ const beliLisensiTambahan = async () => {
             :class="[
               'flex items-center gap-3 p-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap',
 
-              activeTab === tab.id
-                ? 'bg-white text-indigo-600 shadow-sm border border-slate-200'
-                : 'text-slate-500 hover:bg-slate-100',
+              activeTab === tab.id ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:bg-slate-100',
             ]"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-5 h-5 shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2.5"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                :d="tab.icon"
-              />
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" :d="tab.icon" />
             </svg>
 
             {{ tab.label }}
@@ -476,40 +359,20 @@ const beliLisensiTambahan = async () => {
             :class="[
               'flex items-center gap-3 p-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap mt-4 border-t border-slate-200 pt-4',
 
-              activeTab === 'billing'
-                ? 'bg-white text-amber-600 shadow-sm border border-slate-200'
-                : 'text-amber-500 hover:bg-amber-50',
+              activeTab === 'billing' ? 'bg-white text-amber-600 shadow-sm border border-slate-200' : 'text-amber-500 hover:bg-amber-50',
             ]"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-5 h-5 shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2.5"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-              />
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
             </svg>
 
             Paket Berlangganan
           </button>
         </div>
 
-        <div
-          class="flex-1 p-6 md:p-8 overflow-y-auto relative custom-scrollbar"
-        >
-          <div
-            v-if="isSaving"
-            class="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex items-center justify-center"
-          >
-            <div
-              class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"
-            ></div>
+        <div class="flex-1 p-6 md:p-8 overflow-y-auto relative custom-scrollbar">
+          <div v-if="isSaving" class="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex items-center justify-center">
+            <div class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
           </div>
 
           <AccountProfile
@@ -520,60 +383,26 @@ const beliLisensiTambahan = async () => {
             @submit="saveProfile"
           />
 
-          <AccountSecurity
-            v-show="activeTab === 'security'"
-            :form="passwordForm"
-            @submit="updatePassword"
-          />
+          <AccountSecurity v-show="activeTab === 'security'" :form="passwordForm" @submit="updatePassword" />
 
-          <div
-            v-show="activeTab === 'billing'"
-            class="animate-fade-in-up w-full"
-          >
+          <div v-show="activeTab === 'billing'" class="animate-fade-in-up w-full">
             <div v-if="isBillingLoading" class="text-center py-10">
-              <div
-                class="w-8 h-8 border-4 border-amber-200 border-t-amber-500 rounded-full animate-spin mx-auto mb-4"
-              ></div>
+              <div class="w-8 h-8 border-4 border-amber-200 border-t-amber-500 rounded-full animate-spin mx-auto mb-4"></div>
 
-              <p
-                class="text-slate-400 font-black text-[10px] uppercase tracking-widest animate-pulse"
-              >
-                Mengecek Data Berlangganan...
-              </p>
+              <p class="text-slate-400 font-black text-[10px] uppercase tracking-widest animate-pulse">Mengecek Data Berlangganan...</p>
             </div>
 
             <div v-else>
-              <div
-                class="bg-slate-50 border border-slate-100 p-8 rounded-[32px] text-center shadow-sm"
-              >
-                <div
-                  class="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-indigo-200"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="w-8 h-8"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M13 10V3L4 14h7v7l9-11h-7z"
-                    />
+              <div class="bg-slate-50 border border-slate-100 p-8 rounded-[32px] text-center shadow-sm">
+                <div class="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-indigo-200">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </div>
 
-                <h3
-                  class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1"
-                >
-                  Paket Saat Ini
-                </h3>
+                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Paket Saat Ini</h3>
 
-                <div
-                  class="text-2xl font-black text-slate-800 uppercase tracking-widest mb-6"
-                >
+                <div class="text-2xl font-black text-slate-800 uppercase tracking-widest mb-6">
                   PAKET {{ subPlan }}
 
                   <span
@@ -583,20 +412,13 @@ const beliLisensiTambahan = async () => {
                     AKTIF
                   </span>
 
-                  <span
-                    v-else
-                    class="inline-block align-middle ml-2 px-3 py-1 bg-rose-100 text-rose-600 text-[10px] rounded-lg border border-rose-200"
-                  >
+                  <span v-else class="inline-block align-middle ml-2 px-3 py-1 bg-rose-100 text-rose-600 text-[10px] rounded-lg border border-rose-200">
                     TIDAK AKTIF
                   </span>
                 </div>
 
-                <div
-                  class="bg-white p-5 rounded-[20px] border border-slate-200 text-sm mb-6 max-w-sm mx-auto"
-                >
-                  <p class="font-bold text-slate-500 text-xs">
-                    Masa aktif berlangganan Anda sampai dengan:
-                  </p>
+                <div class="bg-white p-5 rounded-[20px] border border-slate-200 text-sm mb-6 max-w-sm mx-auto">
+                  <p class="font-bold text-slate-500 text-xs">Masa aktif berlangganan Anda sampai dengan:</p>
 
                   <p class="text-lg font-black text-indigo-600 mt-1">
                     {{ subEnd }}
@@ -613,17 +435,9 @@ const beliLisensiTambahan = async () => {
 
               <div class="mt-8 border-t border-slate-100 pt-8">
                 <div class="mb-6">
-                  <h3
-                    class="text-xl font-black text-slate-800 uppercase tracking-tighter italic"
-                  >
-                    Lisensi & Add-ons
-                  </h3>
+                  <h3 class="text-xl font-black text-slate-800 uppercase tracking-tighter italic">Lisensi & Add-ons</h3>
 
-                  <p
-                    class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1"
-                  >
-                    Kelola Kapasitas Operasional Toko Anda
-                  </p>
+                  <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Kelola Kapasitas Operasional Toko Anda</p>
                 </div>
 
                 <div class="max-w-md">
@@ -634,37 +448,19 @@ const beliLisensiTambahan = async () => {
                   >
                     <div>
                       <div class="flex items-center justify-between">
-                        <h4
-                          class="font-black text-indigo-900 text-sm uppercase tracking-wider"
-                        >
-                          Terminal Kasir
-                        </h4>
+                        <h4 class="font-black text-indigo-900 text-sm uppercase tracking-wider">Terminal Kasir</h4>
 
-                        <span
-                          class="bg-indigo-200 text-indigo-800 text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-widest"
-                        >
-                          Active
-                        </span>
+                        <span class="bg-indigo-200 text-indigo-800 text-[9px] font-black px-2 py-1 rounded-md uppercase tracking-widest">Active</span>
                       </div>
 
-                      <p
-                        class="text-[11px] font-bold text-indigo-600 mt-2 leading-relaxed"
-                      >
-                        Menentukan jumlah perangkat (HP/Tablet/PC) yang bisa
-                        membuka laci kasir secara bersamaan.
+                      <p class="text-[11px] font-bold text-indigo-600 mt-2 leading-relaxed">
+                        Menentukan jumlah perangkat (HP/Tablet/PC) yang bisa membuka laci kasir secara bersamaan.
                       </p>
 
                       <div class="mt-4 flex items-end gap-1">
-                        <span
-                          class="text-4xl font-black text-indigo-900 leading-none"
-                          >{{ quotaTerminal }}</span
-                        >
+                        <span class="text-4xl font-black text-indigo-900 leading-none">{{ quotaTerminal }}</span>
 
-                        <span
-                          class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest pb-1"
-                        >
-                          Kuota Saat Ini
-                        </span>
+                        <span class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest pb-1">Kuota Saat Ini</span>
                       </div>
                     </div>
 
@@ -673,11 +469,7 @@ const beliLisensiTambahan = async () => {
                       :disabled="loadingPayment"
                       class="mt-6 w-full bg-indigo-600 hover:bg-slate-900 text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95 disabled:opacity-50"
                     >
-                      {{
-                        loadingPayment
-                          ? "Memproses..."
-                          : "+ Tambah Kuota (Rp 50.000)"
-                      }}
+                      {{ loadingPayment ? "Memproses..." : "+ Tambah Kuota (Rp 50.000)" }}
                     </button>
                   </div>
                 </div>
@@ -692,147 +484,65 @@ const beliLisensiTambahan = async () => {
       v-if="showUpgradeModal"
       class="fixed inset-0 bg-slate-900/90 flex items-center justify-center z-[200] p-4 md:p-8 backdrop-blur-md overflow-y-auto print:hidden"
     >
-      <div
-        class="bg-slate-50 w-full max-w-5xl rounded-[32px] shadow-2xl relative my-auto border border-slate-200 flex flex-col max-h-[90vh]"
-      >
-        <div
-          class="p-6 md:p-8 border-b border-slate-200 flex justify-between items-center bg-white rounded-t-[32px] shrink-0"
-        >
+      <div class="bg-slate-50 w-full max-w-5xl rounded-[32px] shadow-2xl relative my-auto border border-slate-200 flex flex-col max-h-[90vh]">
+        <div class="p-6 md:p-8 border-b border-slate-200 flex justify-between items-center bg-white rounded-t-[32px] shrink-0">
           <div>
-            <h2
-              class="text-2xl font-black text-slate-800 uppercase tracking-tighter"
-            >
-              Pilih Paket Bisnis
-            </h2>
+            <h2 class="text-2xl font-black text-slate-800 uppercase tracking-tighter">Pilih Paket Bisnis</h2>
 
-            <p
-              class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1"
-            >
-              Tingkatkan fitur aplikasi sesuai kebutuhan toko Anda
-            </p>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Tingkatkan fitur aplikasi sesuai kebutuhan toko Anda</p>
           </div>
 
           <button
             @click="showUpgradeModal = false"
             class="w-10 h-10 bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-500 rounded-2xl flex items-center justify-center transition-colors"
           >
-            <svg
-              class="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2.5"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         <div class="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div
-              class="bg-white rounded-[24px] p-6 border border-slate-200 flex flex-col relative"
-            >
-              <div
-                class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1"
-              >
-                Starter Trial
-              </div>
+            <div class="bg-white rounded-[24px] p-6 border border-slate-200 flex flex-col relative">
+              <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Starter Trial</div>
 
-              <h3 class="text-xl font-black text-slate-800 uppercase mb-3">
-                Trial 14 Hari
-              </h3>
+              <h3 class="text-xl font-black text-slate-800 uppercase mb-3">Trial 14 Hari</h3>
 
-              <p
-                class="text-[11px] font-bold text-slate-500 mb-5 min-h-[35px] leading-relaxed"
-              >
-                Validasi kesesuaian sistem dengan ekosistem bisnis Anda.
-              </p>
+              <p class="text-[11px] font-bold text-slate-500 mb-5 min-h-[35px] leading-relaxed">Validasi kesesuaian sistem dengan ekosistem bisnis Anda.</p>
 
               <div class="flex items-baseline gap-1 mb-6">
                 <span class="text-3xl font-black text-slate-800">Rp 0</span>
               </div>
 
               <ul class="space-y-3 mb-8 flex-1">
-                <li
-                  class="flex items-start gap-2 text-xs font-bold text-slate-500"
-                >
-                  <svg
-                    class="w-4 h-4 text-emerald-500 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="3"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
+                <li class="flex items-start gap-2 text-xs font-bold text-slate-500">
+                  <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
 
                   POS Kasir Retail
                 </li>
 
-                <li
-                  class="flex items-start gap-2 text-xs font-bold text-slate-500"
-                >
-                  <svg
-                    class="w-4 h-4 text-emerald-500 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="3"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
+                <li class="flex items-start gap-2 text-xs font-bold text-slate-500">
+                  <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
 
                   Master Data Produk
                 </li>
 
-                <li
-                  class="flex items-start gap-2 text-xs font-bold text-slate-500"
-                >
-                  <svg
-                    class="w-4 h-4 text-emerald-500 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="3"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
+                <li class="flex items-start gap-2 text-xs font-bold text-slate-500">
+                  <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
 
                   Scan Barcode Reader
                 </li>
 
-                <li
-                  class="flex items-start gap-2 text-xs font-bold text-slate-500"
-                >
-                  <svg
-                    class="w-4 h-4 text-emerald-500 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="3"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
+                <li class="flex items-start gap-2 text-xs font-bold text-slate-500">
+                  <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
 
                   Tanpa Kartu Kredit
@@ -856,24 +566,12 @@ const beliLisensiTambahan = async () => {
               </button>
             </div>
 
-            <div
-              class="bg-white rounded-[24px] p-6 border border-slate-200 flex flex-col"
-            >
-              <div
-                class="text-[10px] font-black text-sky-500 uppercase tracking-widest mb-1"
-              >
-                Retail Basic
-              </div>
+            <div class="bg-white rounded-[24px] p-6 border border-slate-200 flex flex-col">
+              <div class="text-[10px] font-black text-sky-500 uppercase tracking-widest mb-1">Retail Basic</div>
 
-              <h3 class="text-xl font-black text-slate-800 uppercase mb-3">
-                Basic
-              </h3>
+              <h3 class="text-xl font-black text-slate-800 uppercase mb-3">Basic</h3>
 
-              <p
-                class="text-[11px] font-bold text-slate-500 mb-5 min-h-[35px] leading-relaxed"
-              >
-                Solusi solid untuk toko kelontong dengan 1 titik kasir.
-              </p>
+              <p class="text-[11px] font-bold text-slate-500 mb-5 min-h-[35px] leading-relaxed">Solusi solid untuk toko kelontong dengan 1 titik kasir.</p>
 
               <div class="flex items-baseline gap-1 mb-6">
                 <span class="text-sm font-black text-slate-400">Rp</span>
@@ -888,81 +586,33 @@ const beliLisensiTambahan = async () => {
               </div>
 
               <ul class="space-y-3 mb-8 flex-1">
-                <li
-                  class="flex items-start gap-2 text-xs font-bold text-slate-600"
-                >
-                  <svg
-                    class="w-4 h-4 text-sky-500 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="3"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
+                <li class="flex items-start gap-2 text-xs font-bold text-slate-600">
+                  <svg class="w-4 h-4 text-sky-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
 
                   Kasir Tanpa Batas
                 </li>
 
-                <li
-                  class="flex items-start gap-2 text-xs font-bold text-slate-600"
-                >
-                  <svg
-                    class="w-4 h-4 text-sky-500 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="3"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
+                <li class="flex items-start gap-2 text-xs font-bold text-slate-600">
+                  <svg class="w-4 h-4 text-sky-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
 
                   Manajemen Stok Dasar
                 </li>
 
-                <li
-                  class="flex items-start gap-2 text-xs font-bold text-slate-600"
-                >
-                  <svg
-                    class="w-4 h-4 text-sky-500 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="3"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
+                <li class="flex items-start gap-2 text-xs font-bold text-slate-600">
+                  <svg class="w-4 h-4 text-sky-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
 
                   Struk Thermal Bluetooth
                 </li>
 
-                <li
-                  class="flex items-start gap-2 text-xs font-bold text-slate-600"
-                >
-                  <svg
-                    class="w-4 h-4 text-sky-500 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="3"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
+                <li class="flex items-start gap-2 text-xs font-bold text-slate-600">
+                  <svg class="w-4 h-4 text-sky-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
 
                   Laporan Penjualan Harian
@@ -986,30 +636,18 @@ const beliLisensiTambahan = async () => {
               </button>
             </div>
 
-            <div
-              class="bg-white rounded-[24px] p-6 border-2 border-indigo-500 shadow-xl relative flex flex-col transform lg:-translate-y-4"
-            >
+            <div class="bg-white rounded-[24px] p-6 border-2 border-indigo-500 shadow-xl relative flex flex-col transform lg:-translate-y-4">
               <div
                 class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-indigo-500 text-white text-[9px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg whitespace-nowrap"
               >
                 Paling Laris
               </div>
 
-              <div
-                class="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1 mt-2"
-              >
-                Retail Pro
-              </div>
+              <div class="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1 mt-2">Retail Pro</div>
 
-              <h3 class="text-xl font-black text-slate-800 uppercase mb-3">
-                Pro
-              </h3>
+              <h3 class="text-xl font-black text-slate-800 uppercase mb-3">Pro</h3>
 
-              <p
-                class="text-[11px] font-bold text-slate-500 mb-5 min-h-[35px] leading-relaxed"
-              >
-                Cocok untuk minimarket yang mulai mengelola karyawan.
-              </p>
+              <p class="text-[11px] font-bold text-slate-500 mb-5 min-h-[35px] leading-relaxed">Cocok untuk minimarket yang mulai mengelola karyawan.</p>
 
               <div class="flex items-baseline gap-1 mb-6">
                 <span class="text-sm font-black text-slate-400">Rp</span>
@@ -1024,81 +662,33 @@ const beliLisensiTambahan = async () => {
               </div>
 
               <ul class="space-y-3 mb-8 flex-1">
-                <li
-                  class="flex items-start gap-2 text-xs font-bold text-slate-700"
-                >
-                  <svg
-                    class="w-4 h-4 text-indigo-500 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="3"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
+                <li class="flex items-start gap-2 text-xs font-bold text-slate-700">
+                  <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
 
                   Semua Fitur Basic
                 </li>
 
-                <li
-                  class="flex items-start gap-2 text-xs font-bold text-slate-700"
-                >
-                  <svg
-                    class="w-4 h-4 text-indigo-500 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="3"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
+                <li class="flex items-start gap-2 text-xs font-bold text-slate-700">
+                  <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
 
                   Manajemen Akses Kasir
                 </li>
 
-                <li
-                  class="flex items-start gap-2 text-xs font-bold text-slate-700"
-                >
-                  <svg
-                    class="w-4 h-4 text-indigo-500 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="3"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
+                <li class="flex items-start gap-2 text-xs font-bold text-slate-700">
+                  <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
 
                   Smart Attendance & Shift
                 </li>
 
-                <li
-                  class="flex items-start gap-2 text-xs font-bold text-slate-700"
-                >
-                  <svg
-                    class="w-4 h-4 text-indigo-500 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="3"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
+                <li class="flex items-start gap-2 text-xs font-bold text-slate-700">
+                  <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
 
                   Laporan Ekspor (Excel/PDF)
@@ -1122,24 +712,12 @@ const beliLisensiTambahan = async () => {
               </button>
             </div>
 
-            <div
-              class="bg-slate-900 rounded-[24px] p-6 border border-slate-700 flex flex-col"
-            >
-              <div
-                class="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1"
-              >
-                Retail Premium
-              </div>
+            <div class="bg-slate-900 rounded-[24px] p-6 border border-slate-700 flex flex-col">
+              <div class="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">Retail Premium</div>
 
-              <h3 class="text-xl font-black text-white uppercase mb-3">
-                Premium
-              </h3>
+              <h3 class="text-xl font-black text-white uppercase mb-3">Premium</h3>
 
-              <p
-                class="text-[11px] font-bold text-slate-400 mb-5 min-h-[35px] leading-relaxed"
-              >
-                Kendali penuh untuk bisnis multi-cabang & gudang.
-              </p>
+              <p class="text-[11px] font-bold text-slate-400 mb-5 min-h-[35px] leading-relaxed">Kendali penuh untuk bisnis multi-cabang & gudang.</p>
 
               <div class="flex items-baseline gap-1 mb-6">
                 <span class="text-sm font-black text-slate-400">Rp</span>
@@ -1154,81 +732,33 @@ const beliLisensiTambahan = async () => {
               </div>
 
               <ul class="space-y-3 mb-8 flex-1">
-                <li
-                  class="flex items-start gap-2 text-xs font-bold text-slate-300"
-                >
-                  <svg
-                    class="w-4 h-4 text-amber-500 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="3"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
+                <li class="flex items-start gap-2 text-xs font-bold text-slate-300">
+                  <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
 
                   Semua Fitur Pro
                 </li>
 
-                <li
-                  class="flex items-start gap-2 text-xs font-bold text-slate-300"
-                >
-                  <svg
-                    class="w-4 h-4 text-amber-500 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="3"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
+                <li class="flex items-start gap-2 text-xs font-bold text-slate-300">
+                  <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
 
                   Sistem Multi-Cabang (HO)
                 </li>
 
-                <li
-                  class="flex items-start gap-2 text-xs font-bold text-slate-300"
-                >
-                  <svg
-                    class="w-4 h-4 text-amber-500 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="3"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
+                <li class="flex items-start gap-2 text-xs font-bold text-slate-300">
+                  <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
 
                   Manajemen Multi-Gudang
                 </li>
 
-                <li
-                  class="flex items-start gap-2 text-xs font-bold text-slate-300"
-                >
-                  <svg
-                    class="w-4 h-4 text-amber-500 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="3"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
+                <li class="flex items-start gap-2 text-xs font-bold text-slate-300">
+                  <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
 
                   Dedicated Support 24/7

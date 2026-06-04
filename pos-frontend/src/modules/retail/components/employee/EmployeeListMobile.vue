@@ -11,7 +11,6 @@ const emit = defineEmits(['edit', 'delete']);
 const formatNoHP = (phone) => {
     if (!phone) return 'Belum Diatur';
     let str = String(phone);
-    // Kalau depannya 62, potong 62-nya, ganti jadi 0
     if (str.startsWith('62')) return '0' + str.slice(2);
     if (str.startsWith('+62')) return '0' + str.slice(3);
     return str;
@@ -23,7 +22,7 @@ const formatNoHP = (phone) => {
         <div v-for="user in filteredKaryawan" :key="user.id" class="bg-white p-5 rounded-[24px] shadow-sm border border-slate-100 flex flex-col gap-4 relative overflow-hidden">
             
             <div class="flex items-center gap-4">
-                <img v-if="user.foto_url" :src="API_BASE_URL + user.foto_url" class="w-14 h-14 rounded-2xl object-cover border-2 border-slate-100 shadow-sm shrink-0">
+                <img v-if="user.foto_url" :src="(user.foto_url.startsWith('http://') || user.foto_url.startsWith('https://')) ? user.foto_url : API_BASE_URL + user.foto_url" class="w-14 h-14 rounded-2xl object-cover border-2 border-slate-100 shadow-sm shrink-0">
                 <div v-else class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 border-2 border-slate-200 shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 </div>
@@ -40,11 +39,8 @@ const formatNoHP = (phone) => {
             </div>
 
             <div class="grid grid-cols-2 gap-3 pt-3 border-t border-dashed border-slate-100">
-                
                 <div v-if="user.role !== 'owner'" class="col-span-2 bg-emerald-50 rounded-xl p-3 flex items-center gap-3 border border-emerald-100">
-                    <div class="p-1.5 bg-emerald-100 rounded-lg text-emerald-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
-                    </div>
+                    <div class="p-1.5 bg-emerald-100 rounded-lg text-emerald-600"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg></div>
                     <div>
                         <p class="text-[8px] font-black text-emerald-600 uppercase tracking-widest mb-0.5">Akses Login (WA)</p>
                         <p class="font-black text-sm text-emerald-700 tracking-widest">{{ formatNoHP(user.no_hp) }}</p>
@@ -52,9 +48,7 @@ const formatNoHP = (phone) => {
                 </div>
                 
                 <div v-else class="col-span-2 bg-slate-50 rounded-xl p-3 flex items-center gap-3 border border-slate-200">
-                    <div class="p-1.5 bg-slate-200 rounded-lg text-slate-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                    </div>
+                    <div class="p-1.5 bg-slate-200 rounded-lg text-slate-500"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg></div>
                     <div>
                         <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Akses Login (Email)</p>
                         <p class="font-black text-xs text-slate-600 tracking-widest">{{ user.email || 'Email Owner Terlindungi' }}</p>

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -88,7 +87,7 @@ func (h *RetailHandler) UpdateStoreSettings(c *gin.Context) {
 		store.WaToken = v
 	}
 
-	// 🚀 TAMBAHAN: Update Data Payment Gateway & Printer
+	// UPDATE DATA PAYMENT GATEWAY & PRINTER
 	if v := c.PostForm("payment_type"); v != "" {
 		store.PaymentType = v
 	}
@@ -115,41 +114,52 @@ func (h *RetailHandler) UpdateStoreSettings(c *gin.Context) {
 		}
 	}
 
-	// 2. 🚀 Update / Hapus Logo Struk
+	// ==============================================================
+	// 🚀 UPDATE / HAPUS LOGO STRUK (SUPABASE CLOUD STORAGE RUN)
+	// ==============================================================
 	if c.PostForm("delete_logo") == "true" {
-		if store.LogoURL != "" {
-			os.Remove("." + store.LogoURL) // Hapus file dari folder lokal server!
-			store.LogoURL = ""             // Kosongkan URL di database
-		}
+		store.LogoURL = "" // Langsung bersihkan link DB
 	} else if file, err := c.FormFile("logo"); err == nil {
-		newFileName := fmt.Sprintf("store_%d_logo_%d%s", storeID, time.Now().Unix(), filepath.Ext(file.Filename))
-		uploadPath := filepath.Join("uploads", newFileName)
-		if err := c.SaveUploadedFile(file, uploadPath); err == nil {
-			if store.LogoURL != "" {
-				os.Remove("." + store.LogoURL)
-			} // Hapus logo lama
-			store.LogoURL = "/uploads/" + newFileName
+		// Buka file stream mentah
+		fileSrc, _ := file.Open()
+		defer fileSrc.Close()
+
+		customFileName := fmt.Sprintf("store_%d_logo_%d", storeID, time.Now().Unix())
+		bucketName := "pos-umkm"
+		contentType := file.Header.Get("Content-Type")
+
+		// Kirim langsung ke cloud Supabase
+		urlResult, errUpload := utils.UploadToSupabase(fileSrc, file.Filename, contentType, bucketName, customFileName)
+		if errUpload == nil {
+			store.LogoURL = urlResult // Simpan URL HTTPS internet
+		} else {
+			fmt.Println("❌ GAGAL UPLOAD LOGO KE SUPABASE:", errUpload)
 		}
 	}
 
-	// 3. 🚀 Update / Hapus Barcode QRIS
+	// ==============================================================
+	// 🚀 UPDATE / HAPUS BARCODE QRIS (SUPABASE CLOUD STORAGE RUN)
+	// ==============================================================
 	if c.PostForm("delete_qris") == "true" {
-		if store.QrisImage != "" {
-			os.Remove("." + store.QrisImage) // Hapus file fisik
-			store.QrisImage = ""             // Kosongkan dari DB
-		}
+		store.QrisImage = "" // Bersihkan link DB
 	} else if file, err := c.FormFile("qris"); err == nil {
-		newFileName := fmt.Sprintf("store_%d_qris_%d%s", storeID, time.Now().Unix(), filepath.Ext(file.Filename))
-		uploadPath := filepath.Join("uploads", newFileName)
-		if err := c.SaveUploadedFile(file, uploadPath); err == nil {
-			if store.QrisImage != "" {
-				os.Remove("." + store.QrisImage)
-			} // Hapus qris lama
-			store.QrisImage = "/uploads/" + newFileName
+		fileSrc, _ := file.Open()
+		defer fileSrc.Close()
+
+		customFileName := fmt.Sprintf("store_%d_qris_%d", storeID, time.Now().Unix())
+		bucketName := "pos-umkm"
+		contentType := file.Header.Get("Content-Type")
+
+		// Kirim langsung ke cloud Supabase
+		urlResult, errUpload := utils.UploadToSupabase(fileSrc, file.Filename, contentType, bucketName, customFileName)
+		if errUpload == nil {
+			store.QrisImage = urlResult // Simpan URL HTTPS internet
+		} else {
+			fmt.Println("❌ GAGAL UPLOAD QRIS KE SUPABASE:", errUpload)
 		}
 	}
 
-	// Simpan ke Database
+	// Simpan perubahan ke Database Supabase
 	if err := src.DB.Save(&store).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan pengaturan toko"})
 		return
@@ -166,7 +176,6 @@ type UpgradeInput struct {
 	Price    int64  `json:"price"`
 }
 
-// 🚀 FUNGSI BIKIN TAGIHAN MIDTRANS
 func (h *RetailHandler) CreateUpgradePayment(c *gin.Context) {
 	storeID := uint(c.MustGet("store_id").(float64))
 
@@ -182,9 +191,7 @@ func (h *RetailHandler) CreateUpgradePayment(c *gin.Context) {
 		midtrans.Environment = midtrans.Production
 	}
 
-	// FIX: Hilangkan spasi dari nama plan! (Contoh: "Terminal Tambahan" -> "TERMINALTAMBAHAN")
 	planCode := strings.ReplaceAll(strings.ToUpper(input.PlanName), " ", "")
-
 	orderID := fmt.Sprintf("UPGRADE-TOKO-%d-%s-%d", storeID, planCode, time.Now().Unix())
 
 	req := &snap.Request{
@@ -226,10 +233,9 @@ func (h *RetailHandler) MidtransWebhook(c *gin.Context) {
 	if transactionStatus == "settlement" || transactionStatus == "capture" {
 		parts := strings.Split(orderID, "-")
 
-		// CEK APAKAH INI TRANSAKSI UPGRADE (UPGRADE-TOKO-{ID}-{PLAN}-{TIME})
 		if len(parts) >= 5 && parts[0] == "UPGRADE" {
 			storeID := parts[2]
-			planName := parts[3] // Ini sekarang isinya "TERMINALTAMBAHAN" tanpa spasi
+			planName := parts[3]
 			db := h.Repo.GetDB()
 
 			if planName == "TERMINALTAMBAHAN" {
@@ -240,7 +246,6 @@ func (h *RetailHandler) MidtransWebhook(c *gin.Context) {
 					fmt.Println("✅ SUKSES! Kuota Kasir Toko", storeID, "berhasil ditambah 1!")
 				}
 			} else {
-				// Ini buat Upgrade Basic/Pro/Premium
 				endDate := time.Now().AddDate(0, 1, 0)
 				err := db.Exec("UPDATE stores SET subscription_status = ?, subscription_end = ?, subscription_plan = ? WHERE id = ?",
 					"active", endDate, strings.ToLower(planName), storeID).Error
@@ -264,7 +269,6 @@ func (h *RetailHandler) MidtransWebhook(c *gin.Context) {
 // 🚀 MIDTRANS TRANSAKSI KASIR (UANG MASUK KE REKENING TENANT/TOKO)
 // ==============================================================
 
-// Struct buat nangkep total belanja dari Vue
 type PosMidtransReq struct {
 	Total float64 `json:"total" binding:"required"`
 }
@@ -303,17 +307,13 @@ func (h *RetailHandler) CreatePosMidtransOrder(c *gin.Context) {
 		return
 	}
 
-	// 1. INIT CLIENT MIDTRANS
 	var s snap.Client
-
-	// 🚀 FIX: PAKSA JADI SANDBOX (HAPUS LOGIKA DETEKSI SB-)
 	env := midtrans.Sandbox
 	if os.Getenv("APP_ENV") == "production" {
 		env = midtrans.Production
 	}
 
 	s.New(store.MidtransServerKey, env)
-
 	orderID := fmt.Sprintf("POS-STR%d-%d", storeID, time.Now().Unix())
 
 	req := &snap.Request{
@@ -323,7 +323,6 @@ func (h *RetailHandler) CreatePosMidtransOrder(c *gin.Context) {
 		},
 	}
 
-	// TEMBAK API MIDTRANS
 	snapResp, err := s.CreateTransaction(req)
 	if err != nil {
 		fmt.Println("❌ ERROR MIDTRANS:", err.GetMessage())

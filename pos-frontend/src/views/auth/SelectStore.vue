@@ -43,12 +43,7 @@ const pricingPlans = {
       price: "Rp 0",
       duration: "14 Hari",
       desc: "Uji coba gratis untuk melihat kesesuaian sistem dengan toko Anda.",
-      features: [
-        "POS Kasir Retail",
-        "Master Data Produk",
-        "Scan Barcode Reader",
-        "Tanpa Kartu Kredit",
-      ],
+      features: ["POS Kasir Retail", "Master Data Produk", "Scan Barcode Reader", "Tanpa Kartu Kredit"],
     },
     {
       id: "basic",
@@ -56,12 +51,7 @@ const pricingPlans = {
       price: "49k",
       duration: "/Bulan",
       desc: "Solusi tepat untuk pengelolaan satu toko skala kecil.",
-      features: [
-        "Kasir Tanpa Batas",
-        "Manajemen Stok Dasar",
-        "Struk Thermal Bluetooth",
-        "Laporan Penjualan Harian",
-      ],
+      features: ["Kasir Tanpa Batas", "Manajemen Stok Dasar", "Struk Thermal Bluetooth", "Laporan Penjualan Harian"],
     },
     {
       id: "pro",
@@ -69,12 +59,7 @@ const pricingPlans = {
       price: "149k",
       duration: "/Bulan",
       desc: "Cocok untuk minimarket yang memiliki banyak karyawan & shift.",
-      features: [
-        "Semua Fitur Basic",
-        "Manajemen Absensi & Shift",
-        "Audit Stock Opname",
-        "Laporan Ekspor (Excel/PDF)",
-      ],
+      features: ["Semua Fitur Basic", "Manajemen Absensi & Shift", "Audit Stock Opname", "Laporan Ekspor (Excel/PDF)"],
     },
     {
       id: "premium",
@@ -82,12 +67,7 @@ const pricingPlans = {
       price: "299k",
       duration: "/Bulan",
       desc: "Kendali penuh manajemen multi-cabang (HO) & gudang pusat.",
-      features: [
-        "Semua Fitur Pro",
-        "Sistem Multi-Cabang (HO)",
-        "Manajemen Retur & Waste",
-        "Notifikasi WhatsApp",
-      ],
+      features: ["Semua Fitur Pro", "Sistem Multi-Cabang (HO)", "Manajemen Retur & Waste", "Notifikasi WhatsApp"],
     },
   ],
   fnb: [
@@ -97,12 +77,7 @@ const pricingPlans = {
       price: "Rp 0",
       duration: "14 Hari",
       desc: "Uji coba gratis modul resto untuk kelancaran pesanan dapur.",
-      features: [
-        "POS Kasir F&B",
-        "Manajemen Menu & Kategori",
-        "Hold/Simpan Pesanan",
-        "Tanpa Kartu Kredit",
-      ],
+      features: ["POS Kasir F&B", "Manajemen Menu & Kategori", "Hold/Simpan Pesanan", "Tanpa Kartu Kredit"],
     },
     {
       id: "basic",
@@ -110,12 +85,7 @@ const pricingPlans = {
       price: "59k",
       duration: "/Bulan",
       desc: "Sistem operasional praktis untuk kedai atau coffee shop.",
-      features: [
-        "Manajemen Layout Meja",
-        "Cetak Tiket Dapur (Kitchen)",
-        "Pajak & Service Charge",
-        "Struk Thermal Bluetooth",
-      ],
+      features: ["Manajemen Layout Meja", "Cetak Tiket Dapur (Kitchen)", "Pajak & Service Charge", "Struk Thermal Bluetooth"],
     },
     {
       id: "pro",
@@ -123,12 +93,7 @@ const pricingPlans = {
       price: "169k",
       duration: "/Bulan",
       desc: "Ideal untuk restoran yang butuh kontrol ketat bahan baku.",
-      features: [
-        "Semua Fitur Basic",
-        "Resep Bahan Baku (BOM)",
-        "Split Bill & Gabung Meja",
-        "Manajemen Absensi & Shift",
-      ],
+      features: ["Semua Fitur Basic", "Resep Bahan Baku (BOM)", "Split Bill & Gabung Meja", "Manajemen Absensi & Shift"],
     },
     {
       id: "premium",
@@ -136,12 +101,7 @@ const pricingPlans = {
       price: "349k",
       duration: "/Bulan",
       desc: "Skalabilitas bisnis franchise dengan laporan analitik terpusat.",
-      features: [
-        "Semua Fitur Pro",
-        "Manajemen Franchise (HO)",
-        "Self-Order QR Menu",
-        "Notifikasi WhatsApp",
-      ],
+      features: ["Semua Fitur Pro", "Manajemen Franchise (HO)", "Self-Order QR Menu", "Notifikasi WhatsApp"],
     },
   ],
   jasa: [
@@ -151,12 +111,7 @@ const pricingPlans = {
       price: "Rp 0",
       duration: "14 Hari",
       desc: "Coba modul layanan praktis untuk laundry, salon, atau bengkel.",
-      features: [
-        "POS Layanan Jasa",
-        "Database Pelanggan Dasar",
-        "Penerimaan Pesanan",
-        "Tanpa Kartu Kredit",
-      ],
+      features: ["POS Layanan Jasa", "Database Pelanggan Dasar", "Penerimaan Pesanan", "Tanpa Kartu Kredit"],
     },
     {
       id: "basic",
@@ -164,12 +119,7 @@ const pricingPlans = {
       price: "49k",
       duration: "/Bulan",
       desc: "Sistem tracking status pesanan pelanggan yang rapi.",
-      features: [
-        "Tracking Status Pesanan",
-        "Cetak Nota / Resi Barcode",
-        "Manajemen Layanan & Tarif",
-        "Laporan Pendapatan",
-      ],
+      features: ["Tracking Status Pesanan", "Cetak Nota / Resi Barcode", "Manajemen Layanan & Tarif", "Laporan Pendapatan"],
     },
     {
       id: "pro",
@@ -177,12 +127,7 @@ const pricingPlans = {
       price: "159k",
       duration: "/Bulan",
       desc: "Otomatisasi hitung bagi hasil komisi teknisi atau staf.",
-      features: [
-        "Semua Fitur Basic",
-        "Bagi Hasil / Komisi Karyawan",
-        "Manajemen Absensi & Shift",
-        "Audit Laporan Layanan",
-      ],
+      features: ["Semua Fitur Basic", "Bagi Hasil / Komisi Karyawan", "Manajemen Absensi & Shift", "Audit Laporan Layanan"],
     },
     {
       id: "premium",
@@ -190,12 +135,7 @@ const pricingPlans = {
       price: "329k",
       duration: "/Bulan",
       desc: "Manajemen booking tingkat lanjut dengan pengingat otomatis.",
-      features: [
-        "Semua Fitur Pro",
-        "Sistem Booking & Reservasi",
-        "Sistem Multi-Cabang (HO)",
-        "Notifikasi WhatsApp",
-      ],
+      features: ["Semua Fitur Pro", "Sistem Booking & Reservasi", "Sistem Multi-Cabang (HO)", "Notifikasi WhatsApp"],
     },
   ],
 };
@@ -234,14 +174,8 @@ const selectBranch = async (storeId) => {
     localStorage.setItem("token", res.data.token);
     localStorage.setItem("store_id", res.data.store_id);
     localStorage.setItem("storeName", res.data.store_name || "POS UMKM");
-    localStorage.setItem(
-      "storeLogo",
-      res.data.store_logo || res.data.logo_url || "",
-    );
-    localStorage.setItem(
-      "subscriptionPlan",
-      res.data.subscription_plan || "basic",
-    );
+    localStorage.setItem("storeLogo", res.data.store_logo || res.data.logo_url || "");
+    localStorage.setItem("subscriptionPlan", res.data.subscription_plan || "basic");
 
     let finalRole = "owner";
     if (res.data.role) {
@@ -254,14 +188,8 @@ const selectBranch = async (storeId) => {
     }
     localStorage.setItem("role", finalRole);
 
-    localStorage.setItem(
-      "name",
-      res.data.name || res.data.user?.name || "Owner",
-    );
-    localStorage.setItem(
-      "foto_url",
-      res.data.foto_url || res.data.user?.foto_url || "",
-    );
+    localStorage.setItem("name", res.data.name || res.data.user?.name || "Owner");
+    localStorage.setItem("foto_url", res.data.foto_url || res.data.user?.foto_url || "");
 
     router.push("/retail/pos/riwayat");
   } catch (error) {
@@ -287,33 +215,25 @@ const handlePilihPaketEkspansi = (industry, planId) => {
 
 const getPlanStyle = (plan) => {
   const p = plan ? plan.toLowerCase() : "basic";
-  if (p === "premium")
-    return "bg-amber-50 text-amber-700 border-amber-200 ring-amber-500 text-amber-500";
-  if (p === "pro")
-    return "bg-indigo-50 text-indigo-700 border-indigo-200 ring-indigo-500 text-indigo-500";
+  if (p === "premium") return "bg-amber-50 text-amber-700 border-amber-200 ring-amber-500 text-amber-500";
+  if (p === "pro") return "bg-indigo-50 text-indigo-700 border-indigo-200 ring-indigo-500 text-indigo-500";
   return "bg-sky-50 text-sky-700 border-sky-200 ring-sky-500 text-sky-500";
 };
 
 const cleanLogoUrl = (url) => {
   if (!url) return "";
-  let cleanPath = url
-    .replace(/http:\/\/localhost:8080/g, "")
-    .replace(new RegExp(API_BASE_URL, "g"), "");
+  // Kalau link database-nya udah link cloud internet asli (https://), langsung return mentah-mentah!
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  // Ini cuma backup buat sisa data tester lokal lama lu bray
+  let cleanPath = url.replace(/http:\/\/localhost:8080/g, "");
   return `${API_BASE_URL}${cleanPath}`;
 };
 
 const getStoreLabel = (index) => {
   if (index === 0) return "Toko Pertama (Utama)";
-  const urutanAngka = [
-    "Kedua",
-    "Ketiga",
-    "Keempat",
-    "Kelima",
-    "Keenam",
-    "Ketujuh",
-    "Kedelapan",
-    "Kesembilan",
-  ];
+  const urutanAngka = ["Kedua", "Ketiga", "Keempat", "Kelima", "Keenam", "Ketujuh", "Kedelapan", "Kesembilan"];
   if (index - 1 < urutanAngka.length) {
     return `Cabang ${urutanAngka[index - 1]}`;
   }
@@ -322,9 +242,7 @@ const getStoreLabel = (index) => {
 </script>
 
 <template>
-  <div
-    class="min-h-screen bg-[#F8FAFC] flex flex-col items-center py-12 px-4 md:px-8 font-sans relative overflow-x-hidden select-none"
-  >
+  <div class="min-h-screen bg-[#F8FAFC] flex flex-col items-center py-12 px-4 md:px-8 font-sans relative overflow-x-hidden select-none">
     <div
       class="absolute top-[-15%] left-[-15%] w-[45rem] h-[45rem] bg-gradient-to-br from-indigo-300/20 to-purple-300/10 rounded-full filter blur-[140px] pointer-events-none"
     ></div>
@@ -332,43 +250,26 @@ const getStoreLabel = (index) => {
       class="absolute bottom-[-15%] right-[-15%] w-[45rem] h-[45rem] bg-gradient-to-tr from-blue-300/20 to-sky-300/10 rounded-full filter blur-[140px] pointer-events-none"
     ></div>
 
-    <div
-      class="w-full max-w-6xl z-10 flex flex-col items-center animate-fade-in-up"
-    >
+    <div class="w-full max-w-6xl z-10 flex flex-col items-center animate-fade-in-up">
       <div class="text-center mb-16">
         <div
           class="inline-flex items-center justify-center px-4 py-2 bg-white rounded-2xl shadow-xs border border-slate-100 mb-6 hover:scale-105 transition-transform duration-300"
         >
-          <div
-            class="font-black text-2xl text-slate-900 tracking-tighter leading-none flex items-center gap-1.5"
-          >
+          <div class="font-black text-2xl text-slate-900 tracking-tighter leading-none flex items-center gap-1.5">
             NEXA
-            <span
-              class="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100"
-              >POS</span
-            >
+            <span class="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100">POS</span>
           </div>
         </div>
-        <h1
-          class="text-3xl md:text-5xl font-black text-slate-800 tracking-tight mb-4"
-        >
-          Selamat Datang, {{ userName.split(" ")[0] }}!
-        </h1>
+        <h1 class="text-3xl md:text-5xl font-black text-slate-800 tracking-tight mb-4">Selamat Datang, {{ userName.split(" ")[0] }}!</h1>
         <p
           class="text-slate-400 font-bold text-xs md:text-sm uppercase tracking-wider bg-white border border-slate-100 px-5 py-2 rounded-full inline-block shadow-3xs"
         >
-          {{
-            stores.length > 0
-              ? "Silakan pilih gerai toko untuk memulai transaksi kasir"
-              : "Inisialisasi Pembuatan Toko Baru"
-          }}
+          {{ stores.length > 0 ? "Silakan pilih gerai toko untuk memulai transaksi kasir" : "Inisialisasi Pembuatan Toko Baru" }}
         </p>
       </div>
 
       <div v-if="stores.length > 0" class="w-full">
-        <div
-          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full relative z-10 items-stretch"
-        >
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full relative z-10 items-stretch">
           <div
             v-for="(store, idx) in sortedStores"
             :key="store.id"
@@ -377,11 +278,7 @@ const getStoreLabel = (index) => {
           >
             <div
               class="absolute top-0 left-0 w-full h-1.5 transition-all duration-500"
-              :class="
-                getPlanStyle(store.subscription_plan)
-                  .split(' ')[3]
-                  .replace('ring-', 'bg-')
-              "
+              :class="getPlanStyle(store.subscription_plan).split(' ')[3].replace('ring-', 'bg-')"
             ></div>
 
             <div>
@@ -389,19 +286,8 @@ const getStoreLabel = (index) => {
                 <div
                   class="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden shrink-0 group-hover:scale-105 transition-all duration-500"
                 >
-                  <img
-                    v-if="store.logo_url"
-                    :src="cleanLogoUrl(store.logo_url)"
-                    class="w-full h-full object-cover"
-                  />
-                  <svg
-                    v-else
-                    class="w-6 h-6 text-slate-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
+                  <img v-if="store.logo_url" :src="cleanLogoUrl(store.logo_url)" class="w-full h-full object-cover" />
+                  <svg v-else class="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"
@@ -422,52 +308,28 @@ const getStoreLabel = (index) => {
                 >
                   {{ store.nama_toko }}
                 </h3>
-                <p
-                  class="text-xs font-bold text-slate-400 uppercase tracking-wider line-clamp-1 flex items-center gap-1"
-                >
-                  <svg
-                    class="w-3.5 h-3.5 text-slate-300"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                  >
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider line-clamp-1 flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"
                       d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
                     />
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                   {{ store.kota || "Lokasi Belum Diatur" }}
                 </p>
               </div>
             </div>
 
-            <div
-              class="mt-auto flex items-center justify-between border-t border-slate-50/80 pt-4"
-            >
+            <div class="mt-auto flex items-center justify-between border-t border-slate-50/80 pt-4">
               <div class="flex flex-col">
-                <span
-                  class="text-[8px] font-black text-slate-300 uppercase tracking-widest leading-none"
-                  >Status</span
-                >
-                <span
-                  class="text-[10px] font-black text-emerald-500 uppercase tracking-wider mt-0.5 flex items-center gap-1"
-                >
-                  <span
-                    class="w-2 h-2 bg-emerald-500 rounded-full relative flex"
-                    ><span
-                      class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
-                    ></span
-                    ><span
-                      class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"
-                    ></span
-                  ></span>
+                <span class="text-[8px] font-black text-slate-300 uppercase tracking-widest leading-none">Status</span>
+                <span class="text-[10px] font-black text-emerald-500 uppercase tracking-wider mt-0.5 flex items-center gap-1">
+                  <span class="w-2 h-2 bg-emerald-500 rounded-full relative flex">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
                   Kasir Ready
                 </span>
               </div>
@@ -482,11 +344,7 @@ const getStoreLabel = (index) => {
                   stroke="currentColor"
                   stroke-width="3"
                 >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                  />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
               </div>
             </div>
@@ -499,49 +357,19 @@ const getStoreLabel = (index) => {
             <div
               class="w-12 h-12 rounded-full bg-slate-50 border border-slate-200/60 group-hover:bg-indigo-100 group-hover:scale-105 transition-all duration-300 flex items-center justify-center mb-3"
             >
-              <svg
-                class="w-5 h-5 text-slate-400 group-hover:text-indigo-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width="3"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M12 4v16m8-8H4"
-                />
+              <svg class="w-5 h-5 text-slate-400 group-hover:text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
               </svg>
             </div>
-            <h3
-              class="text-sm font-black text-slate-600 group-hover:text-indigo-800 uppercase tracking-wider mb-0.5 transition-colors"
-            >
-              Buka Cabang Baru
-            </h3>
-            <p
-              class="text-[11px] font-bold text-slate-400 px-4 leading-relaxed"
-            >
-              Daftarkan lokasi outlet atau cabang toko baru Anda ke dalam
-              sistem.
-            </p>
+            <h3 class="text-sm font-black text-slate-600 group-hover:text-indigo-800 uppercase tracking-wider mb-0.5 transition-colors">Buka Cabang Baru</h3>
+            <p class="text-[11px] font-bold text-slate-400 px-4 leading-relaxed">Daftarkan lokasi outlet atau cabang toko baru Anda ke dalam sistem.</p>
           </div>
         </div>
       </div>
 
-      <div
-        v-else
-        class="w-full max-w-xl text-center py-12 px-6 bg-white rounded-[40px] border border-slate-100 shadow-xl"
-      >
-        <div
-          class="w-20 h-20 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-[28px] flex items-center justify-center mx-auto mb-6 shadow-3xs"
-        >
-          <svg
-            class="w-10 h-10 animate-bounce"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
+      <div v-else class="w-full max-w-xl text-center py-12 px-6 bg-white rounded-[40px] border border-slate-100 shadow-xl">
+        <div class="w-20 h-20 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-[28px] flex items-center justify-center mx-auto mb-6 shadow-3xs">
+          <svg class="w-10 h-10 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -549,16 +377,9 @@ const getStoreLabel = (index) => {
             />
           </svg>
         </div>
-        <h2
-          class="text-2xl font-black text-slate-800 uppercase tracking-tight mb-2"
-        >
-          Belum Ada Toko Terdaftar
-        </h2>
-        <p
-          class="text-slate-400 font-bold text-xs md:text-sm leading-relaxed mb-8 px-4"
-        >
-          Akun Anda telah aktif secara global. Silakan pilih jenis bidang usaha
-          untuk mengaktifkan sistem kasir pada toko pertama Anda.
+        <h2 class="text-2xl font-black text-slate-800 uppercase tracking-tight mb-2">Belum Ada Toko Terdaftar</h2>
+        <p class="text-slate-400 font-bold text-xs md:text-sm leading-relaxed mb-8 px-4">
+          Akun Anda telah aktif secara global. Silakan pilih jenis bidang usaha untuk mengaktifkan sistem kasir pada toko pertama Anda.
         </p>
         <button
           @click="showPricingModal = true"
@@ -570,10 +391,7 @@ const getStoreLabel = (index) => {
     </div>
 
     <Transition name="modal-fade">
-      <div
-        v-if="showPricingModal"
-        class="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 overflow-y-auto"
-      >
+      <div v-if="showPricingModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 overflow-y-auto">
         <div
           @click="stores.length > 0 ? (showPricingModal = false) : null"
           class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300"
@@ -587,32 +405,18 @@ const getStoreLabel = (index) => {
             @click="showPricingModal = false"
             class="absolute top-6 right-6 w-10 h-10 bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-full flex items-center justify-center transition-all duration-300 hover:rotate-90"
           >
-            <svg
-              class="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2.5"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
 
           <div class="text-center mb-10">
-            <h2
-              class="text-3xl md:text-4xl font-black text-slate-800 tracking-tight"
-            >
-              INVESTASI <span class="text-indigo-600">TRANSPARAN</span>
+            <h2 class="text-3xl md:text-4xl font-black text-slate-800 tracking-tight">
+              INVESTASI
+              <span class="text-indigo-600">TRANSPARAN</span>
             </h2>
-            <p
-              class="text-slate-400 font-bold text-xs md:text-sm mt-2 max-w-2xl uppercase tracking-wider"
-            >
-              PILIH MODUL INDUSTRI ANDA, DAN TEMUKAN SKALABILITAS YANG DIRANCANG
-              KHUSUS UNTUK BISNIS ANDA.
+            <p class="text-slate-400 font-bold text-xs md:text-sm mt-2 max-w-2xl uppercase tracking-wider">
+              PILIH MODUL INDUSTRI ANDA, DAN TEMUKAN SKALABILITAS YANG DIRANCANG KHUSUS UNTUK BISNIS ANDA.
             </p>
           </div>
 
@@ -623,37 +427,23 @@ const getStoreLabel = (index) => {
               v-for="ind in industries"
               :key="ind.id"
               @click="activePricingTab = ind.id"
-              :class="
-                activePricingTab === ind.id
-                  ? 'bg-slate-900 text-white shadow-md'
-                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50/60'
-              "
+              :class="activePricingTab === ind.id ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50/60'"
               class="flex-1 px-2 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all text-center duration-500"
             >
               {{ ind.title }}
             </button>
           </div>
 
-          <div
-            class="flex flex-wrap justify-center gap-6 w-full items-stretch animate-fade-in-cards"
-          >
+          <div class="flex flex-wrap justify-center gap-6 w-full items-stretch animate-fade-in-cards">
             <div
               v-for="plan in filteredPlans"
               :key="plan.id"
               class="p-8 rounded-[32px] border transition-all duration-500 flex flex-col relative group w-full sm:w-[calc(50%-12px)] lg:w-[calc(25%-18px)] min-w-[245px]"
               :class="[
-                plan.id === 'trial'
-                  ? 'bg-white border-slate-200 shadow-sm border-2 border-dashed'
-                  : '',
-                plan.id === 'basic'
-                  ? 'bg-white border-slate-200 shadow-sm hover:border-sky-300 hover:shadow-xl'
-                  : '',
-                plan.id === 'pro'
-                  ? 'bg-white border-2 border-indigo-600 shadow-2xl lg:scale-105 z-10'
-                  : '',
-                plan.id === 'premium'
-                  ? 'bg-slate-900 border-slate-800 shadow-2xl z-0'
-                  : '',
+                plan.id === 'trial' ? 'bg-white border-slate-200 shadow-sm border-2 border-dashed' : '',
+                plan.id === 'basic' ? 'bg-white border-slate-200 shadow-sm hover:border-sky-300 hover:shadow-xl' : '',
+                plan.id === 'pro' ? 'bg-white border-2 border-indigo-600 shadow-2xl lg:scale-105 z-10' : '',
+                plan.id === 'premium' ? 'bg-slate-900 border-slate-800 shadow-2xl z-0' : '',
               ]"
             >
               <div
@@ -682,49 +472,23 @@ const getStoreLabel = (index) => {
                   {{ plan.name }}
                 </h3>
                 <div class="flex items-baseline gap-1">
-                  <span
-                    class="text-4xl lg:text-5xl font-black tracking-tighter"
-                    :class="
-                      plan.id === 'premium' ? 'text-white' : 'text-slate-900'
-                    "
-                    >{{ plan.price }}</span
-                  >
-                  <span
-                    class="font-bold text-[10px] uppercase tracking-widest mb-1 ml-1"
-                    :class="
-                      plan.id === 'premium'
-                        ? 'text-slate-400'
-                        : 'text-slate-400'
-                    "
-                    >{{ plan.duration }}</span
-                  >
+                  <span class="text-4xl lg:text-5xl font-black tracking-tighter" :class="plan.id === 'premium' ? 'text-white' : 'text-slate-900'">
+                    {{ plan.price }}
+                  </span>
+                  <span class="font-bold text-[10px] uppercase tracking-widest mb-1 ml-1" :class="plan.id === 'premium' ? 'text-slate-400' : 'text-slate-400'">
+                    {{ plan.duration }}
+                  </span>
                 </div>
-                <p
-                  class="text-xs font-bold mt-5 h-12 leading-relaxed"
-                  :class="
-                    plan.id === 'premium' ? 'text-slate-400' : 'text-slate-500'
-                  "
-                >
+                <p class="text-xs font-bold mt-5 h-12 leading-relaxed" :class="plan.id === 'premium' ? 'text-slate-400' : 'text-slate-500'">
                   {{ plan.desc }}
                 </p>
 
-                <ul
-                  class="space-y-4 mb-2 mt-6 border-t pt-6"
-                  :class="
-                    plan.id === 'premium'
-                      ? 'border-slate-800'
-                      : 'border-slate-100'
-                  "
-                >
+                <ul class="space-y-4 mb-2 mt-6 border-t pt-6" :class="plan.id === 'premium' ? 'border-slate-800' : 'border-slate-100'">
                   <li
                     v-for="feat in plan.features"
                     :key="feat"
                     class="flex items-start gap-3 text-xs font-bold leading-tight"
-                    :class="
-                      plan.id === 'premium'
-                        ? 'text-slate-300'
-                        : 'text-slate-700'
-                    "
+                    :class="plan.id === 'premium' ? 'text-slate-300' : 'text-slate-700'"
                   >
                     <svg
                       class="w-4 h-4 shrink-0"
@@ -739,11 +503,7 @@ const getStoreLabel = (index) => {
                         plan.id === 'trial' ? 'text-indigo-500' : '',
                       ]"
                     >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M5 13l4 4L19 7"
-                      />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     {{ feat }}
                   </li>
@@ -753,26 +513,16 @@ const getStoreLabel = (index) => {
               <button
                 @click="handlePilihPaketEkspansi(activePricingTab, plan.id)"
                 :class="[
-                  plan.id === 'trial'
-                    ? 'bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white border border-indigo-100'
-                    : '',
-                  plan.id === 'basic'
-                    ? 'bg-slate-900 text-white hover:bg-sky-600 shadow-lg'
-                    : '',
-                  plan.id === 'pro'
-                    ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-slate-900 hover:to-slate-900 shadow-xl'
-                    : '',
+                  plan.id === 'trial' ? 'bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white border border-indigo-100' : '',
+                  plan.id === 'basic' ? 'bg-slate-900 text-white hover:bg-sky-600 shadow-lg' : '',
+                  plan.id === 'pro' ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-slate-900 hover:to-slate-900 shadow-xl' : '',
                   plan.id === 'premium'
                     ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-extrabold hover:from-white hover:to-white shadow-xl'
                     : '',
                 ]"
                 class="block w-full text-center py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-300 transform active:scale-95 group-hover:scale-[1.01]"
               >
-                {{
-                  plan.id === "trial"
-                    ? "MULAI COBA GRATIS"
-                    : "PILIH " + plan.name
-                }}
+                {{ plan.id === "trial" ? "MULAI COBA GRATIS" : "PILIH " + plan.name }}
               </button>
             </div>
           </div>
@@ -780,21 +530,10 @@ const getStoreLabel = (index) => {
       </div>
     </Transition>
 
-    <div
-      v-if="isLoading"
-      class="fixed inset-0 z-[150] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center"
-    >
-      <div
-        class="bg-white p-7 rounded-[24px] shadow-2xl flex flex-col items-center border border-slate-100"
-      >
-        <div
-          class="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"
-        ></div>
-        <div
-          class="text-xs font-black text-slate-600 uppercase tracking-widest animate-pulse"
-        >
-          Memuat Konfigurasi Toko...
-        </div>
+    <div v-if="isLoading" class="fixed inset-0 z-[150] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center">
+      <div class="bg-white p-7 rounded-[24px] shadow-2xl flex flex-col items-center border border-slate-100">
+        <div class="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+        <div class="text-xs font-black text-slate-600 uppercase tracking-widest animate-pulse">Memuat Konfigurasi Toko...</div>
       </div>
     </div>
   </div>

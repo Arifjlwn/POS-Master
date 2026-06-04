@@ -10,7 +10,7 @@ export function useManageKaryawan() {
     const isEditMode = ref(false);
     const selectedId = ref(null);
     const searchQuery = ref('');
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
     const form = ref({
         name: '', password: '', tempat_lahir: '', tanggal_lahir: '',
@@ -21,12 +21,17 @@ export function useManageKaryawan() {
     const fotoProfilPreview = ref(null);
     const fotoBiometricPreview = ref(null);
 
+    // 🚀 HELPER SAKTI: Biar bisa ngebaca link Cloud Supabase (https://) ATAU sisa data Lokal lama karyawan
+    const getCleanUrl = (url) => {
+        if (!url) return null;
+        if (url.startsWith('http://') || url.startsWith('https://')) return url;
+        return API_BASE_URL + url;
+    };
+
     const hitungMasaKerja = (tanggalDibuat) => {
         if (!tanggalDibuat) return 'Baru Bergabung';
-        const start = new Date(tanggalDibuat);
-        const end = new Date();
-        let years = end.getFullYear() - start.getFullYear();
-        let months = end.getMonth() - start.getMonth();
+        const start = new Date(tanggalDibuat), end = new Date();
+        let years = end.getFullYear() - start.getFullYear(), months = end.getMonth() - start.getMonth();
         if (months < 0) { years--; months += 12; }
         if (years === 0 && months === 0) return 'Baru Bergabung';
         
@@ -64,49 +69,33 @@ export function useManageKaryawan() {
     });
 
     const openAddModal = () => {
-        isEditMode.value = false;
-        selectedId.value = null;
+        isEditMode.value = false; selectedId.value = null; fotoProfilPreview.value = null; fotoBiometricPreview.value = null;
         form.value = { name: '', password: '', tempat_lahir: '', tanggal_lahir: '', no_hp: '', role: 'staff', foto: null, biometric_file: null };
-        fotoProfilPreview.value = null;
-        fotoBiometricPreview.value = null;
         showModal.value = true;
     };
 
     const openEditModal = (user) => {
-        isEditMode.value = true;
-        selectedId.value = user.id;
+        isEditMode.value = true; selectedId.value = user.id;
         form.value = {
             name: user.name, password: '', tempat_lahir: user.tempat_lahir || '',
             tanggal_lahir: user.tanggal_lahir ? user.tanggal_lahir.substring(0,10) : '',
             no_hp: user.no_hp || '', role: user.role || 'staff', foto: null, biometric_file: null
         };
-        fotoProfilPreview.value = user.foto_url ? API_BASE_URL + user.foto_url : null;
-        fotoBiometricPreview.value = user.biometric_url ? API_BASE_URL + user.biometric_url : null;
+        // 🚀 PAKE HELPER BIAR PREVIEW FOTO PROFIL & BIOMETRIK KARYAWAN GAK TABRAKAN LINK-NYA
+        fotoProfilPreview.value = getCleanUrl(user.foto_url);
+        fotoBiometricPreview.value = getCleanUrl(user.biometric_url);
         showModal.value = true;
     };
 
-    const closeModal = () => {
-        showModal.value = false;
-    };
-
-    const handleUpdateProfile = (file, previewUrl) => {
-        form.value.foto = file;
-        fotoProfilPreview.value = previewUrl;
-    };
-
-    const handleUpdateBiometric = (file, previewUrl) => {
-        form.value.biometric_file = file;
-        fotoBiometricPreview.value = previewUrl;
-    };
+    const closeModal = () => { showModal.value = false; };
+    const handleUpdateProfile = (file, previewUrl) => { form.value.foto = file; fotoProfilPreview.value = previewUrl; };
+    const handleUpdateBiometric = (file, previewUrl) => { form.value.biometric_file = file; fotoBiometricPreview.value = previewUrl; };
 
     const submit = async () => {
         isProcessing.value = true;
         const formData = new FormData();
-        formData.append('name', form.value.name);
-        formData.append('tempat_lahir', form.value.tempat_lahir);
-        formData.append('tanggal_lahir', form.value.tanggal_lahir);
-        formData.append('no_hp', form.value.no_hp);
-        formData.append('role', form.value.role); 
+        formData.append('name', form.value.name); formData.append('tempat_lahir', form.value.tempat_lahir);
+        formData.append('tanggal_lahir', form.value.tanggal_lahir); formData.append('no_hp', form.value.no_hp); formData.append('role', form.value.role); 
         
         if (form.value.password) formData.append('password', form.value.password);
         if (form.value.foto) formData.append('foto', form.value.foto);
@@ -114,16 +103,13 @@ export function useManageKaryawan() {
 
         try {
             if (isEditMode.value) {
-                // 🚀 HAPUS HEADERS MANUAL! Biar Axios otomatis ngasih boundary
                 await api.put(`/retail/employees/${selectedId.value}`, formData);
                 Swal.fire('Berhasil!', 'Data karyawan telah diperbarui.', 'success');
             } else {
-                // 🚀 HAPUS JUGA DI SINI!
                 const response = await api.post('/retail/employees', formData);
                 Swal.fire('Berhasil!', `Karyawan dengan NIK: ${response.data.data.nik} berhasil dibuat.`, 'success');
             }
-            closeModal();
-            fetchKaryawan();
+            closeModal(); fetchKaryawan();
         } catch (error) {
             Swal.fire('Gagal!', error.response?.data?.error || 'Terjadi kesalahan sistem', 'error');
         } finally {
@@ -139,8 +125,7 @@ export function useManageKaryawan() {
         if (result.isConfirmed) {
             try {
                 await api.delete(`/retail/employees/${id}`);
-                Swal.fire('Dihapus!', 'Karyawan telah diberhentikan.', 'success');
-                fetchKaryawan();
+                Swal.fire('Dihapus!', 'Karyawan telah diberhentikan.', 'success'); fetchKaryawan();
             } catch (error) {
                 Swal.fire('Gagal!', 'Gagal menghapus data.', 'error');
             }
@@ -150,9 +135,7 @@ export function useManageKaryawan() {
     onMounted(() => fetchKaryawan());
 
     return {
-        karyawan, isLoading, showModal, isProcessing, isEditMode, searchQuery,
-        form, isCameraOpen, fotoProfilPreview, fotoBiometricPreview, API_BASE_URL,
-        filteredKaryawan, hitungMasaKerja, formatDate, openAddModal, openEditModal,
-        closeModal, handleUpdateProfile, handleUpdateBiometric, submit, deleteKaryawan
+        karyawan, isLoading, showModal, isProcessing, isEditMode, searchQuery, form, isCameraOpen, fotoProfilPreview, fotoBiometricPreview, API_BASE_URL,
+        filteredKaryawan, hitungMasaKerja, formatDate, openAddModal, openEditModal, closeModal, handleUpdateProfile, handleUpdateBiometric, submit, deleteKaryawan
     };
 }
