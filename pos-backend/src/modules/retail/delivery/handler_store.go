@@ -115,49 +115,143 @@ func (h *RetailHandler) UpdateStoreSettings(c *gin.Context) {
 	}
 
 	// ==============================================================
-	// 🚀 UPDATE / HAPUS LOGO STRUK (SUPABASE CLOUD STORAGE RUN)
-	// ==============================================================
-	if c.PostForm("delete_logo") == "true" {
-		store.LogoURL = "" // Langsung bersihkan link DB
-	} else if file, err := c.FormFile("logo"); err == nil {
-		// Buka file stream mentah
-		fileSrc, _ := file.Open()
-		defer fileSrc.Close()
+// 🚀 UPDATE / HAPUS LOGO TOKO
+// ==============================================================
 
-		customFileName := fmt.Sprintf("store_%d_logo_%d", storeID, time.Now().Unix())
-		bucketName := "pos-umkm"
-		contentType := file.Header.Get("Content-Type")
+bucketName := os.Getenv("SUPABASE_BUCKET_NAME")
 
-		// Kirim langsung ke cloud Supabase
-		urlResult, errUpload := utils.UploadToSupabase(fileSrc, file.Filename, contentType, bucketName, customFileName)
-		if errUpload == nil {
-			store.LogoURL = urlResult // Simpan URL HTTPS internet
-		} else {
-			fmt.Println("❌ GAGAL UPLOAD LOGO KE SUPABASE:", errUpload)
-		}
+if c.PostForm("delete_logo") == "true" {
+
+	store.LogoURL = ""
+
+} else if file, err := c.FormFile("logo"); err == nil {
+
+	// Maksimal 5 MB
+	if file.Size > 5*1024*1024 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Ukuran logo maksimal 5 MB",
+		})
+		return
 	}
 
-	// ==============================================================
-	// 🚀 UPDATE / HAPUS BARCODE QRIS (SUPABASE CLOUD STORAGE RUN)
-	// ==============================================================
-	if c.PostForm("delete_qris") == "true" {
-		store.QrisImage = "" // Bersihkan link DB
-	} else if file, err := c.FormFile("qris"); err == nil {
-		fileSrc, _ := file.Open()
-		defer fileSrc.Close()
-
-		customFileName := fmt.Sprintf("store_%d_qris_%d", storeID, time.Now().Unix())
-		bucketName := "pos-umkm"
-		contentType := file.Header.Get("Content-Type")
-
-		// Kirim langsung ke cloud Supabase
-		urlResult, errUpload := utils.UploadToSupabase(fileSrc, file.Filename, contentType, bucketName, customFileName)
-		if errUpload == nil {
-			store.QrisImage = urlResult // Simpan URL HTTPS internet
-		} else {
-			fmt.Println("❌ GAGAL UPLOAD QRIS KE SUPABASE:", errUpload)
-		}
+	allowedMime := map[string]bool{
+		"image/jpeg": true,
+		"image/png":  true,
+		"image/webp": true,
 	}
+
+	contentType := file.Header.Get("Content-Type")
+
+	if !allowedMime[contentType] {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Format logo harus JPG, PNG atau WEBP",
+		})
+		return
+	}
+
+	fileSrc, err := file.Open()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Gagal membaca file logo",
+		})
+		return
+	}
+
+	defer fileSrc.Close()
+
+	remotePath := fmt.Sprintf(
+		"stores/%d/logo",
+		storeID,
+	)
+
+	urlResult, errUpload := utils.UploadToSupabase(
+		fileSrc,
+		file.Filename,
+		contentType,
+		bucketName,
+		remotePath,
+	)
+
+	if errUpload != nil {
+		fmt.Println("❌ GAGAL UPLOAD LOGO:", errUpload)
+
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Gagal upload logo",
+		})
+		return
+	}
+
+	store.LogoURL = urlResult
+}
+
+
+	// ==============================================================
+// 🚀 UPDATE / HAPUS QRIS
+// ==============================================================
+
+if c.PostForm("delete_qris") == "true" {
+
+	store.QrisImage = ""
+
+} else if file, err := c.FormFile("qris"); err == nil {
+
+	// Maksimal 5 MB
+	if file.Size > 5*1024*1024 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Ukuran QRIS maksimal 5 MB",
+		})
+		return
+	}
+
+	allowedMime := map[string]bool{
+		"image/jpeg": true,
+		"image/png":  true,
+		"image/webp": true,
+	}
+
+	contentType := file.Header.Get("Content-Type")
+
+	if !allowedMime[contentType] {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Format QRIS harus JPG, PNG atau WEBP",
+		})
+		return
+	}
+
+	fileSrc, err := file.Open()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Gagal membaca file QRIS",
+		})
+		return
+	}
+
+	defer fileSrc.Close()
+
+	remotePath := fmt.Sprintf(
+		"stores/%d/qris",
+		storeID,
+	)
+
+	urlResult, errUpload := utils.UploadToSupabase(
+		fileSrc,
+		file.Filename,
+		contentType,
+		bucketName,
+		remotePath,
+	)
+
+	if errUpload != nil {
+		fmt.Println("❌ GAGAL UPLOAD QRIS:", errUpload)
+
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Gagal upload QRIS",
+		})
+		return
+	}
+
+	store.QrisImage = urlResult
+}
 
 	// Simpan perubahan ke Database Supabase
 	if err := src.DB.Save(&store).Error; err != nil {

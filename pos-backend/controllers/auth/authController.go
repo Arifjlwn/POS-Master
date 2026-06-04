@@ -5,12 +5,13 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"path/filepath"
 	"pos-backend/models"
 	src "pos-backend/src/core/config"
 	"pos-backend/utils"
 	"strings"
 	"time"
+	"log"
+	
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -418,35 +419,106 @@ func UpdateProfile(c *gin.Context) {
 		user.NoHP = utils.FormatPhoneNumber(noHP)
 	}
 
-	// Buat prefix nama file dari NIK
-	nikClean := "user"
-	if user.NIK != nil && *user.NIK != "" {
-		nikClean = *user.NIK
+
+	// ======================================================
+// FOTO PROFIL
+// ======================================================
+
+if fileHeader, err := c.FormFile("foto"); err == nil {
+
+	// max 5 MB
+	if fileHeader.Size > 5*1024*1024 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Ukuran foto profil maksimal 5 MB",
+		})
+		return
 	}
 
-	// 2. Update Foto Profil
-	if file, err := c.FormFile("foto"); err == nil {
-		newFileName := fmt.Sprintf("%s_profil_%d%s", nikClean, time.Now().Unix(), filepath.Ext(file.Filename))
-		uploadPath := filepath.Join("uploads", newFileName)
-		if err := c.SaveUploadedFile(file, uploadPath); err == nil {
-			if user.FotoURL != "" {
-				os.Remove("." + user.FotoURL)
-			} // Hapus foto lama
-			user.FotoURL = "/uploads/" + newFileName
-		}
+	file, err := fileHeader.Open()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Gagal membuka file foto",
+		})
+		return
+	}
+	defer file.Close()
+
+	bucketName := os.Getenv("SUPABASE_BUCKET_NAME")
+
+	remotePath := fmt.Sprintf(
+		"users/%d/profile",
+		user.ID,
+	)
+
+	publicURL, err := utils.UploadToSupabase(
+		file,
+		fileHeader.Filename,
+		fileHeader.Header.Get("Content-Type"),
+		bucketName,
+		remotePath,
+	)
+
+	if err != nil {
+		log.Printf("upload foto gagal: %v", err)
+
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Gagal upload foto profil",
+		})
+		return
 	}
 
-	// 3. Update Foto Biometrik
-	if bioFile, errBio := c.FormFile("biometric_file"); errBio == nil {
-		newBioName := fmt.Sprintf("%s_bio_%d%s", nikClean, time.Now().Unix(), filepath.Ext(bioFile.Filename))
-		uploadBioPath := filepath.Join("uploads", newBioName)
-		if err := c.SaveUploadedFile(bioFile, uploadBioPath); err == nil {
-			if user.BiometricURL != "" {
-				os.Remove("." + user.BiometricURL)
-			} // Hapus bio lama
-			user.BiometricURL = "/uploads/" + newBioName
-		}
+	user.FotoURL = publicURL
+}
+
+	// ======================================================
+// FOTO BIOMETRIK
+// ======================================================
+
+if bioHeader, err := c.FormFile("biometric_file"); err == nil {
+
+	// max 5 MB
+	if bioHeader.Size > 5*1024*1024 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Ukuran file biometrik maksimal 5 MB",
+		})
+		return
 	}
+
+	bioFile, err := bioHeader.Open()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Gagal membuka file biometrik",
+		})
+		return
+	}
+	defer bioFile.Close()
+
+	bucketName := os.Getenv("SUPABASE_BUCKET_NAME")
+
+	remotePath := fmt.Sprintf(
+		"users/%d/biometric",
+		user.ID,
+	)
+
+	publicURL, err := utils.UploadToSupabase(
+		bioFile,
+		bioHeader.Filename,
+		bioHeader.Header.Get("Content-Type"),
+		bucketName,
+		remotePath,
+	)
+
+	if err != nil {
+		log.Printf("upload biometrik gagal: %v", err)
+
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Gagal upload file biometrik",
+		})
+		return
+	}
+
+	user.BiometricURL = publicURL
+}
 
 	if err := src.DB.Save(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan perubahan"})
