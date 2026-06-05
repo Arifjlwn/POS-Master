@@ -132,14 +132,17 @@ export function usePenerimaanBarang() {
         const existing = cartLPB.value.find(item => item.product_id === product.id);
         
         if (existing) {
-            existing.qty_besar++; // Default nambah kemasan paling besar
+            // 🚀 FIX: Kalau punya kemasan besar, nambahin DUS. Kalau ngga, nambahin PCS.
+            if (existing.has_satuan_besar) {
+                existing.qty_besar++; 
+            } else {
+                existing.qty_dasar++;
+            }
         } else {
-            // Kita bikin variabel penampung harga modal yang pinter
             let defaultHargaModal = Number(product.harga_modal) || 0;
             let hargaBeliInputDefault = defaultHargaModal;
 
-            // Kalau dia punya kemasan besar, default form LPB minta input harga 1 Dus/Slop
-            if (product.satuan_besar) {
+            if (product.satuan_besar && Number(product.isi_per_besar) > 1) {
                 hargaBeliInputDefault = defaultHargaModal * Number(product.isi_per_besar);
             }
 
@@ -147,17 +150,14 @@ export function usePenerimaanBarang() {
                 product_id: product.id,
                 nama_produk: product.nama_produk,
                 
-                // Form Input Qty (Sekarang ada 3 kemungkinan)
-                qty_besar: 1,
+                qty_besar: (product.satuan_besar && Number(product.isi_per_besar) > 1) ? 1 : 0,
                 qty_tengah: 0,
-                qty_dasar: 0, // Dulu qty_eceran
+                qty_dasar: (product.satuan_besar && Number(product.isi_per_besar) > 1) ? 0 : 1, // 🚀 FIX: Mode otomatis pinter
                 
-                // Variabel Keuangan
                 harga_jual_saat_ini: Number(product.harga_jual) || 0,
                 harga_modal_database: defaultHargaModal,
-                harga_beli_input: hargaBeliInputDefault, // Modal per Faktur (1 Dus / 1 Slop)
+                harga_beli_input: hargaBeliInputDefault, 
                 
-                // 🚀 Data 3 Lapis dari Master
                 satuan_dasar: product.satuan_dasar || 'PCS',
                 has_satuan_besar: !!product.satuan_besar && Number(product.isi_per_besar) > 1,
                 satuan_besar: product.satuan_besar || null,
@@ -192,19 +192,16 @@ export function usePenerimaanBarang() {
     };
 
     const hitungModalPerPcs = (item) => {
-        const totalDasarMasuk = hitungTotalStok(item);
         const modalInputFaktur = Number(item.harga_beli_input) || 0;
-        if (totalDasarMasuk === 0) return 0;
         
-        // Modal Input di form LPB itu adalah modal kemasan paling besar (kalau dia punya kemasan besar)
-        if (item.has_satuan_besar) {
-            // Modal Faktur / Total Isi dari kemasan paling besarnya
-            // (Jadi kita dapetin HPP per satuan dasarnya)
+        // 🚀 FIX: Kalau dia PUNYA satuan besar (misal input Rp 100.000 / Dus)
+        // Maka Harga per PCS = Rp 100.000 dibagi isi per dus
+        if (item.has_satuan_besar && item.isi_per_besar > 0) {
             return Math.round(modalInputFaktur / item.isi_per_besar);
         }
 
-        // Kalau ga punya kemasan besar, berarti modal input faktur emang untuk satuan dasar
-        return Math.round(modalInputFaktur / totalDasarMasuk); 
+        // 🚀 FIX: Kalau dia CUMA PCS doang, harga yang diinput ya emang murni harga per PCS-nya!
+        return Math.round(modalInputFaktur); 
     };
 
     const removeItem = (index) => cartLPB.value.splice(index, 1);

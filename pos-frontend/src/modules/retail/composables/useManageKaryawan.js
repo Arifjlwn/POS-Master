@@ -3,6 +3,11 @@ import api from '../../../api.js';
 import Swal from 'sweetalert2';
 
 export function useManageKaryawan() {
+    const getPayloadFromToken = () => {
+        const role = localStorage.getItem('role') || 'staff';
+        return { role: role.toLowerCase() };
+    };
+    const currentUser = ref(getPayloadFromToken());
     const karyawan = ref([]);
     const isLoading = ref(true);
     const showModal = ref(false);
@@ -75,13 +80,14 @@ export function useManageKaryawan() {
     };
 
     const openEditModal = (user) => {
-        isEditMode.value = true; selectedId.value = user.id;
+        isEditMode.value = true; 
+        // 🚀 FIX: Utamakan public_id (ULID) biar aman dari hacker
+        selectedId.value = user.public_id || user.id; 
         form.value = {
             name: user.name, password: '', tempat_lahir: user.tempat_lahir || '',
             tanggal_lahir: user.tanggal_lahir ? user.tanggal_lahir.substring(0,10) : '',
             no_hp: user.no_hp || '', role: user.role || 'staff', foto: null, biometric_file: null
         };
-        // 🚀 PAKE HELPER BIAR PREVIEW FOTO PROFIL & BIOMETRIK KARYAWAN GAK TABRAKAN LINK-NYA
         fotoProfilPreview.value = getCleanUrl(user.foto_url);
         fotoBiometricPreview.value = getCleanUrl(user.biometric_url);
         showModal.value = true;
@@ -117,15 +123,16 @@ export function useManageKaryawan() {
         }
     };
 
-    const deleteKaryawan = async (id) => {
+    const deleteKaryawan = async (public_id) => { 
         const result = await Swal.fire({
             title: 'Yakin mau pecat?', text: "Karyawan ini tidak akan bisa login lagi!",
             icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Ya, Pecat!'
         });
         if (result.isConfirmed) {
             try {
-                await api.delete(`/retail/employees/${id}`);
-                Swal.fire('Dihapus!', 'Karyawan telah diberhentikan.', 'success'); fetchKaryawan();
+                await api.delete(`/retail/employees/${public_id}`);
+                Swal.fire('Dihapus!', 'Karyawan telah diberhentikan.', 'success'); 
+                fetchKaryawan();
             } catch (error) {
                 Swal.fire('Gagal!', 'Gagal menghapus data.', 'error');
             }
@@ -135,7 +142,7 @@ export function useManageKaryawan() {
     onMounted(() => fetchKaryawan());
 
     return {
-        karyawan, isLoading, showModal, isProcessing, isEditMode, searchQuery, form, isCameraOpen, fotoProfilPreview, fotoBiometricPreview, API_BASE_URL,
+        currentUser,karyawan, isLoading, showModal, isProcessing, isEditMode, searchQuery, form, isCameraOpen, fotoProfilPreview, fotoBiometricPreview, API_BASE_URL,
         filteredKaryawan, hitungMasaKerja, formatDate, openAddModal, openEditModal, closeModal, handleUpdateProfile, handleUpdateBiometric, submit, deleteKaryawan
     };
 }

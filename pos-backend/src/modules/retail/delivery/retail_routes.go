@@ -60,6 +60,7 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 	rg.POST("/employees", middlewares.RequireSaaSLevel(2), h.CreateEmployee)
 	rg.GET("/employees", middlewares.RequireSaaSLevel(2), h.GetEmployees)
 	rg.PUT("/employees/:id", middlewares.RequireSaaSLevel(2), h.UpdateEmployee)
+	rg.DELETE("/employees/:id", middlewares.RequireSaaSLevel(2), h.DeleteEmployee)
 
 	// Jadwal Kerja / Rostering
 	rg.POST("/schedules/bulk", middlewares.RequireSaaSLevel(2), h.SaveSchedules)

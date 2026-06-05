@@ -8,7 +8,6 @@ defineProps({
 
 const emit = defineEmits(['remove']);
 
-// Fungsi Format Angka Rupiah
 const formatNumber = (val) => {
     if (val === null || val === undefined || val === '') return '';
     return Number(val).toLocaleString('id-ID');
@@ -19,6 +18,14 @@ const handleInputHarga = (item, event) => {
     let num = raw ? parseInt(raw, 10) : 0;
     item.harga_beli_input = num; 
     event.target.value = raw ? num.toLocaleString('id-ID') : ''; 
+};
+
+// 🚀 TAMBAHAN BARU: Pelindung Anti-Minus & Desimal untuk QTY
+const handleInputQty = (item, field, event) => {
+    let raw = event.target.value.replace(/\D/g, ''); // Basmi semua selain angka murni
+    let num = raw ? parseInt(raw, 10) : 0;
+    item[field] = num;
+    event.target.value = num; // Balikin ke UI dalam bentuk angka bersih
 };
 </script>
 
@@ -63,7 +70,7 @@ const handleInputHarga = (item, event) => {
                     <div class="flex flex-wrap items-center justify-center gap-2">
                         
                         <div v-if="item.has_satuan_besar" class="flex flex-col items-center gap-1">
-                            <input v-model.number="item.qty_besar" type="number" min="0" class="w-16 p-2 bg-white border-2 border-slate-200 rounded-xl text-center font-black text-slate-700 outline-none focus:border-indigo-500 shadow-inner">
+                            <input :value="item.qty_besar" @input="handleInputQty(item, 'qty_besar', $event)" type="text" inputmode="numeric" class="w-16 p-2 bg-white border-2 border-slate-200 rounded-xl text-center font-black text-slate-700 outline-none focus:border-indigo-500 shadow-inner">
                             <span class="text-[8px] font-black text-slate-400 uppercase">{{ item.satuan_besar || 'KARTON' }}</span>
                         </div>
 
@@ -71,7 +78,7 @@ const handleInputHarga = (item, event) => {
                             <span class="text-slate-300 font-bold mb-5">+</span>
                         </div>
                         <div v-if="item.is_nested" class="flex flex-col items-center gap-1">
-                            <input v-model.number="item.qty_tengah" type="number" min="0" class="w-16 p-2 bg-white border-2 border-slate-200 rounded-xl text-center font-black text-emerald-600 outline-none focus:border-emerald-500 shadow-inner">
+                            <input :value="item.qty_tengah" @input="handleInputQty(item, 'qty_tengah', $event)" type="text" inputmode="numeric" class="w-16 p-2 bg-white border-2 border-slate-200 rounded-xl text-center font-black text-emerald-600 outline-none focus:border-emerald-500 shadow-inner">
                             <span class="text-[8px] font-black text-emerald-400 uppercase">{{ item.satuan_tengah || 'BUNGKUS' }}</span>
                         </div>
 
@@ -79,7 +86,7 @@ const handleInputHarga = (item, event) => {
                             <span v-if="item.has_satuan_besar" class="text-slate-300 font-bold mb-5">+</span>
                         </div>
                         <div class="flex flex-col items-center gap-1">
-                            <input v-model.number="item.qty_dasar" type="number" min="0" class="w-16 p-2 bg-white border-2 border-slate-200 rounded-xl text-center font-black text-blue-600 outline-none focus:border-blue-500 shadow-inner">
+                            <input :value="item.qty_dasar" @input="handleInputQty(item, 'qty_dasar', $event)" type="text" inputmode="numeric" class="w-16 p-2 bg-white border-2 border-slate-200 rounded-xl text-center font-black text-blue-600 outline-none focus:border-blue-500 shadow-inner">
                             <span class="text-[8px] font-black text-blue-400 uppercase">{{ item.satuan_dasar || 'PCS' }}</span>
                         </div>
 

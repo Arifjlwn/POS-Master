@@ -39,55 +39,55 @@ const emit = defineEmits(['handle-approval']);
                         </td>
 
                         <td v-for="d in mingguJadwal" :key="d.tanggal" class="p-4 text-center border-l border-slate-50">
-                            <div class="flex flex-col items-center gap-2">
-                                <select 
-                                    v-model="formJadwal[emp.id || emp.user_id][d.tanggal]"
-                                    :disabled="!canEditSchedule || formJadwal[emp.id || emp.user_id][d.tanggal].includes('(Approved)')"
-                                    class="w-full px-3 py-2.5 text-[11px] font-black uppercase tracking-widest rounded-xl border-2 text-center transition-all outline-none cursor-pointer appearance-none shadow-sm"
-                                    :class="{
-                                        'bg-emerald-50 text-emerald-700 border-emerald-200 focus:border-emerald-500': formJadwal[emp.id || emp.user_id][d.tanggal].includes('Shift 1'),
-                                        'bg-blue-50 text-blue-700 border-blue-200 focus:border-blue-500': formJadwal[emp.id || emp.user_id][d.tanggal].includes('Shift 2'),
-                                        'bg-purple-50 text-purple-700 border-purple-200 focus:border-purple-500': formJadwal[emp.id || emp.user_id][d.tanggal].includes('Middle'),
-                                        'bg-slate-50 text-slate-400 border-slate-200 focus:border-slate-400': formJadwal[emp.id || emp.user_id][d.tanggal] === 'OFF',
-                                        'bg-slate-900 text-white border-slate-800': formJadwal[emp.id || emp.user_id][d.tanggal].includes('Shift 3')
-                                    }">
-                                    <option value="Shift 1">SHIFT 1</option>
-                                    <option value="Middle">MIDDLE</option>
-                                    <option value="Shift 2">SHIFT 2</option>
-                                    <option value="Shift 3">SHIFT 3</option>
-                                    <option value="OFF">LIBUR (OFF)</option>
-                                    <slot v-if="formJadwal[emp.id || emp.user_id][d.tanggal]">
-                                        <option hidden :value="formJadwal[emp.id || emp.user_id][d.tanggal]">
-                                            {{ formJadwal[emp.id || emp.user_id][d.tanggal] }}
-                                        </option>
-                                    </slot>
-                                </select>
+    <div class="flex flex-col items-center gap-2">
+        <select 
+            v-model="formJadwal[emp.public_id || emp.id][d.tanggal]"
+            :disabled="!canEditSchedule || formJadwal[emp.public_id || emp.id][d.tanggal].includes('(Approved)')"
+            class="w-full px-3 py-2.5 text-[11px] font-black uppercase tracking-widest rounded-xl border-2 text-center transition-all outline-none cursor-pointer appearance-none shadow-sm"
+            :class="{
+                'bg-emerald-50 text-emerald-700 border-emerald-200 focus:border-emerald-500': formJadwal[emp.public_id || emp.id][d.tanggal].includes('Shift 1'),
+                'bg-blue-50 text-blue-700 border-blue-200 focus:border-blue-500': formJadwal[emp.public_id || emp.id][d.tanggal].includes('Shift 2'),
+                'bg-purple-50 text-purple-700 border-purple-200 focus:border-purple-500': formJadwal[emp.public_id || emp.id][d.tanggal].includes('Middle'),
+                'bg-slate-50 text-slate-400 border-slate-200 focus:border-slate-400': formJadwal[emp.public_id || emp.id][d.tanggal] === 'OFF',
+                'bg-slate-900 text-white border-slate-800': formJadwal[emp.public_id || emp.id][d.tanggal].includes('Shift 3')
+            }">
+            <option value="Shift 1">SHIFT 1</option>
+            <option value="Middle">MIDDLE</option>
+            <option value="Shift 2">SHIFT 2</option>
+            <option value="Shift 3">SHIFT 3</option>
+            <option value="OFF">LIBUR (OFF)</option>
+            <slot v-if="formJadwal[emp.public_id || emp.id][d.tanggal]">
+                <option hidden :value="formJadwal[emp.public_id || emp.id][d.tanggal]">
+                    {{ formJadwal[emp.public_id || emp.id][d.tanggal] }}
+                </option>
+            </slot>
+        </select>
 
-                                <div class="flex justify-center w-full min-h-[24px]" v-if="formJadwal[emp.id || emp.user_id][d.tanggal] !== 'OFF'">
-                                    <span v-if="formJadwal[emp.id || emp.user_id][d.tanggal].includes('(Pending)')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-600 border border-amber-100 text-[9px] font-black uppercase tracking-widest shadow-sm">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Pending
-                                    </span>
-                                    <span v-else-if="formJadwal[emp.id || emp.user_id][d.tanggal].includes('(Approved)')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 text-[9px] font-black uppercase tracking-widest shadow-sm">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Approved
-                                    </span>
-                                    <span v-else-if="formJadwal[emp.id || emp.user_id][d.tanggal].includes('(Rejected)')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 border border-red-100 text-[9px] font-black uppercase tracking-widest shadow-sm">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> Rejected
-                                    </span>
-                                    <span v-else class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-500 text-[9px] font-black uppercase tracking-widest border border-slate-200">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Draft
-                                    </span>
-                                </div>
+        <div class="flex justify-center w-full min-h-[24px]" v-if="formJadwal[emp.public_id || emp.id][d.tanggal] !== 'OFF'">
+            <span v-if="formJadwal[emp.public_id || emp.id][d.tanggal].includes('(Pending)')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-600 border border-amber-100 text-[9px] font-black uppercase tracking-widest shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Pending
+            </span>
+            <span v-else-if="formJadwal[emp.public_id || emp.id][d.tanggal].includes('(Approved)')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 text-[9px] font-black uppercase tracking-widest shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Approved
+            </span>
+            <span v-else-if="formJadwal[emp.public_id || emp.id][d.tanggal].includes('(Rejected)')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 border border-red-100 text-[9px] font-black uppercase tracking-widest shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> Rejected
+            </span>
+            <span v-else class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-500 text-[9px] font-black uppercase tracking-widest border border-slate-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Draft
+            </span>
+        </div>
 
-                                <div v-if="currentUser.role === 'owner' && formJadwal[emp.id || emp.user_id][d.tanggal].includes('(Pending)')" class="flex gap-2 mt-1 justify-center w-full">
-                                    <button @click="emit('handle-approval', emp.id || emp.user_id, d.tanggal, 'approve')" class="flex-1 p-2 rounded-xl bg-emerald-100 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all shadow-sm border border-emerald-200 flex items-center justify-center" title="Setujui">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-                                    </button>
-                                    <button @click="emit('handle-approval', emp.id || emp.user_id, d.tanggal, 'reject')" class="flex-1 p-2 rounded-xl bg-red-100 text-red-600 hover:bg-red-500 hover:text-white transition-all shadow-sm border border-red-200 flex items-center justify-center" title="Tolak">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </td>
+        <div v-if="currentUser.role === 'owner' && formJadwal[emp.public_id || emp.id][d.tanggal].includes('(Pending)')" class="flex gap-2 mt-1 justify-center w-full">
+            <button @click="emit('handle-approval', emp.public_id || emp.id, d.tanggal, 'approve')" class="flex-1 p-2 rounded-xl bg-emerald-100 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all shadow-sm border border-emerald-200 flex items-center justify-center" title="Setujui">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            </button>
+            <button @click="emit('handle-approval', emp.public_id || emp.id, d.tanggal, 'reject')" class="flex-1 p-2 rounded-xl bg-red-100 text-red-600 hover:bg-red-500 hover:text-white transition-all shadow-sm border border-red-200 flex items-center justify-center" title="Tolak">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+    </div>
+</td>
                     </tr>
                 </tbody>
             </table>

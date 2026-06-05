@@ -8,7 +8,7 @@ import EmployeeTableDesktop from '../../components/employee/EmployeeTableDesktop
 import EmployeeFormModal from '../../components/employee/EmployeeFormModal.vue';
 
 const {
-    karyawan, isLoading, showModal, isProcessing, isEditMode, searchQuery,
+    currentUser, karyawan, isLoading, showModal, isProcessing, isEditMode, searchQuery,
     form, isCameraOpen, fotoProfilPreview, fotoBiometricPreview, API_BASE_URL,
     filteredKaryawan, hitungMasaKerja, formatDate, openAddModal, openEditModal,
     closeModal, handleUpdateProfile, handleUpdateBiometric, submit, deleteKaryawan
@@ -61,6 +61,7 @@ const {
                 :form="form"
                 :fotoProfilPreview="fotoProfilPreview"
                 :fotoBiometricPreview="fotoBiometricPreview"
+                :currentUserRole="currentUser.role"
                 v-model:isCameraOpen="isCameraOpen"
                 @close="closeModal"
                 @submit="submit"

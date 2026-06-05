@@ -9,7 +9,8 @@ const props = defineProps({
     form: Object,
     fotoProfilPreview: String,
     fotoBiometricPreview: String,
-    isCameraOpen: Boolean
+    isCameraOpen: Boolean,
+    currentUserRole: { type: String, default: 'staff' }
 });
 
 const emit = defineEmits(['close', 'submit', 'update-profile', 'update-biometric', 'update:isCameraOpen']);
@@ -82,7 +83,7 @@ watch(() => props.show, (newVal) => {
                         <div>
                             <label class="block text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 md:mb-2">Jabatan / Role</label>
                             <select v-model="form.role" required class="w-full p-3.5 md:p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-blue-600 outline-none font-black text-xs text-slate-700 uppercase tracking-widest">
-                                <option value="manager">Manager</option>
+                                <option v-if="currentUserRole === 'owner'" value="manager">Manager</option>
                                 <option value="supervisor">Supervisor</option>
                                 <option value="staff">Staff / Cashier</option>
                             </select>
@@ -117,7 +118,7 @@ watch(() => props.show, (newVal) => {
                                 <img v-if="fotoProfilPreview" :src="fotoProfilPreview" class="w-full h-full object-cover">
                                 <div v-else class="text-slate-300">📷</div>
                             </div>
-                            <input type="file" ref="profileInput" @change="onProfileChange" class="hidden" accept="image/*">
+                            <input type="file" ref="profileInput" @change="onProfileChange" class="hidden" accept=".jpg, .jpeg, .png">
                         </div>
 
                         <div class="flex flex-col items-center p-6 bg-slate-900 rounded-[32px] relative overflow-hidden shadow-2xl border-4 border-slate-800">

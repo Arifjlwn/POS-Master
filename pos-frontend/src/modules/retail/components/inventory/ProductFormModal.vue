@@ -134,7 +134,7 @@ const enableNestedUom = () => {
 								<div>
 									<label class="text-[8px] font-black text-slate-500 uppercase block mb-1">Beli Dalam Karton/Kemasan Besar?</label>
 									<div @click="form.has_satuan_besar = !form.has_satuan_besar" class="w-full p-3.5 bg-slate-800 border border-slate-700 rounded-xl font-black text-[10px] uppercase cursor-pointer flex items-center justify-between transition-colors hover:border-blue-500">
-										{{ form.has_satuan_besar ? 'YA (AKTIF)' : 'TIDAK (HANYA PCS)' }}
+										{{ form.has_satuan_besar ? 'YA (AKTIF)' : `TIDAK (HANYA ${form.satuan_dasar || 'PCS'})` }}
 										<div :class="form.has_satuan_besar ? 'bg-blue-500' : 'bg-slate-600'" class="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)] transition-colors"></div>
 									</div>
 								</div>
@@ -171,7 +171,7 @@ const enableNestedUom = () => {
 											</div>
 											<div>
 												<label class="text-[8px] font-black text-slate-400 uppercase block mb-1">1 {{ form.satuan_tengah || 'TENGAH' }} isi berapa {{ form.satuan_dasar }}?</label>
-												<input :value="formatNumber(form.isi_tengah_ke_dasar)" @input="handleInputForm('isi_tengah_ke_dasar', $event)" type="text" inputmode="numeric" placeholder="Contoh: 16" class="w-full p-3 bg-slate-900 border border-slate-700 focus:border-blue-500 rounded-xl outline-none font-black text-xs text-center text-white transition-all" />
+												<input :value="formatNumber(form.isi_tengah_ke_dasar)" disabled type="text" class="w-full p-3 bg-slate-800/50 border border-slate-700/50 rounded-xl outline-none font-black text-xs text-center text-slate-400 cursor-not-allowed transition-all shadow-none" />
 											</div>
 										</div>
 										<div class="text-[9px] font-black text-emerald-400 uppercase tracking-widest italic text-center mt-1 bg-emerald-900/20 py-2.5 rounded-lg border border-emerald-900/50">
@@ -229,8 +229,8 @@ const enableNestedUom = () => {
 							</div>
 							<div class="text-center font-black text-[9px] text-blue-400 uppercase italic py-1">UNTUK SETIAP</div>
 							<div class="relative flex items-center">
-								<input :value="formatNumber(form.qty_eceran_tampil)" @input="handleInputForm('qty_eceran_tampil', $event)" type="text" inputmode="numeric" class="w-full pl-4 pr-16 py-4 rounded-2xl bg-white border border-blue-200 focus:border-blue-600 outline-none font-black text-xl text-center text-blue-700 shadow-inner transition-all" />
-								<span class="absolute inset-y-0 right-0 pr-5 flex items-center font-black text-[10px] text-blue-600 uppercase">{{ form.satuan_dasar }}</span>
+								<input :value="formatNumber(form.qty_eceran_tampil)" disabled type="text" class="w-full pl-4 pr-16 py-4 rounded-2xl bg-slate-100 border border-blue-100 outline-none font-black text-xl text-center text-blue-400 shadow-none cursor-not-allowed transition-all" />
+								<span class="absolute inset-y-0 right-0 pr-5 flex items-center font-black text-[10px] text-blue-400 uppercase">{{ form.satuan_dasar }}</span>
 							</div>
 						</div>
 						<div class="mt-4 pt-4 border-t border-blue-200/50 flex flex-col gap-2 px-1">

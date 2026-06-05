@@ -72,7 +72,9 @@ const formatNoHP = (phone) => {
 
             <div class="flex gap-2 mt-2 pt-3 border-t border-dashed border-slate-100" v-if="user.role !== 'owner'">
                 <button @click="emit('edit', user)" class="flex-1 bg-slate-100 text-slate-500 hover:bg-blue-600 hover:text-white py-3 rounded-xl transition-colors font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2">Edit</button>
-                <button @click="emit('delete', user.id)" class="flex-1 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white py-3 rounded-xl transition-colors font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2">Pecat</button>
+                <button @click="emit('delete', user.public_id || user.id)" class="bg-red-50 text-red-500 hover:bg-red-500 hover:text-white p-2.5 rounded-xl transition-colors shadow-sm" title="Pecat">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+</button>
             </div>
         </div>
     </div>

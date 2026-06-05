@@ -132,7 +132,12 @@ func (r *retailRepo) GetProductByID(tx *gorm.DB, id uint, storeID uint) (*models
 	err := tx.Where("id = ? AND store_id = ?", id, storeID).First(&p).Error
 	return &p, err
 }
-func (r *retailRepo) SaveProduct(tx *gorm.DB, p *models.Product) error { return tx.Save(p).Error }
+func (r *retailRepo) SaveProduct(tx *gorm.DB, p *models.Product) error { 
+    // 🔒 ANTI-SABOTASE: Memastikan cuma bisa nge-update barang di toko lu sendiri
+    return tx.Model(&models.Product{}).
+        Where("id = ? AND store_id = ?", p.ID, p.StoreID).
+        Updates(p).Error 
+}
 func (r *retailRepo) UpdateProductStokExpr(tx *gorm.DB, id uint, storeID uint, qty int) error {
 	return tx.Model(&models.Product{}).
 		Where("id = ? AND store_id = ?", id, storeID). // 🔒 AMAN DARI SABOTASE

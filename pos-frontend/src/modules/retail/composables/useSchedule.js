@@ -67,13 +67,15 @@ export function useSchedule() {
             listJadwal.value = resSched.data.data || [];
 
             listKaryawan.value.forEach(emp => {
-                const empKey = emp.id || emp.user_id;
+                // FIX: Utamakan public_id, fallback ke id, pastikan jadi String
+                const empKey = String(emp.public_id || emp.id); 
                 formJadwal.value[empKey] = {};
                 
                 mingguJadwal.value.forEach(d => {
                     const match = listJadwal.value.find(s => {
                         const sTanggalClean = s.tanggal ? s.tanggal.substring(0, 10) : "";
-                        return Number(s.user_id) === Number(empKey) && sTanggalClean === d.tanggal;
+                        // FIX: Komparasi menggunakan String, bukan Number
+                        return String(s.user_id) === empKey && sTanggalClean === d.tanggal;
                     });
                     
                     formJadwal.value[empKey][d.tanggal] = match ? match.shift_type : 'OFF';
@@ -108,20 +110,25 @@ export function useSchedule() {
             const payloadSchedules = [];
 
             listKaryawan.value.forEach(emp => {
-                const empKey = emp.id || emp.user_id;
+                const empKey = String(emp.public_id || emp.id);
 
                 mingguJadwal.value.forEach(d => {
                     let shift = formJadwal.value[empKey]?.[d.tanggal] || 'OFF';
                     
-                    if (currentUser.value.role !== 'owner' && shift !== 'OFF' && !shift.includes('(Approved)')) {
-                        shift = `${shift} (Pending)`;
-                    } 
-                    else if (currentUser.value.role === 'owner' && shift !== 'OFF' && !shift.includes('(Approved)')) {
-                        shift = `${shift} (Approved)`;
+                    if (shift !== 'OFF') {
+                        // FIX: Cuci bersih dulu string-nya dari status lama biar gak numpuk
+                        let cleanShift = shift.replace(' (Pending)', '').replace(' (Approved)', '').replace(' (Rejected)', '');
+                        
+                        if (currentUser.value.role !== 'owner') {
+                            shift = `${cleanShift} (Pending)`;
+                        } else {
+                            shift = `${cleanShift} (Approved)`;
+                        }
                     }
 
                     payloadSchedules.push({
-                        user_id: Number(empKey),
+                        // FIX: Hapus Number() biar ULID gak berubah jadi NaN
+                        user_id: empKey, 
                         tanggal: d.tanggal,
                         shift_type: shift
                     });
