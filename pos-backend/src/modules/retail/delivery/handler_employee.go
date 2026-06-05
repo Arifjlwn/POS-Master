@@ -22,21 +22,40 @@ import (
 
 func (h *RetailHandler) CreateEmployee(c *gin.Context) {
 	roleOwner, _ := c.Get("role")
-	if roleOwner != "owner" { c.JSON(http.StatusForbidden, gin.H{"error": "Hanya Owner yang bisa mendaftarkan karyawan baru!"}); return }
+	if roleOwner != "owner" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Hanya Owner yang bisa mendaftarkan karyawan baru!"})
+		return
+	}
 
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
+	}
 
-	name := c.PostForm("name"); password := c.PostForm("password")
-	tempatLahir := c.PostForm("tempat_lahir"); tanggalLahir := c.PostForm("tanggal_lahir")
-	noHP := c.PostForm("no_hp"); inputRole := c.PostForm("role")
+	name := c.PostForm("name")
+	password := c.PostForm("password")
+	tempatLahir := c.PostForm("tempat_lahir")
+	tanggalLahir := c.PostForm("tanggal_lahir")
+	noHP := c.PostForm("no_hp")
+	inputRole := c.PostForm("role")
 
-	if name == "" || password == "" || noHP == "" { c.JSON(http.StatusBadRequest, gin.H{"error": "Nama, Nomor HP, dan Password wajib diisi!"}); return }
-	if inputRole == "" { inputRole = "kasir" }
+	if name == "" || password == "" || noHP == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Nama, Nomor HP, dan Password wajib diisi!"})
+		return
+	}
+	if inputRole == "" {
+		inputRole = "kasir"
+	}
 
 	formattedHP := utils.FormatPhoneNumber(noHP)
-	currentYear := time.Now().Format("2006"); var newNIK string
+	currentYear := time.Now().Format("2006")
+	var newNIK string
 
 	lastEmployee, err := h.Repo.GetLastEmployeeNIK(storeID, currentYear)
 	if err != nil {
@@ -46,7 +65,9 @@ func (h *RetailHandler) CreateEmployee(c *gin.Context) {
 		if len(lastNIK) >= 4 {
 			lastSequence, _ := strconv.Atoi(lastNIK[len(lastNIK)-4:])
 			newNIK = fmt.Sprintf("%s%04d", currentYear, lastSequence+1)
-		} else { newNIK = fmt.Sprintf("%s0001", currentYear) }
+		} else {
+			newNIK = fmt.Sprintf("%s0001", currentYear)
+		}
 	}
 
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -54,13 +75,19 @@ func (h *RetailHandler) CreateEmployee(c *gin.Context) {
 	bucketName := os.Getenv("SUPABASE_BUCKET_NAME")
 
 	if file, err := c.FormFile("foto"); err == nil {
-		if file.Size > 5*1024*1024 { c.JSON(http.StatusBadRequest, gin.H{"error": "Ukuran foto maksimal 5 MB"}); return }
+		if file.Size > 5*1024*1024 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Ukuran foto maksimal 5 MB"})
+			return
+		}
 		contentType := file.Header.Get("Content-Type")
-		fileSrc, _ := file.Open(); defer fileSrc.Close()
+		fileSrc, _ := file.Open()
+		defer fileSrc.Close()
 
 		remotePath := fmt.Sprintf("employees/%d/avatar_%s", storeID, newNIK)
 		urlResult, errUpload := utils.UploadToSupabase(fileSrc, file.Filename, contentType, bucketName, remotePath)
-		if errUpload == nil { fotoURL = urlResult }
+		if errUpload == nil {
+			fotoURL = urlResult
+		}
 	}
 
 	employee := models.User{
@@ -76,58 +103,110 @@ func (h *RetailHandler) CreateEmployee(c *gin.Context) {
 		FotoURL:      fotoURL,
 	}
 
-	if err := h.Repo.CreateEmployee(&employee); err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal simpan data ke cloud database"}); return }
+	if err := h.Repo.CreateEmployee(&employee); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal simpan data ke cloud database"})
+		return
+	}
 	c.JSON(http.StatusCreated, gin.H{"message": "Karyawan baru berhasil didaftarkan! 🤝", "data": gin.H{"nama": employee.Name, "nik": newNIK, "jabatan": employee.Role}})
 }
 
 func (h *RetailHandler) GetEmployees(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
+	}
 
 	employees, err := h.Repo.GetAllEmployees(storeID)
-	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data karyawan"}); return }
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data karyawan"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"data": employees})
 }
 
 func (h *RetailHandler) UpdateEmployee(c *gin.Context) {
 	roleOwner, _ := c.Get("role")
-	if roleOwner != "owner" { c.JSON(http.StatusForbidden, gin.H{"error": "Hanya owner yang bisa edit data tim!"}); return }
+	if roleOwner != "owner" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Hanya owner yang bisa edit data tim!"})
+		return
+	}
 
-	idStr := c.Param("id"); id, _ := strconv.Atoi(idStr)
-	employee, err := h.Repo.GetEmployeeByID(uint(id))
-	if err != nil { c.JSON(http.StatusNotFound, gin.H{"error": "Karyawan tidak ditemukan!"}); return }
+	// 🚀 1. TARIK STORE_ID DARI JWT BIAR AMAN LINTAS TOKO
+	storeID := getStoreID(c)
+
+	idStr := c.Param("id")
+	id, _ := strconv.Atoi(idStr)
+
+	// 🚀 2. INJECT PARAMETER KEDUA (storeID)
+	employee, err := h.Repo.GetEmployeeByID(uint(id), storeID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Karyawan tidak ditemukan!"})
+		return
+	}
 
 	employee.Name = c.PostForm("name")
 	employee.TempatLahir = c.PostForm("tempat_lahir")
 	employee.TanggalLahir = c.PostForm("tanggal_lahir")
 
-	if inputHP := c.PostForm("no_hp"); inputHP != "" { employee.NoHP = utils.FormatPhoneNumber(inputHP) }
-	if newRole := c.PostForm("role"); newRole != "" { employee.Role = newRole }
+	if inputHP := c.PostForm("no_hp"); inputHP != "" {
+		employee.NoHP = utils.FormatPhoneNumber(inputHP)
+	}
+	if newRole := c.PostForm("role"); newRole != "" {
+		employee.Role = newRole
+	}
 	if password := c.PostForm("password"); password != "" {
 		hashed, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		employee.Password = string(hashed)
 	}
 
 	nikClean := "karyawan"
-	if employee.NIK != nil { nikClean = *employee.NIK }
+	if employee.NIK != nil {
+		nikClean = *employee.NIK
+	}
 	bucketName := os.Getenv("SUPABASE_BUCKET_NAME")
+
+	// 🔒 3. ANTI-IDOR SHIELD: Tarik PublicID Toko buat penamaan folder
+	db := h.Repo.GetDB()
+	var store models.Store
+	if err := db.Select("public_id").First(&store, storeID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memverifikasi keamanan penyimpanan data."})
+		return
+	}
 
 	if file, err := c.FormFile("foto"); err == nil {
 		contentType := file.Header.Get("Content-Type")
-		fileSrc, _ := file.Open(); defer fileSrc.Close()
-		remotePath := fmt.Sprintf("employees/%d/avatar_%s", *employee.StoreID, nikClean)
-		if urlResult, errUpload := utils.UploadToSupabase(fileSrc, file.Filename, contentType, bucketName, remotePath); errUpload == nil { employee.FotoURL = urlResult }
+		fileSrc, _ := file.Open()
+		defer fileSrc.Close()
+
+		// 🚀 UBAH KE PUBLIC_ID BIAR NGGAK BISA DITEBAK HACKER
+		remotePath := fmt.Sprintf("stores/%s/employees/avatar_%s_%d", store.PublicID, nikClean, time.Now().Unix())
+		if urlResult, errUpload := utils.UploadToSupabase(fileSrc, file.Filename, contentType, bucketName, remotePath); errUpload == nil {
+			employee.FotoURL = urlResult
+		}
 	}
 
 	if bioFile, errBio := c.FormFile("biometric_file"); errBio == nil {
 		contentType := bioFile.Header.Get("Content-Type")
-		fileSrc, _ := bioFile.Open(); defer fileSrc.Close()
-		remotePath := fmt.Sprintf("employees/%d/biometric_%s", *employee.StoreID, nikClean)
-		if urlResult, errUpload := utils.UploadToSupabase(fileSrc, bioFile.Filename, contentType, bucketName, remotePath); errUpload == nil { employee.BiometricURL = urlResult }
+		fileSrc, _ := bioFile.Open()
+		defer fileSrc.Close()
+
+		// 🚀 UBAH KE PUBLIC_ID
+		remotePath := fmt.Sprintf("stores/%s/employees/biometric_%s_%d", store.PublicID, nikClean, time.Now().Unix())
+		if urlResult, errUpload := utils.UploadToSupabase(fileSrc, bioFile.Filename, contentType, bucketName, remotePath); errUpload == nil {
+			employee.BiometricURL = urlResult
+		}
 	}
 
-	if err := h.Repo.SaveEmployee(employee); err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan perubahan"}); return }
+	if err := h.Repo.SaveEmployee(employee); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan perubahan"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "Data berhasil diperbarui! 💾", "data": employee})
 }
 
@@ -148,25 +227,55 @@ type BulkScheduleInput struct {
 func (h *RetailHandler) SaveSchedules(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
+	}
 
 	var input BulkScheduleInput
-	if err := c.ShouldBindJSON(&input); err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Format data jadwal tidak valid!"}); return }
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data jadwal tidak valid!"})
+		return
+	}
 
-	db := h.Repo.GetDB(); tx := db.Begin()
+	db := h.Repo.GetDB()
+	tx := db.Begin()
 	for _, item := range input.Schedules {
 		jamMasuk, jamPulang := "-", "-"
-		if item.ShiftType == "Shift 1" { jamMasuk = "07:00"; jamPulang = "15:00" } else if item.ShiftType == "Shift 2" { jamMasuk = "15:00"; jamPulang = "23:00" } else if item.ShiftType == "Middle" { jamMasuk = "11:00"; jamPulang = "19:00" }
+		if item.ShiftType == "Shift 1" {
+			jamMasuk = "07:00"
+			jamPulang = "15:00"
+		} else if item.ShiftType == "Shift 2" {
+			jamMasuk = "15:00"
+			jamPulang = "23:00"
+		} else if item.ShiftType == "Middle" {
+			jamMasuk = "11:00"
+			jamPulang = "19:00"
+		}
 
 		existing, err := h.Repo.GetScheduleByDate(tx, item.UserID, item.Tanggal)
 		if err == nil {
-			existing.ShiftType = item.ShiftType; existing.JamMasukJadwal = jamMasuk; existing.JamPulangJadwal = jamPulang
-			if err := h.Repo.SaveScheduleTx(tx, existing); err != nil { tx.Rollback(); c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal update jadwal"}); return }
+			existing.ShiftType = item.ShiftType
+			existing.JamMasukJadwal = jamMasuk
+			existing.JamPulangJadwal = jamPulang
+			if err := h.Repo.SaveScheduleTx(tx, existing); err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal update jadwal"})
+				return
+			}
 		} else {
 			newSchedule := models.Schedule{
 				StoreID: storeID, UserID: item.UserID, Tanggal: item.Tanggal, ShiftType: item.ShiftType, JamMasukJadwal: jamMasuk, JamPulangJadwal: jamPulang,
 			}
-			if err := h.Repo.CreateScheduleTx(tx, &newSchedule); err != nil { tx.Rollback(); c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal simpan jadwal baru"}); return }
+			if err := h.Repo.CreateScheduleTx(tx, &newSchedule); err != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal simpan jadwal baru"})
+				return
+			}
 		}
 	}
 	tx.Commit()
@@ -176,11 +285,22 @@ func (h *RetailHandler) SaveSchedules(c *gin.Context) {
 func (h *RetailHandler) GetSchedules(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
+	}
 
-	startDate := c.Query("start_date"); endDate := c.Query("end_date")
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
 	listJadwal, err := h.Repo.GetSchedulesRange(storeID, startDate, endDate)
-	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menarik data jadwal"}); return }
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menarik data jadwal"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"data": listJadwal})
 }
 
@@ -196,47 +316,96 @@ type AbsenInput struct {
 
 func (h *RetailHandler) StoreAttendance(c *gin.Context) {
 	storeIDRaw, exists := c.Get("store_id")
-	if !exists || storeIDRaw == nil { c.JSON(http.StatusForbidden, gin.H{"error": "Toko tidak terdeteksi!"}); return }
+	if !exists || storeIDRaw == nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Toko tidak terdeteksi!"})
+		return
+	}
 	var storeID uint
-	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
+	}
 
 	var input AbsenInput
-	if err := c.ShouldBindJSON(&input); err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Format data tidak valid!"}); return }
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data tidak valid!"})
+		return
+	}
 
-	loc, _ := time.LoadLocation("Asia/Jakarta"); now := time.Now().In(loc)
-	today := now.Format("2006-01-02"); nowTime := now.Format("15:04:05")
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	now := time.Now().In(loc)
+	today := now.Format("2006-01-02")
+	nowTime := now.Format("15:04:05")
 	attendance, err := h.Repo.GetAttendanceToday(input.UserID, today)
 
 	if input.Jenis == "Masuk" {
-		if err == nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Anda sudah melakukan Absen Masuk hari ini!"}); return }
+		if err == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Anda sudah melakukan Absen Masuk hari ini!"})
+			return
+		}
 		absen := models.Attendance{
 			StoreID: storeID, UserID: input.UserID, Tanggal: today, JamMasuk: nowTime, FotoMasuk: input.Foto, Status: "Hadir",
 		}
-		if err := h.Repo.CreateAttendance(&absen); err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal absensi masuk!"}); return }
+		if err := h.Repo.CreateAttendance(&absen); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal absensi masuk!"})
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{"message": "Absen Masuk Berhasil! Selamat Bekerja."})
 	} else if input.Jenis == "Pulang" {
-		if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Anda belum melakukan Absen Masuk hari ini!"}); return }
-		if attendance.JamPulang != "" { c.JSON(http.StatusBadRequest, gin.H{"error": "Anda sudah melakukan Absen Pulang hari ini!"}); return }
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Anda belum melakukan Absen Masuk hari ini!"})
+			return
+		}
+		if attendance.JamPulang != "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Anda sudah melakukan Absen Pulang hari ini!"})
+			return
+		}
 
-		attendance.JamPulang = nowTime; attendance.FotoPulang = input.Foto
-		if err := h.Repo.SaveAttendance(attendance); err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal absen pulang!"}); return }
+		attendance.JamPulang = nowTime
+		attendance.FotoPulang = input.Foto
+		if err := h.Repo.SaveAttendance(attendance); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal absen pulang!"})
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{"message": "Absen Pulang Berhasil! Hati-hati di jalan."})
-	} else { c.JSON(http.StatusBadRequest, gin.H{"error": "Jenis absen tidak dikenali!"}) }
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Jenis absen tidak dikenali!"})
+	}
 }
 
 func (h *RetailHandler) GetAttendance(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
+	}
 
-	tanggal := c.Query("tanggal"); bulan := c.Query("bulan"); tahun := c.Query("tahun")
-	loc, _ := time.LoadLocation("Asia/Jakarta"); now := time.Now().In(loc); todayStr := now.Format("2006-01-02")
+	tanggal := c.Query("tanggal")
+	bulan := c.Query("bulan")
+	tahun := c.Query("tahun")
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	now := time.Now().In(loc)
+	todayStr := now.Format("2006-01-02")
 
 	var prefixBulan string
-	if tanggal == "" && bulan != "" && tahun != "" { prefixBulan = fmt.Sprintf("%s-%s-%%", tahun, bulan) }
+	if tanggal == "" && bulan != "" && tahun != "" {
+		prefixBulan = fmt.Sprintf("%s-%s-%%", tahun, bulan)
+	}
 
 	riwayat, err := h.Repo.GetAttendanceReport(storeID, tanggal, prefixBulan)
-	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menarik log absensi"}); return }
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menarik log absensi"})
+		return
+	}
 
 	db := h.Repo.GetDB()
 	for i := 0; i < len(riwayat); i++ {
@@ -246,7 +415,9 @@ func (h *RetailHandler) GetAttendance(c *gin.Context) {
 			if riwayat[i].Tanggal < todayStr {
 				riwayat[i].Status = "Lupa Absen Pulang"
 				db.Model(&riwayat[i]).Update("status", "Lupa Absen Pulang")
-			} else { riwayat[i].Status = "Hadir" }
+			} else {
+				riwayat[i].Status = "Hadir"
+			}
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{"data": riwayat})
@@ -254,21 +425,33 @@ func (h *RetailHandler) GetAttendance(c *gin.Context) {
 
 func (h *RetailHandler) ExportAttendance(c *gin.Context) {
 	storeID := uint(c.MustGet("store_id").(float64))
-	bulan := c.Query("bulan"); tahun := c.Query("tahun")
-	if bulan == "" || tahun == "" { c.JSON(http.StatusBadRequest, gin.H{"error": "Bulan dan tahun harus diisi!"}); return }
+	bulan := c.Query("bulan")
+	tahun := c.Query("tahun")
+	if bulan == "" || tahun == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Bulan dan tahun harus diisi!"})
+		return
+	}
 
 	prefixBulan := fmt.Sprintf("%s-%s-%%", tahun, bulan)
 	riwayat, err := h.Repo.GetAttendanceReport(storeID, "", prefixBulan)
-	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses ekspor laporan"}); return }
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses ekspor laporan"})
+		return
+	}
 
-	b := &bytes.Buffer{}; w := csv.NewWriter(b)
+	b := &bytes.Buffer{}
+	w := csv.NewWriter(b)
 	w.Write([]string{"Tanggal", "NIK", "Nama Karyawan", "Jam Masuk", "Jam Pulang", "Status"})
 
 	for _, logData := range riwayat {
 		nik := "-"
-		if logData.User.NIK != nil { nik = *logData.User.NIK }
+		if logData.User.NIK != nil {
+			nik = *logData.User.NIK
+		}
 		jamPulang := logData.JamPulang
-		if jamPulang == "" { jamPulang = "Belum Pulang" }
+		if jamPulang == "" {
+			jamPulang = "Belum Pulang"
+		}
 		w.Write([]string{logData.Tanggal, nik, logData.User.Name, logData.JamMasuk, jamPulang, logData.Status})
 	}
 	w.Flush()

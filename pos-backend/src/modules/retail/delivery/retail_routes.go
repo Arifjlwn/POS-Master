@@ -9,11 +9,17 @@ import (
 func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 
 	// =====================================
-	// 🟢 FITUR LEVEL 1 (BASIC & CORE PAYMENT)
+	// 🟢 FITUR GERBANG UTAMA (BYPASS BILLING CHECK FOR PAYMENT GATEWAY)
 	// =====================================
-	
+
+	// 🚀 FIX MUTLAK: Cabut RequireSaaSLevel dari rute upgrade pembayaran bray! Toko inactive WAJIB bisa ngakses rute ini buat dapet Snap Token Midtrans!
+	rg.POST("/subscription/upgrade", h.CreateUpgradePayment)
+
+	// =====================================
+	// 🟢 FITUR LEVEL 1 (BASIC & CORE OPERATIONAL RETAIL)
+	// =====================================
+
 	rg.POST("/pos/midtrans-order", middlewares.RequireSaaSLevel(1), h.CreatePosMidtransOrder)
-	rg.POST("/subscription/upgrade", middlewares.RequireSaaSLevel(1), h.CreateUpgradePayment)
 
 	// Master Produk & Kategori Catalog
 	rg.POST("/products", middlewares.RequireSaaSLevel(1), h.CreateProduct)
@@ -44,7 +50,7 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 	// =====================================
 	// 🟡 FITUR LEVEL 2 (PRO - TIM & ABSENSI)
 	// =====================================
-	
+
 	// Absensi Karyawan
 	rg.POST("/attendance", middlewares.RequireSaaSLevel(2), h.StoreAttendance)
 	rg.GET("/attendance", middlewares.RequireSaaSLevel(2), h.GetAttendance)
@@ -62,7 +68,7 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 	// =====================================
 	// 🔴 FITUR LEVEL 3 (PREMIUM - ANALYTICS & INVENTORY AUDIT)
 	// =====================================
-	
+
 	// Dashboard Analytics Report Owner
 	rg.GET("/report/dashboard", middlewares.RequireSaaSLevel(3), h.GetDashboardReport)
 
@@ -72,7 +78,7 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 	rg.GET("/stock-opname/last-minus", middlewares.RequireSaaSLevel(3), h.GetLastSOMinusItems)
 	rg.GET("/stock-opname/history", middlewares.RequireSaaSLevel(3), h.GetStockOpnameHistory)
 	rg.PATCH("/stock-opname/:id/approve", middlewares.RequireSaaSLevel(3), h.ApproveStockOpname)
-	
+
 	// Klaim Penemuan Barang Nyempil (Adjustment)
 	rg.POST("/stock-adjustment/request", middlewares.RequireSaaSLevel(3), h.SubmitKlaimBarang)
 	rg.GET("/stock-adjustment/history", middlewares.RequireSaaSLevel(3), h.GetStockAdjustmentHistory)
@@ -81,4 +87,7 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 	// Retur Barang
 	rg.POST("/returns", middlewares.RequireSaaSLevel(3), h.CreateReturn)
 	rg.GET("/returns", middlewares.RequireSaaSLevel(3), h.GetReturns)
+
+	// INTEGRASI EKSTERNAL
+	rg.POST("/whatsapp/test", middlewares.RequireSaaSLevel(3), h.TestWhatsApp)
 }
