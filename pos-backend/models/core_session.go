@@ -8,7 +8,7 @@ type CashierSession struct {
 
 	StoreID uint `gorm:"not null;index" json:"store_id"`
 	
-	// FIX AUDIT FINANSIAL:UserID tetap menjadi pemilik utama laci kasir shift tersebut bray
+	// FIX AUDIT FINANSIAL:UserID tetap menjadi pemilik utama laci kasir shift tersebut
 	UserID uint `gorm:"not null;index" json:"user_id"`
 
 	// 🔒 GEMBOK PROTEKSI POS MULTI-TENANT (PARTIAL UNIQUE INDEX POSTGRESQL):
@@ -25,7 +25,7 @@ type CashierSession struct {
 	TotalKeluar float64 `gorm:"type:decimal(15,2);default:0" json:"total_keluar"` // Retur / Paid Out
 
 	// Closing Audit Data
-	TotalAktual float64 `gorm:"type:decimal(15,2);default:0" json:"total_aktual"` // Uang fisik di laci kasir nyatanya bray
+	TotalAktual float64 `gorm:"type:decimal(15,2);default:0" json:"total_aktual"` // Uang fisik di laci kasir nyatanya 
 	Selisih     float64 `gorm:"type:decimal(15,2);default:0" json:"selisih"`      // TotalAktual - (ModalAwal + TotalMasuk - TotalKeluar)
 	ClosingNote string  `gorm:"type:text" json:"closing_note"`
 

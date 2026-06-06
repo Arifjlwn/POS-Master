@@ -37,7 +37,7 @@ func (h *RetailHandler) OpenSession(c *gin.Context) {
 	nowInJKT := time.Now().In(loc)
 	today := nowInJKT.Format("2006-01-02")
 
-	// 📸 INTEGRASI ABSENSI: Pastikan staff sudah melakukan absen Face AI hari ini bray
+	// 📸 INTEGRASI ABSENSI: Pastikan staff sudah melakukan absen Face AI hari ini 
 	if userRole != "owner" {
 		if _, err := h.Repo.GetAttendanceToday(userID, today); err != nil {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Sistem mendeteksi Anda belum melakukan Absen Wajah hari ini!", "tanggal_hari_ini": today})
@@ -88,7 +88,7 @@ func (h *RetailHandler) OpenSession(c *gin.Context) {
 		UserID:        userID,
 		StationNumber: input.StationNumber,
 		ModalAwal:     input.ModalAwal,
-		OpenedBy:      userID, // Catat penanggung jawab pembuka sesi bray bray
+		OpenedBy:      userID, // Catat penanggung jawab pembuka sesi  
 		Status:        "open",
 		OpenedAt:      nowInJKT,
 	}
@@ -119,7 +119,7 @@ func (h *RetailHandler) CheckSessionStatus(c *gin.Context) {
 	if errStore == nil { session.Store = *store }
 
 	// 🛡️ SANITASI KEAMANAN DATA: Hapus data password hash dan pin hash 
-	// sebelum objek JSON dikirim ke client side browser demi mencegah XSS Leak bray!
+	// sebelum objek JSON dikirim ke client side browser demi mencegah XSS Leak !
 	session.User.Password = ""
 	// session.User.Pin = ""
 
@@ -147,7 +147,7 @@ func (h *RetailHandler) CloseSession(c *gin.Context) {
 		return
 	}
 
-	// Pastikan sesi laci kasir tidak diproses closing berulang-ulang bray
+	// Pastikan sesi laci kasir tidak diproses closing berulang-ulang 
 	if session.Status == "closed" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Sesi laci kasir ini sudah berstatus CLOSED!"})
 		return
@@ -158,7 +158,7 @@ func (h *RetailHandler) CloseSession(c *gin.Context) {
 	salesCash, _ := h.Repo.GetSalesMethodSummary(sessionIDStr, "Cash")
 	salesNonTunai := salesGross - salesCash
 	
-	// 💸 FIX AKUNTANSI: Rumus perhitungan ekspektasi wajib dikurangi dengan pengeluaran kas laci (TotalKeluar) bray!
+	// 💸 FIX AKUNTANSI: Rumus perhitungan ekspektasi wajib dikurangi dengan pengeluaran kas laci (TotalKeluar) !
 	totalExpected := (session.ModalAwal + salesCash) - session.TotalKeluar
 	selisih := input.TotalAktual - totalExpected
 
@@ -170,7 +170,7 @@ func (h *RetailHandler) CloseSession(c *gin.Context) {
 	session.Selisih = selisih
 	session.Status = "closed"
 	session.ClosedAt = &now
-	session.ClosedBy = &userID // Catat ID user saksi yang memproses closing bray
+	session.ClosedBy = &userID // Catat ID user saksi yang memproses closing 
 	session.UpdatedAt = now
 
 	newClosing := models.ShiftClosing{
@@ -209,7 +209,7 @@ func (h *RetailHandler) CloseSession(c *gin.Context) {
 		"modal_awal":      session.ModalAwal,
 		"sales_cash":      salesCash,
 		"sales_non_tunai": salesNonTunai,
-		"total_keluar":    session.TotalKeluar, // Informasikan juga total pengeluaran laci kasir bray
+		"total_keluar":    session.TotalKeluar, // Informasikan juga total pengeluaran laci kasir 
 		"total_expected":  totalExpected,
 		"total_actual":    input.TotalAktual,
 		"selisih":         selisih,

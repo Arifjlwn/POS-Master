@@ -57,7 +57,7 @@ func SetupTokoBaru(c *gin.Context) {
 	
 	jwtSecret := os.Getenv("JWT_SECRET")
 	
-	// 🚀 FIX MUTLAK: is_select WAJIB diset false agar token ini BEBAS menembus whitelist middleware bray!
+	// 🚀 FIX MUTLAK: is_select WAJIB diset false agar token ini BEBAS menembus whitelist middleware!
 	newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id":   userID,
 		"public_id": user.PublicID,

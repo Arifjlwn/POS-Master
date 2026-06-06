@@ -15,7 +15,7 @@ export function useAbsensi() {
     let timer;
 
     const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
-    // 🚀 REVISI AMAN: Validasi tipe data gambar agar Base64 dan URL Cloud tidak bentrok 404 bray
+    // 🚀 REVISI AMAN: Validasi tipe data gambar agar Base64 dan URL Cloud tidak bentrok 404
     const getCleanUrl = (url) => {
         if (!url || url === 'null' || url === 'undefined' || url === '') return null;
         

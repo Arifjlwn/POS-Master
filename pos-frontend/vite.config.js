@@ -9,7 +9,7 @@ export default defineConfig({
     proxy: {
       // 🚀 OPER JALUR STATIC UPLOADS KE BACKEND GO
       '/uploads': {
-        target: 'http://127.0.0.1:8080', // Gunakan IP loopback murni atau IP komputer lu bray
+        target: 'http://127.0.0.1:8080', // Gunakan IP loopback murni atau IP komputer lu 
         changeOrigin: true,
         secure: false,
       },

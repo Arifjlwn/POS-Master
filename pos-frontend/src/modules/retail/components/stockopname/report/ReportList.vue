@@ -6,6 +6,18 @@ defineProps({
     calculateLoss: Function
 });
 defineEmits(['select']);
+
+// 🚀 FIX LOGIC: Deteksi arah kerugian/surplus asli berdasarkan kuantitas selisih barang bray
+const getFinansialStatus = (details) => {
+    if (!details || details.length === 0) return 'BALANCE';
+    
+    // Hitung total akumulasi selisih fisik barang
+    const totalSelisih = details.reduce((acc, item) => acc + Number(item.selisih || 0), 0);
+    
+    if (totalSelisih < 0) return 'MINUS';
+    if (totalSelisih > 0) return 'PLUS';
+    return 'BALANCE';
+};
 </script>
 
 <template>
@@ -35,13 +47,15 @@ defineEmits(['select']);
                                 <span v-else-if="r.so.status === 'APPROVED'" class="w-2 h-2 rounded-full bg-emerald-500" title="SO Disetujui"></span>
                             </div>
                             
-                            <div class="text-[10px] text-slate-400 font-bold mt-1 line-clamp-1">{{ r.so.notes }}</div>
+                            <div class="text-[10px] text-slate-400 font-bold mt-1 line-clamp-1" :title="r.so.notes || 'Tidak ada catatan'">
+                                {{ r.so.notes || 'Tanpa catatan audit' }}
+                            </div>
                             
                             <div class="mt-3 flex items-center gap-2">
-                                <span v-if="calculateLoss(r.so.details, 'SO') < 0" class="bg-red-100 text-red-600 px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest shadow-sm">
+                                <span v-if="getFinansialStatus(r.so.details) === 'MINUS'" class="bg-red-100 text-red-600 px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest shadow-sm">
                                     RUGI / MINUS
                                 </span>
-                                <span v-else-if="calculateLoss(r.so.details, 'SO') > 0" class="bg-emerald-100 text-emerald-600 px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest shadow-sm">
+                                <span v-else-if="getFinansialStatus(r.so.details) === 'PLUS'" class="bg-emerald-100 text-emerald-600 px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest shadow-sm">
                                     SURPLUS / PLUS
                                 </span>
                                 <span v-else class="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest shadow-sm">

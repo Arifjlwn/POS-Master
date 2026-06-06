@@ -37,7 +37,7 @@ func main() {
 	// 🚀 SANGAR: CORS Tight Guard dinamis berbasis ENV
     r.Use(cors.New(cors.Config{
         AllowOriginFunc: func(origin string) bool {
-            // JIKA MODE DEVELOPMENT, JANGAN KUNCI GERBANG BRAY, BIAR HP BISA MASUK LANCAR
+            // JIKA MODE DEVELOPMENT, JANGAN KUNCI GERBANG , BIAR HP BISA MASUK LANCAR
             if os.Getenv("APP_ENV") == "development" {
                 return true
             }
@@ -101,14 +101,14 @@ func main() {
 		// 🛒 Modul Bisnis: RETAIL MULTI-TENANT
         retailAPI := api.Group("/retail")
         {
-            // Rute inventory bawaan lu bray
+            // Rute inventory bawaan
             retailDelivery.RegisterRetailInventoryRoutes(retailAPI, retailHandler)
 
             // 🛡️ SUNTIKAN SAKTI SINKRONISASI POS CHECKOUT:
-            // Alamat penuh rute ini otomatis menjadi: POST /api/retail/pos/checkout bray!
+            // Alamat penuh rute ini otomatis menjadi: POST /api/retail/pos/checkout!
             retailAPI.POST("/pos/checkout", retailHandler.CreateTransaction)
             
-            // Sekalian tambahkan rute history dan closing laci yang ada di handler baru kita kemarin bray!
+            // Sekalian tambahkan rute history dan closing laci yang ada di handler baru kita kemarin!
             retailAPI.GET("/pos/transactions", retailHandler.GetTransactions)
             retailAPI.GET("/pos/daily-closing", retailHandler.GetDailyClosing)
         }

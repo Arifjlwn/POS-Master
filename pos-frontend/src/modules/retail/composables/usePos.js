@@ -80,7 +80,7 @@ export function usePos() {
         );
       } catch (err) {
         console.error(err); 
-        Swal.fire('Camera Error', 'Gagal mengakses kamera internal. Pastikan izin kamera aktif bray.', 'error'); 
+        Swal.fire('Camera Error', 'Gagal mengakses kamera internal. Pastikan izin kamera aktif .', 'error'); 
         stopScanner();
       }
     }, 300);
@@ -103,7 +103,7 @@ export function usePos() {
   const fetchProducts = async () => {
     try {
       const response = await posService.getProducts();
-      // Pastikan struktur mapping data sinkron sama penamaan field di database Go lu bray
+      // Pastikan struktur mapping data sinkron sama penamaan field di database Go lu 
       products.value = (response.data || response).map((p) => ({
         id: p.id, 
         sku: p.sku || `SKU-${p.id}`, 
@@ -151,7 +151,7 @@ export function usePos() {
   // --- CORE ENGINE MANIPULASI KERANJANG KASIR ---
   const addToCart = (product) => {
     if (product.stock <= 0) {
-      return Swal.fire({ icon: 'error', title: 'Stok Kosong!', text: `Stok item ${product.name} di laci gudang telah habis bray.` });
+      return Swal.fire({ icon: 'error', title: 'Stok Kosong!', text: `Stok item ${product.name} di laci gudang telah habis .` });
     }
 
     const defaultUom = product.satuan_dasar;
@@ -253,7 +253,7 @@ export function usePos() {
 
   const clearCart = () => {
     if (cart.value.length === 0) return;
-    Swal.fire({ title: 'Kosongkan Keranjang?', text: 'Seluruh daftar belanjaan kasir saat ini akan dihapus permanen bray!', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal', customClass: { popup: 'rounded-[28px]' } }).then((result) => {
+    Swal.fire({ title: 'Kosongkan Keranjang?', text: 'Seluruh daftar belanjaan kasir saat ini akan dihapus permanen !', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal', customClass: { popup: 'rounded-[28px]' } }).then((result) => {
       if (result.isConfirmed) { cart.value = []; payAmount.value = 0; setPaymentMethod('Cash'); isMobileCartOpen.value = false; }
     });
   };
@@ -300,7 +300,7 @@ export function usePos() {
   };
   const setNominal = (amount) => { 
   if (amount === 0) {
-    payAmount.value = 0; // Kalau pencet 'C', reset murni jadi 0 bray
+    payAmount.value = 0; // Kalau pencet 'C', reset murni jadi 0 
   } else {
     payAmount.value += amount; // Tetap akumulatif! Klik 100 + 50 langsung jadi 150rb!
   }
@@ -355,7 +355,7 @@ export function usePos() {
       cart.value = []; 
       payAmount.value = 0; 
       setPaymentMethod('Cash'); 
-      await fetchProducts(); // Sinkronisasi ulang sisa stok terbaru pasca checkout bray
+      await fetchProducts(); // Sinkronisasi ulang sisa stok terbaru pasca checkout 
       
       nextTick(() => { if (searchInput.value) searchInput.value.focus(); });
     } catch (error) { 
@@ -373,7 +373,7 @@ export function usePos() {
     if (paymentMethod.value === 'QRIS') {
       const tipePayment = storeSettings.value?.payment_type;
       if (tipePayment === 'midtrans') {
-        if (typeof window.snap === 'undefined') return Swal.fire({ icon: 'error', title: 'Gateway Error', text: `Script Midtrans Snap tidak ter-load sempurna. Hubungi admin SaaS bray.` });
+        if (typeof window.snap === 'undefined') return Swal.fire({ icon: 'error', title: 'Gateway Error', text: `Script Midtrans Snap tidak ter-load sempurna. Hubungi admin SaaS .` });
         isProcessingCheckout.value = true;
 
         try {
@@ -425,7 +425,7 @@ export function usePos() {
   };
 
   const logout = () => {
-    Swal.fire({ title: 'Akhiri Shift Kerja?', text: 'Wajib lakukan cash-count uang fisik laci sebelum mengunci sistem kasir bray!', icon: 'question', showCancelButton: true, confirmButtonColor: '#2563eb', confirmButtonText: 'Ya, Hitung Duit', cancelButtonText: 'Batal', customClass: { popup: 'rounded-[28px]' } }).then((result) => {
+    Swal.fire({ title: 'Akhiri Shift Kerja?', text: 'Wajib lakukan cash-count uang fisik laci sebelum mengunci sistem kasir !', icon: 'question', showCancelButton: true, confirmButtonColor: '#2563eb', confirmButtonText: 'Ya, Hitung Duit', cancelButtonText: 'Batal', customClass: { popup: 'rounded-[28px]' } }).then((result) => {
       if (result.isConfirmed) { 
         Object.keys(pecahan.value).forEach((k) => (pecahan.value[k] = 0)); 
         showClosingModal.value = true; 
@@ -443,7 +443,7 @@ export function usePos() {
       storeSettings.value = setRes.data.data;
 
       // FIX AMAN: Pengaturan loading script Midtrans dinamis dilempar murni ke level view posretail.vue 
-      // agar tidak terjadi inisialisasi ganda listener window bray!
+      // agar tidak terjadi inisialisasi ganda listener window !
 
       const res = await posService.checkSession();
       if (!res.has_session) return router.push('/retail/pos/buka-kasir');

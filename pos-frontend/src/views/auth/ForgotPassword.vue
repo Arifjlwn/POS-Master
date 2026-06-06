@@ -48,7 +48,7 @@ const handleCheckAccount = async () => {
     Swal.fire({
       icon: "error",
       title: "Akun Tidak Ditemukan",
-      text: error.response?.data?.error || "Email atau nomor WA tidak terdaftar di sistem bray.",
+      text: error.response?.data?.error || "Email atau nomor WA tidak terdaftar di sistem .",
       confirmButtonColor: "#ef4444",
     });
   } finally {

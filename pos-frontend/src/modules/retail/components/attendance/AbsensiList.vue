@@ -2,7 +2,7 @@
 defineProps({ karyawan: Array, currentUser: Object });
 defineEmits(['mulai-absen']);
 
-// 🚀 SUNTIKAN URL SANITIZER: Biar foto profil terbaca bener dari backend/cloud bray
+// 🚀 SUNTIKAN URL SANITIZER: Biar foto profil terbaca bener dari backend/cloud 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const formatImageUrl = (path) => {

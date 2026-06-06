@@ -19,7 +19,7 @@ const formatRupiah = (angka) => {
   return new Intl.NumberFormat('id-ID').format(angka);
 };
 
-// 🚀 1. SUB-TOTAL DISPLAY ENGINE: Kebal dari jebakan null/undefined data bray
+// 🚀 1. SUB-TOTAL DISPLAY ENGINE: Kebal dari jebakan null/undefined data
 const subTotalDisplay = computed(() => {
   if (props.invoiceData?.subtotal !== undefined) return Number(props.invoiceData.subtotal);
   if (props.invoiceData?.sub_total !== undefined) return Number(props.invoiceData.sub_total);
@@ -52,11 +52,11 @@ const grandTotal = computed(() => {
   return subTotalDisplay.value + totalPajak.value;
 });
 
-// 🚀 4. NOMINAL KEMBALIAN KAS: Anti-Bug Falsy Value (Uang Pas tercetak sempurna bray)
+// 🚀 4. NOMINAL KEMBALIAN KAS: Anti-Bug Falsy Value (Uang Pas tercetak sempurna )
 const kembalianDisplay = computed(() => {
   if (!props.invoiceData) return 0;
   
-  // Tampung semua kemungkinan variasi nama field dari backend Go lu bray bray
+  // Tampung semua kemungkinan variasi nama field dari backend Go lu 
   const values = [
     props.invoiceData.return,
     props.invoiceData['return'],
@@ -71,7 +71,7 @@ const kembalianDisplay = computed(() => {
     }
   }
   
-  // Fallback hitungan manual jika backend ga ngirim data kembalian bray
+  // Fallback hitungan manual jika backend ga ngirim data kembalian
   const nominalBayar = props.invoiceData.pay ?? props.invoiceData.nominal_bayar ?? 0;
   const hasil = Number(nominalBayar) - grandTotal.value;
   return hasil > 0 ? hasil : 0;
@@ -80,7 +80,7 @@ const kembalianDisplay = computed(() => {
 // FUNGSI SILUMAN PEMBACA KEMASAN UOM MULTI-UNIT
 const formatKemasan = (item) => {
   if (item.detail_notes && item.detail_notes !== 'Transaksi Retail Toko') return item.detail_notes;
-  if (item.uom_label) return item.uom_label; // Jika backend udah ngirim label jadi, pakai langsung bray!
+  if (item.uom_label) return item.uom_label; // Jika backend udah ngirim label jadi, pakai langsung!
   
   const satuanPilihan = item.selected_uom || item.satuan_terpilih || item.satuan || item.kemasan;
   const qtyPilihan = item.qty || item.kuantitas || 0;
@@ -162,7 +162,7 @@ const triggerPrint = () => { window.print(); };
 </template>
 
 <style scoped>
-/* FIX CSS THERMAL: Mengunci lebar container dinamis murni saat simulasi dan eksekusi printer bray! */
+/* FIX CSS THERMAL: Mengunci lebar container dinamis murni saat simulasi dan eksekusi printer ! */
 #print-area {
   width: v-bind("storeData?.printer_width || storeData?.PrinterWidth || '58mm'") !important;
   max-width: 100% !important;

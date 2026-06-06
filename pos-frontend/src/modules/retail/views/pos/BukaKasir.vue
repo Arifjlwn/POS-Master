@@ -25,7 +25,7 @@ const loadingPayment = ref(false);
 
 // WRAPPER FUNGSI BUKA KASIR DENGAN VALIDASI ENKAPSULASI
 const submitBukaKasir = async () => {
-    // Jaga-jaga kalau kasir belum memilih nomor stasiun laci bray
+    // Jaga-jaga kalau kasir belum memilih nomor stasiun laci 
     if (!stationNumber.value) {
         return Swal.fire({
             icon: 'warning',
@@ -81,7 +81,7 @@ const beliLisensiTambahan = async () => {
                 }).then(() => {
                     showUpgradeModal.value = false;
                     loadingPayment.value = false;
-                    handleBukaKasir(); // Eksekusi langsung buka terminal barunya bray
+                    handleBukaKasir(); // Eksekusi langsung buka terminal barunya 
                 });
             },
             onPending: function (result) {
@@ -134,7 +134,7 @@ onMounted(async () => {
         ? "https://app.sandbox.midtrans.com/snap/snap.js" 
         : "https://app.midtrans.com/snap/snap.js";
 
-    // FIX AMAN: Ambil Client Key SaaS secara dinamis dari environment system (.env) bray!
+    // FIX AMAN: Ambil Client Key SaaS secara dinamis dari environment system (.env) !
     const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY || "SB-Mid-client-fallback";
     script.setAttribute("data-client-key", clientKey);
     document.head.appendChild(script);
@@ -224,7 +224,7 @@ onMounted(async () => {
                             >Select Device Station</label
                         >
                         <div class="grid grid-cols-3 gap-3">
-                            <!-- RENDER LIMITASI PILIHAN KASIR BERDASARKAN TOTAL KUOTA MAKSIMALNYA BRAY -->
+                            <!-- RENDER LIMITASI PILIHAN KASIR BERDASARKAN TOTAL KUOTA MAKSIMALNYA  -->
                             <button
                                 v-for="n in Array.from({length: Math.max(3, quotaTerminal)}, (_, i) => String(i + 1).padStart(2, '0'))"
                                 :key="n"

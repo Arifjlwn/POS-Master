@@ -10,26 +10,25 @@ import (
 // ==========================================
 
 type StockOpname struct {
-	ID        uint                `gorm:"primaryKey" json:"id"`
-	PublicID  string              `gorm:"size:26;uniqueIndex;not null" json:"public_id"` // 🚀 Masking ID eksternal via ULID
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	PublicID  string    `gorm:"size:26;uniqueIndex;not null" json:"public_id"` // Masking ID eksternal via ULID
 
-	StoreID   uint                `gorm:"index;not null" json:"store_id"`
-	UserID    uint                `gorm:"not null;index" json:"user_id"`
+	StoreID   uint      `gorm:"index;not null" json:"store_id"`
+	UserID    uint      `gorm:"not null;index" json:"user_id"`
 
-	Notes     string              `gorm:"type:text" json:"notes"`
-	Status    string              `gorm:"type:varchar(50);default:'PENDING_APPROVAL';index" json:"status"` // PENDING_APPROVAL / APPROVED
-	BuktiBar  string              `gorm:"type:text" json:"bukti_bar"` // URL Panjang Supabase aman tanpa takut truncate
+	Notes     string    `gorm:"type:text" json:"notes"`
+	Status    string    `gorm:"type:varchar(50);default:'PENDING_APPROVAL';index" json:"status"` // PENDING_APPROVAL / APPROVED
+	BuktiBar  string    `gorm:"type:text" json:"bukti_bar"` // URL Panjang Supabase aman tanpa takut truncate
 
-	CreatedAt time.Time           `json:"created_at"`
-	UpdatedAt time.Time           `json:"updated_at"`
-	Details   []StockOpnameDetail `gorm:"foreignKey:OpnameID" json:"details"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Details   []StockOpnameDetail `gorm:"foreignKey:OpnameID;constraint:OnDelete:CASCADE;" json:"details"` // 🚀 Ditambah constraint cascade biar aman  
 }
 
 func (StockOpname) TableName() string { return "retail_stock_opnames" }
 
 type StockOpnameDetail struct {
 	ID        uint           `gorm:"primaryKey" json:"id"`
-	// 🚀 HYBRID OPTIMAL: PublicID ULID dibuang dari detail, hemat space index database!
 
 	OpnameID  uint           `gorm:"index;not null" json:"opname_id"`
 	ProductID uint           `gorm:"not null;index" json:"product_id"`
@@ -43,7 +42,8 @@ type StockOpnameDetail struct {
 	Product   models.Product `gorm:"foreignKey:ProductID" json:"product"`
 }
 
-func (StockOpnameDetail) TableName() string { return "retail_stock_stock_opname_details" }
+// 🛡️ FIX NAMA TABEL: Bersihkan typo double kata 'stock_stock'  biar query GORM lurus total!
+func (StockOpnameDetail) TableName() string { return "retail_stock_opname_details" }
 
 // ==========================================
 // 2. MODEL CONFIG UNIT: KLAIM BARANG NYEMPIL (ADJUSTMENT)
@@ -51,7 +51,7 @@ func (StockOpnameDetail) TableName() string { return "retail_stock_stock_opname_
 
 type StockAdjustment struct {
 	ID        uint                    `gorm:"primaryKey" json:"id"`
-	PublicID  string                  `gorm:"size:26;uniqueIndex;not null" json:"public_id"` // 🚀 Masking ID eksternal via ULID
+	PublicID  string                  `gorm:"size:26;uniqueIndex;not null" json:"public_id"` // Masking ID eksternal via ULID
 
 	StoreID   uint                    `gorm:"index;not null" json:"store_id"`
 	UserID    uint                    `gorm:"not null;index" json:"user_id"`
@@ -62,14 +62,13 @@ type StockAdjustment struct {
 
 	CreatedAt time.Time               `json:"created_at"`
 	UpdatedAt time.Time               `json:"updated_at"`
-	Details   []StockAdjustmentDetail `gorm:"foreignKey:AdjustmentID" json:"details"`
+	Details   []StockAdjustmentDetail `gorm:"foreignKey:AdjustmentID;constraint:OnDelete:CASCADE;" json:"details"`
 }
 
 func (StockAdjustment) TableName() string { return "retail_stock_adjustments" }
 
 type StockAdjustmentDetail struct {
 	ID           uint           `gorm:"primaryKey" json:"id"`
-	// 🚀 HYBRID OPTIMAL: PublicID ULID dibuang dari detail, hemat space index database!
 
 	AdjustmentID uint           `gorm:"index;not null" json:"adjustment_id"`
 	ProductID    uint           `gorm:"not null;index" json:"product_id"`

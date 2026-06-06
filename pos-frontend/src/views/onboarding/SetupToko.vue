@@ -39,7 +39,7 @@ const loadProvinsi = async () => {
 		const data = await res.json();
 		listProvinsi.value = data.map((item) => ({ id: item.id, name: item.nama }));
 	} catch (e) {
-		console.error('Gagal memuat data provinsi via Ibnux API bray', e);
+		console.error('Gagal memuat data provinsi via Ibnux API ', e);
 	}
 };
 
@@ -164,7 +164,7 @@ const formatNoHp = () => {
 	form.value.telepon = val;
 };
 
-// 🚀 FIX: Seluruh navigasi pasca Midtrans wajib pake window.location.href biar browser nge-reset instance API Axios secara total bray!
+// 🚀 FIX: Seluruh navigasi pasca Midtrans wajib pake window.location.href biar browser nge-reset instance API Axios secara total !
 const bukaSnapMidtrans = (snapToken) => {
 	window.snap.pay(snapToken, {
 		onSuccess: function (result) {
@@ -254,7 +254,7 @@ const submit = async () => {
 				const activeToken = tokenTerupdate || existingOwnerToken;
 
 				if (!activeToken) {
-					throw new Error('Sesi token owner tidak ditemukan di sistem. Harap login ulang bray.');
+					throw new Error('Sesi token owner tidak ditemukan di sistem. Harap login ulang .');
 				}
 
 				const payRes = await api.post(
@@ -300,7 +300,7 @@ const submit = async () => {
 			const kat = form.value.kategori_bisnis;
 			const det = (form.value.detail_bisnis || '').toLowerCase();
 
-			// 🚀 FIX: Hard reload juga untuk bypass router yang suka nge-cache state Axios bray
+			// 🚀 FIX: Hard reload juga untuk bypass router yang suka nge-cache state Axios 
 			if (kat === 'Retail' || kat === 'Lainnya') window.location.href = '/retail/dashboard';
 			else if (kat === 'F&B') window.location.href = '/fnb/dashboard';
 			else if (kat === 'Jasa') {

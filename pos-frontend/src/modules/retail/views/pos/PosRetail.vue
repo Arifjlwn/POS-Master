@@ -114,7 +114,7 @@ const {
 	noHpPelanggan,
 } = usePos();
 
-// INITIAL CHECKOUT ROUTER: Otak percabangan Midtrans vs QRIS Statis bray!
+// INITIAL CHECKOUT ROUTER: Otak percabangan Midtrans vs QRIS Statis !
 const handleInitialCheckout = async () => {
 	if (cart.length === 0) return;
 
@@ -131,7 +131,7 @@ const handleInitialCheckout = async () => {
 	if (paymentMethod.value === 'QRIS') {
 		if (storeData.value?.payment_type === 'midtrans') {
 			if (typeof window.snap === 'undefined') {
-				return Swal.fire('Sistem Loading', 'Script Midtrans belum siap, pastikan koneksi internet stabil bray.', 'warning');
+				return Swal.fire('Sistem Loading', 'Script Midtrans belum siap, pastikan koneksi internet stabil .', 'warning');
 			}
 			isProcessingCheckout.value = true;
 			try {
@@ -159,18 +159,18 @@ const handleInitialCheckout = async () => {
 				isProcessingCheckout.value = false;
 			}
 		} else {
-			showQrisModal.value = true; // Buka Modal Gambar QRIS Manual bray
+			showQrisModal.value = true; // Buka Modal Gambar QRIS Manual 
 		}
 	} else {
 		triggerCheckoutFlow();
 	}
 };
 
-// 🛡️ ANTI-FRAUD QRIS MANUAL: Paksa kasir sumpah konfirmasi mutasi masuk bray!
+// 🛡️ ANTI-FRAUD QRIS MANUAL: Paksa kasir sumpah konfirmasi mutasi masuk !
 const verifyManualQrisPayment = () => {
 	Swal.fire({
 		title: 'Konfirmasi Uang Masuk',
-		text: `Pastikan dana Rp ${totalBelanja.value.toLocaleString('id-ID')} SUDAH MASUK ke e-wallet toko sebelum mencetak struk bray!`,
+		text: `Pastikan dana Rp ${totalBelanja.value.toLocaleString('id-ID')} SUDAH MASUK ke e-wallet toko sebelum mencetak struk !`,
 		icon: 'warning',
 		showCancelButton: true,
 		confirmButtonColor: '#4f46e5',
@@ -186,7 +186,7 @@ const verifyManualQrisPayment = () => {
 };
 
 // 🛡️ FIX SECURITY: Cabut validasi premium dari LocalStorage!
-// Ambil status langsung dari object 'storeData' database aman backend bray!
+// Ambil status langsung dari object 'storeData' database aman backend !
 const triggerCheckoutFlow = () => {
 	showQrisModal.value = false;
 	const planFromDb = storeData.value?.subscription_plan || 'basic';
@@ -252,7 +252,7 @@ const goToRiwayat = () => router.push('/retail/pos/riwayat');
 				@validate-qty="validateQty"
 				@set-payment="setPaymentMethod"
 				@format-rupiah="formatInputRupiah"
-				@set-nominal="($event === 0) ? payAmount = 0 : payAmount += $event"
+				@set-nominal="$event === 0 ? (payAmount = 0) : (payAmount += $event)"
 				@checkout="handleInitialCheckout"
 				@toggle-uom="toggleUom" />
 		</div>
@@ -316,7 +316,8 @@ const goToRiwayat = () => router.push('/retail/pos/riwayat');
 
 		<WaPromptModal :show="showWaModal" :totalBelanja="totalBelanja" @submit="handleWaSubmit" @skip="handleWaSkip" @close="showWaModal = false" />
 		<ReceiptModal :show="showReceipt" :invoiceData="lastTransaction" :storeData="currentSession?.store || currentSession?.Store" :cashierName="currentUser?.name ? currentUser.name.split(' ')[0] : 'KASIR'" :stationNumber="currentSession?.station_number || '01'" @close="showReceipt = false" />
-		<ClosingModal :show="showClosingModal" :showReceiptClosing="showReceiptClosing" :pecahan="pecahan" :totalUangFisik="totalUangFisik" :lastClosingData="lastClosingData" :currentSession="currentSession" :currentUser="currentUser" :storeLogo="storeLogo" @close="showClosingModal = false" @process-closing="handleClosing" @print-closing="printClosing" @finish-closing="finishClosing" />
+
+		<ClosingModal :show="showClosingModal" :showReceiptClosing="showReceiptClosing" :pecahan="pecahan" :totalUangFisik="totalUangFisik" :lastClosingData="lastClosingData" :currentSession="currentSession" :currentUser="currentUser" :storeLogo="storeLogo" :storeData="storeData" @close="showClosingModal = false" @process-closing="handleClosing" @print-closing="printClosing" @finish-closing="showReceiptClosing = false" />
 	</div>
 </template>
 

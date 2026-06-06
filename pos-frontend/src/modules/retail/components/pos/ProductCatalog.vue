@@ -10,7 +10,7 @@ defineProps({
 
 const emit = defineEmits(['update:searchQuery', 'barcode-scan', 'start-scanner', 'show-held', 'add-to-cart']);
 
-// 🚀 JANGKAR SAKTI: Pengunci fokus kursor untuk Hardware Gun Scanner Kasir bray!
+// 🚀 JANGKAR SAKTI: Pengunci fokus kursor untuk Hardware Gun Scanner Kasir !
 const searchInputRef = ref(null);
 
 onMounted(() => {

@@ -295,7 +295,7 @@ export function useMasterProduk() {
 			fetchProducts(currentPage.value);
 			fetchCategories();
 		} catch (err) {
-			// Tangkep error dari backend Go lu bray
+			// Tangkep error dari backend Go lu
 			Swal.fire('Gagal!', err.response?.data?.error || err.message, 'error');
 		} finally {
 			isSubmitting.value = false;

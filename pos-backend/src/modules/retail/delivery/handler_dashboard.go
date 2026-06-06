@@ -100,7 +100,7 @@ func (h *RetailHandler) GetDashboardReport(c *gin.Context) {
 		ReturLoss float64 `json:"retur_loss"`
 	}
 
-	// 🚀 SANGAR: Sikat semua data harian pake single query agregat via repo bray (Anti N+1 loop)
+	// 🚀 SANGAR: Sikat semua data harian pake single query agregat via repo (Anti N+1 loop)
 	grafikPenjualan, err := h.Repo.GetAggregatedDailySales(storeID, start, end)
 	if err != nil || len(grafikPenjualan) == 0 {
 		grafikPenjualan = make([]map[string]interface{}, 0)

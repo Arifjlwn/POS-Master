@@ -11,7 +11,7 @@ export function useBukaKasir() {
     const name = ref(localStorage.getItem("name") || "Operator");
     const storeName = ref(localStorage.getItem("storeName") || "POS UMKM");
 
-    // Sesi Input States - Ambil dari localStorage jika sebelumnya kasir sengaja/tidak sengaja melakukan refresh halaman bray
+    // Sesi Input States - Ambil dari localStorage jika sebelumnya kasir sengaja/tidak sengaja melakukan refresh halaman 
     const stationNumber = ref(localStorage.getItem("active_station") || "01");
     const modalAwal = ref(0);
     const loading = ref(false);
@@ -59,7 +59,7 @@ export function useBukaKasir() {
             // EKSEKUSI API VIA SERVICE
             await posService.openSession({
                 station_number: stationNumber.value,
-                // FIX FINANSIAL: Gunakan nilai Integer murni bray, buang jauh-jauh parseFloat demi menghindari data rounding fraud!
+                // FIX FINANSIAL: Gunakan nilai Integer murni , buang jauh-jauh parseFloat demi menghindari data rounding fraud!
                 modal_awal: parseInt(modalAwal.value, 10),
             });
 
@@ -83,7 +83,7 @@ export function useBukaKasir() {
                 error.response.status === 403 &&
                 error.response.data?.error_code === "QUOTA_FULL"
             ) {
-                throw error; // Oper mentah-mentah ke BukaKasir.vue buat ngetrigger modal Midtrans bray!
+                throw error; // Oper mentah-mentah ke BukaKasir.vue buat ngetrigger modal Midtrans !
             }
 
             const msg = error.response?.data?.error || "Gagal membuka kasir";

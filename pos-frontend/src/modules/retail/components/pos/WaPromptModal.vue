@@ -10,7 +10,7 @@ const emit = defineEmits(['close', 'skip', 'submit']);
 const phone = ref('');
 const inputRef = ref(null);
 
-// 🚀 UX SMART: Setiap kali modal WA muncul, paksa kursor langsung berkedip di kotak input otomatis bray!
+// 🚀 UX SMART: Setiap kali modal WA muncul, paksa kursor langsung berkedip di kotak input otomatis !
 watch(() => props.show, (newVal) => {
     if (newVal) {
         nextTick(() => {
@@ -20,13 +20,13 @@ watch(() => props.show, (newVal) => {
 });
 
 const handleSubmit = () => {
-    // Bersihkan spasi atau karakter hantu jika ada bray
+    // Bersihkan spasi atau karakter hantu jika ada 
     let rawPhone = String(phone.value).trim();
 
-    // 🛡️ SECURITY BLOCK: Kunci total tombol enter agar tidak bisa bypass data sampah bray
+    // 🛡️ SECURITY BLOCK: Kunci total tombol enter agar tidak bisa bypass data sampah 
     if (rawPhone.length < 10) return;
 
-    // 🛡️ FONNTE API NORMALIZATION: Ubah otomatis format 08xx menjadi 628xx demi kelancaran gateway bray!
+    // 🛡️ FONNTE API NORMALIZATION: Ubah otomatis format 08xx menjadi 628xx demi kelancaran gateway !
     if (rawPhone.startsWith('0')) {
         rawPhone = '62' + rawPhone.slice(1);
     } else if (!rawPhone.startsWith('62') && rawPhone.startsWith('8')) {
@@ -59,7 +59,7 @@ const handleSkip = () => {
                 <!-- INPUT FIELD WA PELANGGAN -->
                 <div class="relative mb-6 text-left">
                     <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Nomor WhatsApp Pelanggan</label>
-                    <!-- Ditukar ke type text dengan pattern angka agar aman dari bug limit exponensial HTML5 bray -->
+                    <!-- Ditukar ke type text dengan pattern angka agar aman dari bug limit exponensial HTML5  -->
                     <input 
                         ref="inputRef"
                         v-model="phone" 

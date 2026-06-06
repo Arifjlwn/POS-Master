@@ -29,7 +29,7 @@ func ConnectDatabase() {
 	}
 
 	err = database.AutoMigrate(
-		// 🌐 CORE GLOBAL (Pondasi Utama & SDM - Urutan Wajib Di-lock Duluan Bray)
+		// 🌐 CORE GLOBAL (Pondasi Utama & SDM - Urutan Wajib Di-lock Duluan )
 		&models.Store{}, &models.User{}, &models.CashierSession{}, &models.Product{}, &models.Customer{}, &models.Attendance{}, &models.Schedule{}, &models.ShiftClosing{}, &models.Transaction{},
 
 		// 🛍️ RETAIL & INVENTORY

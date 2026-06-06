@@ -66,7 +66,7 @@ func RequireAuth(c *gin.Context) {
 
 		if !isAllowed {
 			c.JSON(http.StatusForbidden, gin.H{
-				"error": "Akses dibatasi! Selesaikan konfigurasi infrastruktur gerai atau tentukan cabang operasional Anda terlebih dahulu bray.",
+				"error": "Akses dibatasi! Selesaikan konfigurasi infrastruktur gerai atau tentukan cabang operasional Anda terlebih dahulu.",
 				"code":  "REQUIRE_STORE_SELECTION",
 			})
 			c.Abort()
@@ -107,7 +107,7 @@ func RequireSaaSLevel(minLevel int) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		storeIDRaw, exists := c.Get("store_id")
 		if !exists || storeIDRaw == nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Akses ditolak! Klaim data toko tidak ditemukan di dalam session token bray."})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Akses ditolak! Klaim data toko tidak ditemukan di dalam session token."})
 			c.Abort()
 			return
 		}
@@ -150,7 +150,7 @@ func RequireSaaSLevel(minLevel int) gin.HandlerFunc {
 			return
 		}
 
-		// 🚀 BYPASS DEWA: Jika plan berstatus premium atau trial, berikan hak akses mutlak tanpa batas level bray!
+		// 🚀 BYPASS DEWA: Jika plan berstatus premium atau trial, berikan hak akses mutlak tanpa batas level !
 		plan := strings.ToLower(strings.TrimSpace(store.SubscriptionPlan))
 		if plan == "premium" || plan == "trial" || strings.Contains(plan, "premium") {
 			c.Next()
@@ -165,7 +165,7 @@ func RequireSaaSLevel(minLevel int) gin.HandlerFunc {
 		}
 
 		if currentLevel < minLevel {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Akses API Ditolak! Fitur ini membutuhkan upgrade paket langganan bray.", "code": "UPGRADE_REQUIRED"})
+			c.JSON(http.StatusForbidden, gin.H{"error": "Akses API Ditolak! Fitur ini membutuhkan upgrade paket langganan.", "code": "UPGRADE_REQUIRED"})
 			c.Abort()
 			return
 		}

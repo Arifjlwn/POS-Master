@@ -6,7 +6,7 @@ import api from '../../../api.js';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const getImageUrl = (path) => {
-    // Pengetatan filter validasi karakter string bawaan localstorage bray
+    // Pengetatan filter validasi karakter string bawaan localstorage
     if (!path || path === 'null' || path === 'undefined' || path === '') return '';
     if (path.startsWith('http://') || path.startsWith('https://')) return path;
     
@@ -68,7 +68,7 @@ export function useSidebar() {
                 localStorage.removeItem('foto_url');
             }
             
-            // Perbarui state secara reaktif di internal UI bray
+            // Perbarui state secara reaktif di internal UI
             syncUserData();
         } catch (err) {
             console.error("Gagal sinkronisasi data profil dari server:", err.message);

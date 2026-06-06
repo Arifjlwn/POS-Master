@@ -352,7 +352,7 @@ func (h *RetailHandler) CreateUpgradePayment(c *gin.Context) {
 		if err := src.DB.First(&user, userIDRaw).Error; err == nil && user.StoreID != nil {
 			storeID = *user.StoreID
 		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Infrastruktur ID toko belum siap dikonfigurasi bray."})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Infrastruktur ID toko belum siap dikonfigurasi ."})
 			return
 		}
 	}

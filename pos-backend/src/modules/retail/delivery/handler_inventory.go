@@ -2,16 +2,19 @@ package delivery
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"os"
-	"strconv"
+	"strings"
 	"time"
 
+	"pos-backend/models"
 	"pos-backend/src/modules/retail/domain"
 	"pos-backend/utils"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // ==========================================
@@ -19,61 +22,49 @@ import (
 // ==========================================
 
 type SOItemInput struct {
-	ProductID uint   `json:"product_id"`
-	SystemQty int    `json:"system_qty"`
-	ActualQty int    `json:"actual_qty"`
-	Selisih   int    `json:"selisih"`
+	ProductID uint   `json:"product_id" binding:"required"`
+	ActualQty int    `json:"actual_qty" binding:"min=0"` 
 	Alasan    string `json:"alasan"`
 }
 
 type StockOpnameInput struct {
-	Notes  string        `json:"notes"`
-	Status string        `json:"status"`
-	Items  []SOItemInput `json:"items"`
+	Notes string        `json:"notes"`
+	Items []SOItemInput `json:"items" binding:"required,min=1"`
 }
 
 type KlaimItemInput struct {
-	ProductID uint   `json:"product_id"`
-	Qty       int    `json:"qty"`
-	Alasan    string `json:"alasan"`
+	ProductID uint   `json:"product_id" binding:"required"`
+	Qty       int    `json:"qty" binding:"required,gt=0"`
+	Alasan    string `json:"alasan" binding:"required"`
 }
 
 type KlaimRequest struct {
 	Notes string           `json:"notes"`
-	Items []KlaimItemInput `json:"items"`
+	Items []KlaimItemInput `json:"items" binding:"required,min=1"`
 }
 
 func (h *RetailHandler) CreateStockOpname(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	userIDRaw, _ := c.Get("user_id")
-	userRole := c.MustGet("role").(string)
+	userRoleRaw, _ := c.Get("role")
+	
 	var storeID, userID uint
-	switch v := storeIDRaw.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	case int:
-		storeID = uint(v)
-	}
-	switch v := userIDRaw.(type) {
-	case float64:
-		userID = uint(v)
-	case uint:
-		userID = v
-	case int:
-		userID = uint(v)
-	}
+	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
+	switch v := userIDRaw.(type) { case float64: userID = uint(v); case uint: userID = v; case int: userID = uint(v) }
+	userRole := strings.ToLower(userRoleRaw.(string))
 
 	var input StockOpnameInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data tidak valid!"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data audit tidak valid !"})
 		return
 	}
 
-	now := time.Now()
+	// 🌐 FIX TIMEZONE: Pakai Asia/Jakarta biar sinkron sama kasir toko bray
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	now := time.Now().In(loc)
+	
 	if h.Repo.CheckStockOpnameThisMonth(storeID, int(now.Month()), now.Year()) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Sistem Terkunci! Stock Opname hanya bisa dilakukan 1x dalam bulan yang sama."})
+		c.JSON(http.StatusForbidden, gin.H{"error": "Sistem Terkunci! Audit Stock Opname hanya bisa dilakukan 1x dalam bulan berjalan."})
 		return
 	}
 
@@ -85,42 +76,44 @@ func (h *RetailHandler) CreateStockOpname(c *gin.Context) {
 	db := h.Repo.GetDB()
 	err := db.Transaction(func(tx *gorm.DB) error {
 		so := domain.StockOpname{
-			PublicID:  utils.GenerateULID(), // 🚀 HYBRID MASTER: Injeksi ULID di level Header SO
+			PublicID:  utils.GenerateULID(), 
 			StoreID:   storeID,
 			UserID:    userID,
 			Notes:     input.Notes,
 			Status:    status,
 			CreatedAt: now,
 		}
-		if err := h.Repo.CreateStockOpname(tx, &so); err != nil {
+		if err := tx.Create(&so).Error; err != nil {
 			return err
 		}
 
 		for _, item := range input.Items {
-			product, err := h.Repo.GetProductByID(tx, item.ProductID, storeID)
-			if err != nil {
-				return err
+			var product models.Product
+			
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&product, "id = ? AND store_id = ?", item.ProductID, storeID).Error; err != nil {
+				return fmt.Errorf("produk ID %d gagal disisir di database master", item.ProductID)
 			}
 
-			// Kalkulasi Nilai Kerugian/Keuntungan Keuangan Uang Berdasarkan Selisih Fisik Barang
-			nilaiKerugian := float64(item.Selisih) * product.HargaModal
+			calculatedSystemQty := product.Stok
+			calculatedSelisih := item.ActualQty - calculatedSystemQty
+			nilaiKalkulasiUang := float64(calculatedSelisih) * product.HargaModal
 
 			detail := domain.StockOpnameDetail{
-				OpnameID:  so.ID, // 🚀 HYBRID OPTIMAL: Detail bersih tanpa PublicID ULID acak
+				OpnameID:  so.ID, 
 				ProductID: item.ProductID,
-				SystemQty: item.SystemQty,
+				SystemQty: calculatedSystemQty, 
 				ActualQty: item.ActualQty,
-				Selisih:   item.Selisih,
-				NilaiUang: nilaiKerugian,
+				Selisih:   calculatedSelisih,   
+				NilaiUang: nilaiKalkulasiUang,
 				Alasan:    item.Alasan,
 			}
-			if err := h.Repo.CreateStockOpnameDetail(tx, &detail); err != nil {
+			if err := tx.Create(&detail).Error; err != nil {
 				return err
 			}
 
 			if status == "APPROVED" {
 				product.Stok = item.ActualQty
-				if err := h.Repo.SaveProduct(tx, product); err != nil {
+				if err := tx.Save(&product).Error; err != nil {
 					return err
 				}
 			}
@@ -129,98 +122,103 @@ func (h *RetailHandler) CreateStockOpname(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal proses SO: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses pengajuan SO: " + err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Audit stok gudang berhasil diajukan!"})
+	
+	msg := "Berkas berkuitansi Stock Opname berhasil diteruskan ke laptop Owner !"
+	if status == "APPROVED" {
+		msg = "Audit Stock Opname berhasil dieksekusi, stok master cabang diperbarui!"
+	}
+	c.JSON(http.StatusOK, gin.H{"message": msg})
 }
 
 func (h *RetailHandler) ApproveStockOpname(c *gin.Context) {
 	opnameID := c.Param("id")
-	userRole := c.MustGet("role").(string)
+	userRole := strings.ToLower(c.MustGet("role").(string))
 	if userRole != "owner" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Hanya Owner yang bisa menyetujui audit!"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "Hak otorisasi ditolak! Hanya akun Owner yang memiliki akses persetujuan."})
 		return
 	}
 
 	file, errFile := c.FormFile("bukti_bar")
 	if errFile != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File PDF Berita Acara (BAR TTD) wajib diupload!"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dokumen fisik PDF Berita Acara (BAR TTD) wajib diunggah !"})
 		return
 	}
 
 	bucketName := os.Getenv("SUPABASE_BUCKET_NAME")
 	fileSrc, err := file.Open()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Gagal membaca file PDF"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Gagal membedah berkas file PDF"})
 		return
 	}
 	defer fileSrc.Close()
 
-	// 🚀 ENTERPRISE CLOUD STORAGE: Lempar Berita Acara PDF langsung ke Supabase Cloud Storage bray
 	remotePath := fmt.Sprintf("audit/so_%s_bar", opnameID)
 	urlResult, errUpload := utils.UploadToSupabase(fileSrc, file.Filename, "application/pdf", bucketName, remotePath)
 	if errUpload != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal upload BAR ke cloud storage"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Koneksi cloud storage storage terputus, gagal simpan dokumen BAR"})
 		return
 	}
 
 	db := h.Repo.GetDB()
-	err = db.Transaction(func(tx *gorm.DB) error {
-		var so domain.StockOpname
-		if err := tx.Preload("Details").First(&so, opnameID).Error; err != nil {
-			return err
-		}
-		if so.Status == "APPROVED" {
-			return nil
-		}
+err = db.Transaction(func(tx *gorm.DB) error {
+    var so domain.StockOpname
+    
+    // 🚀 FIX: Eksplisit sebut nama kolomnya biar GORM ga salah deteksi tipe data ULID/String bray!
+    // Sesuaikan kolomnya ya, pakai "public_id = ?" atau "id = ?" tergantung skema tabel SO lu.
+    if err := tx.Preload("Details").Clauses(clause.Locking{Strength: "UPDATE"}).First(&so, "public_id = ?", opnameID).Error; err != nil {
+        return fmt.Errorf("berkas ID SO tidak ditemukan atau gagal dikunci")
+    }
+    
+    if so.Status == "APPROVED" {
+        return nil
+    }
 
-		if err := tx.Model(&so).Updates(map[string]interface{}{"status": "APPROVED", "bukti_bar": urlResult}).Error; err != nil {
-			return err
-		}
+    if err := tx.Model(&so).Updates(map[string]interface{}{"status": "APPROVED", "bukti_bar": urlResult}).Error; err != nil {
+        return err
+    }
 
-		for _, detail := range so.Details {
-			product, err := h.Repo.GetProductByID(tx, detail.ProductID, so.StoreID)
-			if err != nil {
-				return err
-			}
-			product.Stok = detail.ActualQty
-			if err := h.Repo.SaveProduct(tx, product); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+    for _, detail := range so.Details {
+        var product models.Product
+        if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&product, "id = ? AND store_id = ?", detail.ProductID, so.StoreID).Error; err != nil {
+            return err
+        }
+        product.Stok = detail.ActualQty
+        if err := tx.Save(&product).Error; err != nil {
+            return err
+        }
+    }
+    return nil
+})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal approve SO: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal eksekusi persetujuan SO : " + err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Audit berhasil disetujui, stok master diperbarui di Cloud!"})
 }
 
+// ==========================================
+// 🚀 HISTORI & VALIDASI KELAYAKAN
+// ==========================================
+
 type AuditCompareResult struct {
-	SO    domain.StockOpname      `json:"so"`
+	SO    domain.StockOpname       `json:"so"`
 	Klaim *domain.StockAdjustment `json:"klaim"`
 }
 
 func (h *RetailHandler) GetStockOpnameHistory(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	switch v := storeIDRaw.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	case int:
-		storeID = uint(v)
-	}
+	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
 
 	db := h.Repo.GetDB()
 	var soHistory []domain.StockOpname
 	err := db.Where("store_id = ?", storeID).Preload("Details.Product").Order("created_at desc").Find(&soHistory).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data riwayat opname"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyisir riwayat dokumen berkas opname"})
 		return
 	}
 
@@ -245,14 +243,7 @@ func (h *RetailHandler) GetStockOpnameHistory(c *gin.Context) {
 func (h *RetailHandler) GetLastSOStatus(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	switch v := storeIDRaw.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	case int:
-		storeID = uint(v)
-	}
+	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
 
 	var lastSO domain.StockOpname
 	db := h.Repo.GetDB()
@@ -270,14 +261,7 @@ func (h *RetailHandler) GetLastSOStatus(c *gin.Context) {
 func (h *RetailHandler) GetLastSOMinusItems(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	switch v := storeIDRaw.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	case int:
-		storeID = uint(v)
-	}
+	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
 
 	db := h.Repo.GetDB()
 	var lastSO domain.StockOpname
@@ -291,135 +275,78 @@ func (h *RetailHandler) GetLastSOMinusItems(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": minusDetails})
 }
 
+// ==========================================
+// 🚀 KLAIM BARANG ADJUSTMENT SYSTEM UNIT
+// ==========================================
+
 func (h *RetailHandler) SubmitKlaimBarang(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	userIDRaw, _ := c.Get("user_id")
 	var storeID, userID uint
-	switch v := storeIDRaw.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	case int:
-		storeID = uint(v)
-	}
-	switch v := userIDRaw.(type) {
-	case float64:
-		userID = uint(v)
-	case uint:
-		userID = v
-	case int:
-		userID = uint(v)
-	}
+	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
+	switch v := userIDRaw.(type) { case float64: userID = uint(v); case uint: userID = v; case int: userID = uint(v) }
 
 	var req KlaimRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data tidak valid"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format berkas klaim tidak sesuai !"})
 		return
 	}
 
 	db := h.Repo.GetDB()
-	tx := db.Begin()
-	adj := domain.StockAdjustment{
-		PublicID:  utils.GenerateULID(), // 🚀 HYBRID MASTER: Injeksi ULID di level Header Adjustment Klaim
-		StoreID:   storeID,
-		UserID:    userID,
-		Notes:     req.Notes,
-		Status:    "PENDING_APPROVAL",
-		CreatedAt: time.Now(),
-	}
-	if err := tx.Create(&adj).Error; err != nil {
-		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal simpan klaim"})
+	var lastSO domain.StockOpname
+	if err := db.Where("store_id = ? AND status = ?", storeID, "APPROVED").Order("created_at desc").First(&lastSO).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dilarang klaim! Toko Anda belum pernah melakukan audit Stock Opname bulanan."})
 		return
 	}
 
-	for _, item := range req.Items {
-		adjItem := domain.StockAdjustmentDetail{
-			AdjustmentID: adj.ID, // 🚀 HYBRID OPTIMAL: Detail bersih tanpa ULID string sampah
-			ProductID:    item.ProductID,
-			Qty:          item.Qty,
-			Alasan:       item.Alasan,
+	err := db.Transaction(func(tx *gorm.DB) error {
+		adj := domain.StockAdjustment{
+			PublicID:  utils.GenerateULID(), 
+			StoreID:   storeID,
+			UserID:    userID,
+			Notes:     req.Notes,
+			Status:    "PENDING_APPROVAL",
+			CreatedAt: time.Now(),
 		}
-		tx.Create(&adjItem)
-	}
-	tx.Commit()
-	c.JSON(http.StatusOK, gin.H{"message": "Klaim barang temuan berhasil diajukan ke Owner!"})
-}
-
-func (h *RetailHandler) GetStockAdjustmentHistory(c *gin.Context) {
-	storeIDRaw, _ := c.Get("store_id")
-	var storeID uint
-	switch v := storeIDRaw.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	case int:
-		storeID = uint(v)
-	}
-
-	var history []domain.StockAdjustment
-	db := h.Repo.GetDB()
-	err := db.Where("store_id = ?", storeID).Preload("Details.Product").Order("created_at desc").Find(&history).Error
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil riwayat klaim"})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"data": history})
-}
-
-func (h *RetailHandler) ApproveStockAdjustment(c *gin.Context) {
-	adjustmentID := c.Param("id")
-	userRole := c.MustGet("role").(string)
-	if userRole != "owner" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Hanya Owner yang bisa menyetujui klaim!"})
-		return
-	}
-
-	file, errFile := c.FormFile("bukti_bar")
-	if errFile != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File PDF Berita Acara Klaim wajib diupload!"})
-		return
-	}
-
-	bucketName := os.Getenv("SUPABASE_BUCKET_NAME")
-	fileSrc, err := file.Open()
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Gagal membaca file PDF"})
-		return
-	}
-	defer fileSrc.Close()
-
-	// 🚀 ENTERPRISE CLOUD STORAGE: Upload Berita Acara Klaim PDF ke Supabase
-	remotePath := fmt.Sprintf("audit/claim_%s_bar", adjustmentID)
-	urlResult, errUpload := utils.UploadToSupabase(fileSrc, file.Filename, "application/pdf", bucketName, remotePath)
-	if errUpload != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal upload BAR Klaim ke cloud storage"})
-		return
-	}
-
-	db := h.Repo.GetDB()
-	err = db.Transaction(func(tx *gorm.DB) error {
-		var adjustment domain.StockAdjustment
-		if err := tx.Preload("Details").First(&adjustment, adjustmentID).Error; err != nil {
-			return err
-		}
-		if adjustment.Status == "APPROVED" {
-			return nil
-		}
-
-		if err := tx.Model(&adjustment).UpdateColumns(map[string]interface{}{"status": "APPROVED", "bukti_bar": urlResult}).Error; err != nil {
+		if err := tx.Create(&adj).Error; err != nil {
 			return err
 		}
 
-		for _, detail := range adjustment.Details {
-			product, err := h.Repo.GetProductByID(tx, detail.ProductID, adjustment.StoreID)
+		for _, item := range req.Items {
+			var soDetail domain.StockOpnameDetail
+			err := tx.Where("opname_id = ? AND product_id = ? AND selisih < 0", lastSO.ID, item.ProductID).First(&soDetail).Error
 			if err != nil {
-				return err
+				return fmt.Errorf("produk ID %d ditolak! Barang ini tidak terdaftar sebagai produk hilang minus di SO terakhir", item.ProductID)
 			}
-			product.Stok += detail.Qty
-			if err := h.Repo.SaveProduct(tx, product); err != nil {
+
+			// 🛡️ SECURITY FIX: Hitung kumulatif qty yang SUDAH PERNAH diajukan sebelumnya (Pending/Approved)
+			var totalClaimedBefore int64
+			err = tx.Model(&domain.StockAdjustmentDetail{}).
+				Joins("JOIN stock_adjustments ON stock_adjustments.id = stock_adjustment_details.adjustment_id").
+				Where("stock_adjustments.store_id = ? AND stock_adjustments.created_at >= ? AND stock_adjustment_details.product_id = ?", 
+					storeID, lastSO.CreatedAt, item.ProductID).
+				Select("COALESCE(SUM(stock_adjustment_details.qty), 0)").
+				Row().Scan(&totalClaimedBefore)
+			
+			if err != nil {
+				return fmt.Errorf("gagal memvalidasi histori limit klaim produk ID %d", item.ProductID)
+			}
+
+			allowedMaxLimit := int(math.Abs(float64(soDetail.Selisih)))
+			sisaKuotaKlaim := allowedMaxLimit - int(totalClaimedBefore)
+
+			if item.Qty > sisaKuotaKlaim {
+				return fmt.Errorf("klaim ditolak! Produk ID %d melebihi batas sisa kuota kehilangan (Sisa Kuota: %d PCS, Sudah Diklaim Sebelumnya: %d PCS)", 
+					item.ProductID, sisaKuotaKlaim, totalClaimedBefore)
+			}
+
+			adjItem := domain.StockAdjustmentDetail{
+				AdjustmentID: adj.ID, 
+				ProductID:    item.ProductID,
+				Qty:          item.Qty,
+				Alasan:       item.Alasan,
+			}
+			if err := tx.Create(&adjItem).Error; err != nil {
 				return err
 			}
 		}
@@ -427,211 +354,87 @@ func (h *RetailHandler) ApproveStockAdjustment(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal approve Klaim: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Klaim berhasil disetujui, stok bertambah di Cloud!"})
+	c.JSON(http.StatusOK, gin.H{"message": "Klaim penemuan penyesuaian dana barang berhasil diteruskan ke laptop Owner !"})
 }
 
-// ==========================================
-// 🚀 RETUR BARANG (PRODUCT RETURN) HANDLERS
-// ==========================================
-
-type ReturnItem struct {
-	ProductID uint   `json:"product_id" binding:"required"`
-	Qty       int    `json:"qty" binding:"required,gt=0"`
-	Alasan    string `json:"alasan" binding:"required"`
-	Catatan   string `json:"catatan"`
-}
-
-type ReturnInputBatch struct {
-	Items []ReturnItem `json:"items" binding:"required,min=1"`
-}
-
-func (h *RetailHandler) CreateReturn(c *gin.Context) {
-	storeIDRaw, _ := c.Get("store_id")
-	userIDRaw, _ := c.Get("user_id")
-	var storeID, userID uint
-	switch v := storeIDRaw.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	case int:
-		storeID = uint(v)
-	}
-	switch v := userIDRaw.(type) {
-	case float64:
-		userID = uint(v)
-	case uint:
-		userID = v
-	case int:
-		userID = uint(v)
-	}
-
-	var input ReturnInputBatch
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Data keranjang retur tidak valid!"})
-		return
-	}
-
-	returnNo := fmt.Sprintf("RET-%s-%d", time.Now().Format("060102150405"), userID)
-	db := h.Repo.GetDB()
-	tx := db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	var newReturns []domain.ProductReturn
-	for _, item := range input.Items {
-		product, err := h.Repo.GetProductByID(tx, item.ProductID, storeID)
-		if err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusNotFound, gin.H{"error": "Produk tidak ditemukan!"})
-			return
-		}
-		if product.Stok < item.Qty {
-			tx.Rollback()
-			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Stok %s tidak cukup (Sisa: %d)!", product.NamaProduk, product.Stok)})
-			return
-		}
-
-		// 🚀 INJECT PARAMETER KETIGA (storeID) DI SINI BRAY!
-		if err := h.Repo.UpdateProductStokExpr(tx, item.ProductID, storeID, item.Qty); err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal potong stok!"})
-			return
-		}
-
-		newReturns = append(newReturns, domain.ProductReturn{
-			PublicID:  utils.GenerateULID(), // 🚀 HYBRID FLAT: Wajib di-inject ULID tiap baris karena model flat table
-			ReturnNo:  returnNo,
-			StoreID:   storeID,
-			ProductID: item.ProductID,
-			UserID:    userID,
-			Qty:       item.Qty,
-			Alasan:    item.Alasan,
-			Catatan:   item.Catatan,
-		})
-	}
-
-	if err := h.Repo.CreateProductReturns(tx, newReturns); err != nil {
-		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mencatat retur!"})
-		return
-	}
-	tx.Commit()
-	c.JSON(http.StatusOK, gin.H{"message": "Berita Acara Retur berhasil diproses!", "return_no": returnNo})
-}
-
-func (h *RetailHandler) GetReturns(c *gin.Context) {
+func (h *RetailHandler) GetStockAdjustmentHistory(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	switch v := storeIDRaw.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	case int:
-		storeID = uint(v)
-	}
+	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
 
-	pageStr := c.Query("page")
-	limitStr := c.Query("limit")
-	limit, offset := 0, 0
-	if pageStr != "" && limitStr != "" {
-		p, _ := strconv.Atoi(pageStr)
-		l, _ := strconv.Atoi(limitStr)
-		limit = l
-		offset = (p - 1) * limit
-	}
-
-	returns, totalItems, err := h.Repo.GetReturnsHistory(storeID, limit, offset)
+	var history []domain.StockAdjustment
+	db := h.Repo.GetDB()
+	err := db.Where("store_id = ?", storeID).Preload("Details.Product").Order("created_at desc").Find(&history).Error
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data retur"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengumpulkan riwayat kuitansi klaim"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Data retur berhasil dimuat!", "total_items": totalItems, "data": returns})
+	c.JSON(http.StatusOK, gin.H{"data": history})
 }
 
-// ==========================================
-// 🚀 PURCHASE / LPB (PENERIMAAN BARANG) HANDLERS
-// ==========================================
-
-type PurchaseInput struct {
-	SupplierName string `json:"supplier_name"`
-	NoFaktur     string `json:"no_faktur"`
-	Items        []struct {
-		ProductID  uint    `json:"product_id"`
-		QtyMasuk   int     `json:"qty_masuk"`
-		HargaModal float64 `json:"harga_modal"`
-	} `json:"items"`
-}
-
-func (h *RetailHandler) CreateLPB(c *gin.Context) {
-	storeIDRaw, _ := c.Get("store_id")
-	userIDRaw, _ := c.Get("user_id")
-	var storeID, userID uint
-	switch v := storeIDRaw.(type) {
-	case float64:
-		storeID = uint(v)
-	case uint:
-		storeID = v
-	case int:
-		storeID = uint(v)
-	}
-	switch v := userIDRaw.(type) {
-	case float64:
-		userID = uint(v)
-	case uint:
-		userID = v
-	case int:
-		userID = uint(v)
-	}
-
-	var input PurchaseInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Data LPB tidak valid!"})
-		return
-	}
-	if len(input.Items) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Keranjang penerimaan kosong!"})
+func (h *RetailHandler) ApproveStockAdjustment(c *gin.Context) {
+	adjustmentID := c.Param("id")
+	userRole := strings.ToLower(c.MustGet("role").(string))
+	if userRole != "owner" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Akses otorisasi ditolak! Menu khusus akun Owner."})
 		return
 	}
 
-	var totalHargaFaktur float64
-	var details []domain.PurchaseDetail
-
-	for _, item := range input.Items {
-		subTotalItem := float64(item.QtyMasuk) * item.HargaModal
-		totalHargaFaktur += subTotalItem
-
-		details = append(details, domain.PurchaseDetail{
-			ProductID:  item.ProductID, // 🚀 HYBRID OPTIMAL: Detail bersih dari ULID acak
-			QtyMasuk:   item.QtyMasuk,
-			HargaModal: item.HargaModal,
-			SubTotal:   subTotalItem,
-		})
+	file, errFile := c.FormFile("bukti_bar")
+	if errFile != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Berkas kuitansi cetak PDF Berita Acara Klaim wajib diupload!"})
+		return
 	}
 
-	purchase := domain.Purchase{
-		PublicID:     utils.GenerateULID(), // 🚀 HYBRID MASTER: Injeksi ULID di level Header LPB Faktur
-		StoreID:      storeID,
-		UserID:       userID,
-		SupplierName: input.SupplierName,
-		NoFaktur:     input.NoFaktur,
-		TotalItem:    len(input.Items),
-		TotalHarga:   totalHargaFaktur, // Sinkronisasi kalkulasi nominal audit keuangan masuk/keluar bray
-		StatusBayar:  "LUNAS",
-		Details:      details,
+	bucketName := os.Getenv("SUPABASE_BUCKET_NAME")
+	fileSrc, err := file.Open()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Gagal membuka data lampiran PDF"})
+		return
+	}
+	defer fileSrc.Close()
+
+	remotePath := fmt.Sprintf("audit/claim_%s_bar", adjustmentID)
+	urlResult, errUpload := utils.UploadToSupabase(fileSrc, file.Filename, "application/pdf", bucketName, remotePath)
+	if errUpload != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengamankan berkas BAR Klaim ke cloud storage"})
+		return
 	}
 
 	db := h.Repo.GetDB()
-	if err := h.Repo.CreatePurchaseWithMovingAverage(db, &purchase); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses LPB dan HPP: " + err.Error()})
+	err = db.Transaction(func(tx *gorm.DB) error {
+		var adjustment domain.StockAdjustment
+		if err := tx.Preload("Details").Clauses(clause.Locking{Strength: "UPDATE"}).First(&adjustment, adjustmentID).Error; err != nil {
+			return fmt.Errorf("berkas kode ID Klaim tidak valid")
+		}
+		if adjustment.Status == "APPROVED" {
+			return nil
+		}
+
+		// 🛠️ ALIGNMENT FIX: Pakai .Updates() biar hook record update_at jalan semestinya bray
+		if err := tx.Model(&adjustment).Updates(map[string]interface{}{"status": "APPROVED", "bukti_bar": urlResult}).Error; err != nil {
+			return err
+		}
+
+		for _, detail := range adjustment.Details {
+			var product models.Product
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&product, "id = ? AND store_id = ?", detail.ProductID, adjustment.StoreID).Error; err != nil {
+				return err
+			}
+			product.Stok += detail.Qty
+			if err := tx.Save(&product).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyetujui kuitansi klaim : " + err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Penerimaan Barang berhasil! Stok & Modal HPP telah di-update via Moving Average."})
+	c.JSON(http.StatusOK, gin.H{"message": "Klaim berhasil disetujui, jumlah stok fisik rak bertambah di Cloud!"})
 }

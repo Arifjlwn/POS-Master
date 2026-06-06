@@ -10,7 +10,7 @@ export const posService = {
 
     // --- SESI AKTIF (Buka, Cek, Tutup Sesi Laci Kasir / Cash Drawer) ---
     // FIX AMAN: Buang parameter token manual. Biarkan api.js (Axios Interceptor) global lu 
-    // yang otomatis menyuntikkan tiket JWT Bearer Token secara terpusat dan aman bray!
+    // yang otomatis menyuntikkan tiket JWT Bearer Token secara terpusat dan aman!
     async checkSession() {
         const response = await api.get('/retail/pos/check-session');
         return response.data;

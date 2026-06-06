@@ -34,17 +34,45 @@ const formatDate = (dateString) => {
   return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 };
 
-// 🚀 FIX SECURITY FORMULA: Ambil modal awal dari session database murni bray, anti-rumus tebakan mundur bray!
+// 🛡️ MAPPING DATA CORES DARI GO BACKEND SINKRON TOTAL
 const modalAwal = computed(() => {
   return props.lastClosingData?.session?.modal_awal || 
          props.lastClosingData?.session?.ModalAwal || 
+         props.lastClosingData?.data?.session?.modal_awal ||
          props.currentSession?.modal_awal || 
          props.currentSession?.ModalAwal || 0;
 });
 
-// 🛡️ SECURITY LAYER INPUT PECAHAN: Blokir mutlak angka minus, desimal, dan huruf eksponensial bray!
+const netSales = computed(() => {
+  return props.lastClosingData?.net_sales ?? props.lastClosingData?.NetSales ?? props.lastClosingData?.data?.net_sales ?? 0;
+});
+
+const totalTax = computed(() => {
+  return props.lastClosingData?.total_tax ?? props.lastClosingData?.TotalTax ?? props.lastClosingData?.tax ?? props.lastClosingData?.data?.total_tax ?? 0;
+});
+
+const salesCash = computed(() => {
+  return props.lastClosingData?.sales_cash ?? props.lastClosingData?.SalesCash ?? props.lastClosingData?.data?.sales_cash ?? 0;
+});
+
+const salesNonTunai = computed(() => {
+  return props.lastClosingData?.sales_non_tunai ?? props.lastClosingData?.SalesNonTunai ?? props.lastClosingData?.sales_non_cash ?? props.lastClosingData?.data?.sales_non_tunai ?? 0;
+});
+
+const totalExpected = computed(() => {
+  return props.lastClosingData?.total_expected ?? props.lastClosingData?.TotalExpected ?? props.lastClosingData?.data?.total_expected ?? 0;
+});
+
+const totalActual = computed(() => {
+  return props.lastClosingData?.total_actual ?? props.lastClosingData?.TotalActual ?? props.lastClosingData?.data?.total_actual ?? 0;
+});
+
+const selisihKas = computed(() => {
+  return props.lastClosingData?.selisih ?? props.lastClosingData?.Selisih ?? props.lastClosingData?.data?.selisih ?? 0;
+});
+
 const sanitizePecahanInput = (event, key) => {
-  let cleanVal = event.target.value.replace(/\D/g, ""); // Murni angka bulat positif, buang minus bray!
+  let cleanVal = event.target.value.replace(/\D/g, ""); 
   props.pecahan[key] = cleanVal ? parseInt(cleanVal, 10) : 0;
 };
 
@@ -96,19 +124,22 @@ const triggerPrint = () => { window.print(); };
           <div v-if="storeData?.logo_url && storeData.logo_url !== ''" class="mb-2">
             <img :src="(storeData.logo_url.startsWith('http://') || storeData.logo_url.startsWith('https://')) ? storeData.logo_url : API_BASE_URL + storeData.logo_url" class="w-16 h-16 object-contain mx-auto grayscale contrast-200 brightness-90" alt="Logo Toko" />
           </div>
+          <div v-else-if="storeLogo && storeLogo !== ''" class="mb-2">
+            <img :src="(storeLogo.startsWith('http://') || storeLogo.startsWith('https://')) ? storeLogo : API_BASE_URL + storeLogo" class="w-16 h-16 object-contain mx-auto grayscale contrast-200 brightness-90" alt="Logo Toko" />
+          </div>
           
           <div v-else class="font-black text-[12px] uppercase mb-1 italic tracking-tighter">{{ storeData?.nama_toko || storeData?.NamaToko || "NEXA POS STORE" }}</div>
           <p class="text-[9px] font-black uppercase tracking-tight opacity-100 leading-tight px-1">
-            {{ storeData?.alamat || "JAKARTA, INDONESIA" }}<br />
-            {{ storeData?.kelurahan || "" }} {{ storeData?.kecamatan || "" }}<br />
-            {{ storeData?.kota || "" }} {{ storeData?.kode_pos || "" }}
+            {{ storeData?.alamat || storeData?.Alamat || "JAKARTA, INDONESIA" }}<br />
+            {{ storeData?.kelurahan || storeData?.Kelurahan || "" }} {{ storeData?.kecamatan || storeData?.Kecamatan || "" }}<br />
+            {{ storeData?.kota || storeData?.Kota || "" }} {{ storeData?.kode_pos || storeData?.KodePos || "" }}
           </p>
         </div>
 
         <div class="text-[9px] uppercase font-mono font-black mb-2 leading-tight space-y-0.5">
-          <div>TANGGAL : {{ formatDate(lastClosingData?.end_time || lastClosingData?.created_at) }}</div>
+          <div>TANGGAL : {{ formatDate(lastClosingData?.end_time || lastClosingData?.created_at || lastClosingData?.data?.end_time) }}</div>
           <div class="text-center font-black my-3 tracking-[0.15em] border-y border-black py-1 uppercase">SLIP PENJUALAN<br />TUTUP SHIFT KASIR</div>
-          <div class="flex justify-between"><span>KASIR: {{ currentUser?.name?.split(" ")[0] || "OPERATOR" }}</span><span>STASIUN: POS-{{ currentSession?.station_number || currentSession?.StationNumber || "01" }}</span></div>
+          <div class="flex justify-between"><span>KASIR: {{ currentUser?.name || "OPERATOR" }}</span><span>STASIUN: POS-{{ currentSession?.station_number || currentSession?.StationNumber || "01" }}</span></div>
         </div>
 
         <div class="border-b border-black border-dashed mt-2 mb-1"></div>
@@ -116,36 +147,76 @@ const triggerPrint = () => { window.print(); };
         <div class="border-b border-black border-dashed mb-1 mt-1"></div>
 
         <div class="text-[9px] uppercase font-mono font-black flex flex-col gap-0.5">
-          <div class="flex justify-between"><span>Penjualan Bersih (Net)</span><span>: {{ formatRupiah(lastClosingData?.net_sales || lastClosingData?.net_sales_cash) }}</span></div>
-          <div class="flex justify-between"><span>Pajak Resto/PPN</span><span>: {{ formatRupiah(lastClosingData?.total_tax || lastClosingData?.tax) }}</span></div>
-          <div class="flex justify-between mt-1 pt-1 border-t border-black border-dotted font-black text-[10px]"><span>TOTAL OMSET BRUTO</span><span>: {{ formatRupiah((lastClosingData?.net_sales || 0) + (lastClosingData?.total_tax || 0)) }}</span></div>
-        </div>
+  <div class="flex items-center">
+    <span class="w-[150px] shrink-0">Penjualan Bersih (Net)</span>
+    <span class="mr-1">:</span>
+    <span class="flex-1 text-right">{{ formatRupiah(netSales) }}</span>
+  </div>
+  <div class="flex items-center">
+    <span class="w-[150px] shrink-0">Pajak Resto/PPN</span>
+    <span class="mr-1">:</span>
+    <span class="flex-1 text-right">{{ formatRupiah(totalTax) }}</span>
+  </div>
+  <div class="border-t border-black border-dotted my-1"></div>
+  <div class="flex items-center font-black text-[10px]">
+    <span class="w-[150px] shrink-0">TOTAL OMSET BRUTO</span>
+    <span class="mr-1">:</span>
+    <span class="flex-1 text-right">{{ formatRupiah(netSales + totalTax) }}</span>
+  </div>
+</div>
 
-        <div class="border-b border-black border-dashed mt-3 mb-1"></div>
-        <div class="font-black font-mono text-[9px] uppercase tracking-wider">RINCIAN METODE TERIMA DANA</div>
-        <div class="border-b border-black border-dashed mb-1 mt-1"></div>
+<div class="text-[9px] uppercase font-mono font-black flex flex-col gap-0.5 mb-2">
+  <div class="flex items-center">
+    <span class="w-[150px] shrink-0">Total Pendapatan Tunai</span>
+    <span class="mr-1">:</span>
+    <span class="flex-1 text-right">{{ formatRupiah(salesCash) }}</span>
+  </div>
+  <div class="flex items-center">
+    <span class="w-[150px] shrink-0">Total QRIS / Non-Tunai</span>
+    <span class="mr-1">:</span>
+    <span class="flex-1 text-right">{{ formatRupiah(salesNonTunai) }}</span>
+  </div>
+</div>
 
-        <div class="text-[9px] uppercase font-mono font-black flex flex-col gap-0.5 mb-2">
-          <div class="flex justify-between"><span>Total Pendapatan Tunai</span><span>: {{ formatRupiah(lastClosingData?.sales_cash) }}</span></div>
-          <div class="flex justify-between"><span>Total QRIS / EDC Non-Tunai</span><span>: {{ formatRupiah(lastClosingData?.sales_non_tunai || lastClosingData?.sales_non_cash) }}</span></div>
-        </div>
-
-        <div class="border-b border-black border-dashed mt-3 mb-1"></div>
-        <div class="font-black font-mono text-[9px] uppercase tracking-wider">REKONSILIASI AUDIT LACI</div>
-        <div class="border-b border-black border-dashed mb-1 mt-1"></div>
-
-        <div class="text-[9px] uppercase font-mono font-black flex flex-col gap-0.5 mb-4">
-          <div class="flex justify-between"><span>Modal Awal Laci (Float)</span><span>: {{ formatRupiah(modalAwal) }}</span></div>
-          <div class="flex justify-between"><span>Expected Cash (Sistem)</span><span>: {{ formatRupiah(lastClosingData?.total_expected) }}</span></div>
-          <div class="flex justify-between font-black"><span>Fisik Aktual Kasir</span><span>: {{ formatRupiah(lastClosingData?.total_actual) }}</span></div>
-          
-          <div class="flex justify-between mt-1 pt-1 border-t border-black border-dotted font-black text-[10px]">
-            <span>Variance / Selisih Kas</span>
-            <span :class="(lastClosingData?.selisih || 0) === 0 ? 'text-black' : 'text-black font-black underline'">
-              : {{ formatRupiah(lastClosingData?.selisih) }} {{ (lastClosingData?.selisih || 0) === 0 ? '(BALANCED)' : '' }}
-            </span>
-          </div>
-        </div>
+<div class="text-[9px] uppercase font-mono font-black flex flex-col gap-0.5 mb-4">
+  <div class="flex items-center">
+    <span class="w-[150px] shrink-0">[+] Modal Awal Sesi</span>
+    <span class="mr-1">:</span>
+    <span class="flex-1 text-right">{{ formatRupiah(modalAwal) }}</span>
+  </div>
+  <div class="flex items-center">
+    <span class="w-[150px] shrink-0">[+] Penjualan Tunai Shift</span>
+    <span class="mr-1">:</span>
+    <span class="flex-1 text-right">{{ formatRupiah(salesCash) }}</span>
+  </div>
+  
+  <div class="border-t border-black border-dotted my-1"></div>
+  
+  <div class="flex items-center font-bold">
+    <span class="w-[150px] shrink-0">(=) Uang Sistem Seharusnya</span>
+    <span class="mr-1">:</span>
+    <span class="flex-1 text-right">{{ formatRupiah(totalExpected) }}</span>
+  </div>
+  
+  <div class="flex items-center font-bold text-indigo-700 bg-slate-100 px-0.5 rounded py-0.5 my-0.5">
+    <span class="w-[150px] shrink-0">(X) Duit Fisik Aktual Kasir</span>
+    <span class="mr-1">:</span>
+    <span class="flex-1 text-right">{{ formatRupiah(totalActual) }}</span>
+  </div>
+  
+  <div class="border-t border-black border-dotted my-1"></div>
+  
+  <div class="flex items-center font-black text-[10px]">
+    <span class="w-[150px] shrink-0">Selisih / Variance Kas</span>
+    <span class="mr-1">:</span>
+    <span :class="selisihKas === 0 ? 'text-black' : (selisihKas > 0 ? 'text-emerald-600' : 'text-rose-600')" class="flex-1 text-right">
+      {{ formatRupiah(selisihKas) }} 
+      <span class="text-[7px] block sm:inline font-bold">
+        {{ selisihKas === 0 ? '(BALANCED)' : (selisihKas > 0 ? '(PLUS)' : '(MINUS)') }}
+      </span>
+    </span>
+  </div>
+</div>
 
         <div class="text-center mt-6 pb-2 font-black font-mono text-[9px] leading-tight uppercase break-inside-avoid">
           <div class="mb-8 tracking-widest">VALIDASI OTORISASI SHIFT</div>
@@ -156,7 +227,7 @@ const triggerPrint = () => { window.print(); };
 
       <div class="mt-4 md:mt-6 flex flex-col gap-2 md:gap-3 shrink-0 print:hidden">
         <button @click="triggerPrint" class="w-full bg-indigo-600 text-white py-3 md:py-4 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-indigo-200 active:scale-95 transition-all">Cetak Dokumen Closing</button>
-        <button @click="emit('close')" class="w-full bg-slate-100 text-slate-500 py-3 md:py-3.5 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase tracking-widest hover:bg-slate-200 active:scale-95 transition-all">Tutup</button>
+        <button @click="emit('finish-closing')" class="w-full bg-slate-100 text-slate-500 py-3 md:py-3.5 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase tracking-widest hover:bg-slate-200 active:scale-95 transition-all">Tutup</button>
       </div>
     </div>
   </div>
@@ -167,7 +238,6 @@ const triggerPrint = () => { window.print(); };
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
-/* FIX PRINTER SCALING DESIGN SLIP REKAP BRAY */
 #print-area {
   width: v-bind("storeData?.printer_width || storeData?.PrinterWidth || '58mm'") !important;
   max-width: 100% !important;

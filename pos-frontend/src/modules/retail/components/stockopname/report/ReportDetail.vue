@@ -12,6 +12,9 @@ const props = defineProps({
 
 const emit = defineEmits(['print', 'approve']);
 
+// Ambil BASE URL secara dinamis bray, biar ga hardcoded localhost terus pas production
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/';
+
 const formatNumber = (val) => {
     if (val === null || val === undefined) return '0';
     return Number(val).toLocaleString('id-ID');
@@ -29,9 +32,7 @@ const finalNetto = computed(() => {
     return soLoss.value + klaimRecovered.value;
 });
 
-// 🚀 LOGIKA STATUS "LUNAS / SELESAI"
 const isSettled = computed(() => {
-    // Kalau ada klaim, acuannya klaim. Kalau cuma SO, acuannya SO.
     if (props.detail?.klaim) return props.detail.klaim.status === 'APPROVED';
     return props.detail?.so?.status === 'APPROVED';
 });
@@ -45,20 +46,26 @@ const getMinusQty = (productId) => {
     return soItem ? soItem.selisih : 0;
 };
 
-// 🚀 STATE UNTUK FILE UPLOAD BERITA ACARA (PDF)
+// STATE UNTUK FILE UPLOAD BERITA ACARA (PDF)
 const pdfFile = ref(null);
+const pdfFileName = ref(''); // State tambahan buat indikator UX nama file bray
+
 const handleFileUpload = (e) => {
-    pdfFile.value = e.target.files[0];
+    const file = e.target.files[0];
+    if (file) {
+        pdfFile.value = file;
+        pdfFileName.value = file.name;
+    }
 };
 
-// 🚀 OVERRIDE TOMBOL APPROVE BIAR NGIRIM FILE JUGA (Bisa disesuaikan ke backend lu nanti)
+// FIX LOGIC EMIT: Pastikan dibungkus dengan objek atau dipastikan urutannya pas
 const handleApprove = (id, type) => {
-    // Nanti di composable lu bisa kirim pdfFile.value ini via FormData ke Golang
     emit('approve', id, type, pdfFile.value);
-    pdfFile.value = null; // Reset setelah approve
+    // Reset form sesudah emit berhasil dilempar
+    pdfFile.value = null; 
+    pdfFileName.value = '';
 };
 
-// 🚀 Deteksi URL PDF cerdas (Cek Klaim dulu, kalau ga ada baru cek SO)
 const pdfUrl = computed(() => {
     if (props.detail?.klaim?.bukti_bar) return props.detail.klaim.bukti_bar;
     if (props.detail?.so?.bukti_bar) return props.detail.so.bukti_bar;
@@ -74,8 +81,9 @@ const isPdfModalOpen = ref(false);
 
             <div class="relative z-10">
                 <div v-if="isSettled" class="watermark-print">
-                APPROVED
-            </div>
+                    APPROVED
+                </div>
+                
                 <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b-2 border-slate-800 print:border-slate-300 pb-6 mb-6">
                     <div class="text-center sm:text-left print:w-full print:text-center">
                         <h1 class="text-2xl print:text-xl font-black text-slate-900 uppercase tracking-[0.2em] leading-tight">
@@ -113,6 +121,7 @@ const isPdfModalOpen = ref(false);
                             <label class="text-[9px] font-black text-indigo-800 uppercase tracking-widest text-center">Upload PDF TTD (Berita Acara)</label>
                             <input type="file" accept=".pdf" @change="handleFileUpload" 
                                 class="text-[9px] font-bold text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[9px] file:font-black file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer w-full bg-white rounded-lg border border-slate-200">
+                            <p v-if="pdfFileName" class="text-[9px] text-indigo-600 font-bold text-center truncate max-w-[180px]">📂 {{ pdfFileName }}</p>
                         </div>
 
                         <button v-if="isOwner && detail.so.status === 'PENDING_APPROVAL'" 
@@ -217,30 +226,30 @@ const isPdfModalOpen = ref(false);
                 </template>
 
                 <div v-if="!isSettled" class="print-avoid-break">
-                <h4 class="font-black text-slate-800 print:text-black text-[10px] uppercase tracking-[0.2em] mb-4 mt-10 flex items-center gap-2">
-                    <span class="w-1.5 h-4 bg-slate-800 print:bg-black rounded-full"></span> 3. Otorisasi & Pengesahan Laporan
-                </h4>
-                
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-6 text-center border-t-2 border-solid border-slate-300 print:border-black pt-8 mt-2 pb-4">
-                    <div class="flex flex-col items-center justify-between min-h-[100px]">
-                        <span class="text-[10px] font-black uppercase tracking-widest text-slate-500 print:text-black">Dihitung Oleh,</span>
-                        <div class="w-32 border-b-2 border-slate-800 print:border-black mt-16"></div>
-                        <span class="text-[9px] font-bold text-slate-400 print:text-black mt-1.5">Tim Audit / Kasir</span>
-                    </div>
+                    <h4 class="font-black text-slate-800 print:text-black text-[10px] uppercase tracking-[0.2em] mb-4 mt-10 flex items-center gap-2">
+                        <span class="w-1.5 h-4 bg-slate-800 print:bg-black rounded-full"></span> 3. Otorisasi & Pengesahan Laporan
+                    </h4>
                     
-                    <div class="flex flex-col items-center justify-between min-h-[100px]">
-                        <span class="text-[10px] font-black uppercase tracking-widest text-slate-500 print:text-black">Diperiksa Oleh,</span>
-                        <div class="w-32 border-b-2 border-slate-800 print:border-black mt-16"></div>
-                        <span class="text-[9px] font-bold text-slate-400 print:text-black mt-1.5">Kepala Toko</span>
-                    </div>
-                    
-                    <div class="flex flex-col items-center justify-between min-h-[100px] col-span-2 md:col-span-1">
-                        <span class="text-[10px] font-black uppercase tracking-widest text-slate-500 print:text-black">Disetujui Oleh,</span>
-                        <div class="w-32 border-b-2 border-slate-800 print:border-black mt-16"></div>
-                        <span class="text-[9px] font-bold text-slate-400 print:text-black mt-1.5">Manajemen / Owner</span>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-6 text-center border-t-2 border-solid border-slate-300 print:border-black pt-8 mt-2 pb-4">
+                        <div class="flex flex-col items-center justify-between min-h-[100px]">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-500 print:text-black">Dihitung Oleh,</span>
+                            <div class="w-32 border-b-2 border-slate-800 print:border-black mt-16"></div>
+                            <span class="text-[9px] font-bold text-slate-400 print:text-black mt-1.5">Tim Audit / Kasir</span>
+                        </div>
+                        
+                        <div class="flex flex-col items-center justify-between min-h-[100px]">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-500 print:text-black">Diperiksa Oleh,</span>
+                            <div class="w-32 border-b-2 border-slate-800 print:border-black mt-16"></div>
+                            <span class="text-[9px] font-bold text-slate-400 print:text-black mt-1.5">Kepala Toko</span>
+                        </div>
+                        
+                        <div class="flex flex-col items-center justify-between min-h-[100px] col-span-2 md:col-span-1">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-500 print:text-black">Disetujui Oleh,</span>
+                            <div class="w-32 border-b-2 border-slate-800 print:border-black mt-16"></div>
+                            <span class="text-[9px] font-bold text-slate-400 print:text-black mt-1.5">Manajemen / Owner</span>
+                        </div>
                     </div>
                 </div>
-            </div>
 
             </div>
         </div>
@@ -266,8 +275,8 @@ const isPdfModalOpen = ref(false);
                 </div>
                 
                 <div class="flex items-center gap-2">
-                    <a :href="'http://localhost:8080/' + pdfUrl" download="Berita_Acara_Audit.pdf" target="_blank" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-md">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    <a :href="API_BASE_URL + pdfUrl" download="Berita_Acara_Audit.pdf" target="_blank" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/xl" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                         UNDUH
                     </a>
                     <button @click="isPdfModalOpen = false" class="p-2.5 bg-slate-200 hover:bg-rose-100 text-slate-500 hover:text-rose-600 rounded-xl transition-all">
@@ -280,89 +289,9 @@ const isPdfModalOpen = ref(false);
                 <div class="absolute inset-0 flex items-center justify-center -z-10 text-slate-400 font-bold text-xs">
                     Memuat dokumen...
                 </div>
-                <iframe :src="'http://localhost:8080/' + pdfUrl" class="w-full h-full border-0 relative z-10 shadow-inner"></iframe>
+                <iframe :src="API_BASE_URL + pdfUrl" class="w-full h-full border-0 relative z-10 shadow-inner"></iframe>
             </div>
             
         </div>
     </div>
 </template>
-
-<style>
-@media print {
-    @page { 
-        size: A4 portrait; 
-        margin: 20mm; 
-    }
-    
-    body { 
-        -webkit-print-color-adjust: exact !important; 
-        print-color-adjust: exact !important; 
-        background-color: white !important;
-    }
-    
-    body * { visibility: hidden; }
-    
-    #print-area, #print-area * { visibility: visible; }
-    
-    #print-area {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        margin: 0;
-        padding: 0;
-    }
-    
-    .no-print { display: none !important; }
-
-    /* 🚀 PENGATURAN WARNA GARIS TABEL */
-    .print-table { border: 2px solid black !important; }
-    .print-table th, .print-table td {
-        border-bottom: 1px solid black !important;
-        border-right: 1px solid black !important; 
-    }
-    .border-b-2, .border-t-2, .border-2 { border-color: black !important; }
-    .print\:border-slate-300, .print\:border-slate-400 { border-color: black !important; }
-
-    /* 🚀 PENGATURAN PAGE BREAK (ANTI KEPOTONG) */
-    table { page-break-inside: auto; }
-    
-    tr { 
-        page-break-inside: avoid; 
-        break-inside: avoid; 
-    }
-    
-    thead { 
-        display: table-header-group; /* Paksa header tabel ngulang di tiap halaman baru */
-    }
-    
-    tfoot { 
-        display: table-footer-group; 
-    }
-
-    .print-avoid-break {
-        page-break-inside: avoid;
-        break-inside: avoid;
-    }
-}
-
-/* 🚀 CSS BUAT WATERMARK LUNAS (Tembus di tengah) */
-.watermark-print {
-    display: none;
-}
-@media print {
-    .watermark-print {
-        display: block !important;
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) rotate(-45deg);
-        font-size: 130px;
-        font-weight: 900;
-        color: rgba(0, 0, 0, 0.12) !important;
-        z-index: -1 !important;
-        pointer-events: none;
-        white-space: nowrap;
-    }
-}
-</style>

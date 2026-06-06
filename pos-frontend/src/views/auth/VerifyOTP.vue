@@ -70,7 +70,7 @@ const handleVerify = async () => {
 			await Swal.fire({
 				icon: 'success',
 				title: 'Kode OTP Valid!',
-				text: 'Silakan buat password baru Anda bray.',
+				text: 'Silakan buat password baru Anda .',
 				confirmButtonColor: '#4f46e5'
 			});
 			localStorage.removeItem(storageKey.value);
@@ -90,7 +90,7 @@ const handleVerify = async () => {
 		Swal.fire({
 			icon: 'error',
 			title: 'Verifikasi Gagal',
-			text: error.response?.data?.error || 'Kode OTP salah atau sudah kadaluarsa bray.',
+			text: error.response?.data?.error || 'Kode OTP salah atau sudah kadaluarsa .',
 			confirmButtonColor: '#ef4444'
 		});
 	} finally {
@@ -105,17 +105,17 @@ const handleResendOTP = async () => {
 
 	Swal.fire({
 		title: 'Mengirim Ulang OTP...',
-		text: 'Mohon tunggu sejenak bray...',
+		text: 'Mohon tunggu sejenak ...',
 		allowOutsideClick: false,
 		didOpen: () => { Swal.showLoading(); }
 	});
 
 	try {
-		// 🚀 FIX: Menggunakan local state variable secara konsisten & aman untuk payload resend bray
+		// 🚀 FIX: Menggunakan local state variable secara konsisten & aman untuk payload resend 
 		if (intent === 'reset-password') {
 			await api.post('/auth/send-otp-wa', { phone: phone });
 		} else {
-			// Menggunakan utility resend OTP terpadu ke gateway WhatsApp bray
+			// Menggunakan utility resend OTP terpadu ke gateway WhatsApp 
 			await api.post('/auth/send-otp-wa', { phone: phone });
 		}
 
@@ -123,7 +123,7 @@ const handleResendOTP = async () => {
 		Swal.fire({
 			icon: 'success',
 			title: 'Kode OTP Baru Dikirim!',
-			text: 'Silakan cek kembali kotak masuk WhatsApp Anda bray.',
+			text: 'Silakan cek kembali kotak masuk WhatsApp Anda .',
 			confirmButtonColor: '#4f46e5'
 		});
 
@@ -134,7 +134,7 @@ const handleResendOTP = async () => {
 		Swal.fire({
 			icon: 'error',
 			title: 'Gagal Kirim Ulang',
-			text: error.response?.data?.error || 'Sistem mendeteksi limitasi kuota kirim, coba lagi nanti bray.',
+			text: error.response?.data?.error || 'Sistem mendeteksi limitasi kuota kirim, coba lagi nanti .',
 			confirmButtonColor: '#ef4444'
 		});
 	} finally {

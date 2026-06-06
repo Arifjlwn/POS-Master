@@ -333,7 +333,7 @@ const getStoreLabel = (index) => {
 			</div>
 		</div>
 
-		<!-- REVISI TRANSPARAN MODAL: Menggunakan TransitionGroup dan Unique Key anti-kaku bray -->
+		<!-- REVISI TRANSPARAN MODAL: Menggunakan TransitionGroup dan Unique Key anti-kaku  -->
 		<Transition name="modal-fade">
 			<div v-if="showPricingModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 overflow-y-auto">
 				<div @click="stores.length > 0 ? (showPricingModal = false) : null" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300"></div>
@@ -359,7 +359,7 @@ const getStoreLabel = (index) => {
 						</button>
 					</div>
 
-					<!-- 🚀 KUNCI SAKTI: Mengubah pembungkus menjadi TransitionGroup untuk handle animasi list bray -->
+					<!-- 🚀 KUNCI SAKTI: Mengubah pembungkus menjadi TransitionGroup untuk handle animasi list  -->
 					<Transition name="tab-swap" mode="out-in">
 						<div :key="activePricingTab" class="flex flex-wrap justify-center gap-6 w-full items-stretch min-h-[400px]">
 							<div
@@ -487,7 +487,7 @@ const getStoreLabel = (index) => {
 	border-radius: 10px;
 }
 
-/* 🚀 CSS PRESETS: Efek cross-fade premium yang sangat bersahabat dengan RAM komputer kantor bray */
+/* 🚀 CSS PRESETS: Efek cross-fade premium yang sangat bersahabat dengan RAM komputer kantor  */
 .tab-swap-enter-from {
 	opacity: 0;
 	transform: translateY(4px);

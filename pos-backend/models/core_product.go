@@ -3,7 +3,7 @@ package models
 import (
 	"time"
 
-	"github.com/oklog/ulid/v2" // Pastikan lu install ini atau sesuaikan dengan generator ULID lu bray
+	"github.com/oklog/ulid/v2" // Pastikan lu install ini atau sesuaikan dengan generator ULID lu
 	"gorm.io/gorm"
 )
 
@@ -17,7 +17,7 @@ type Product struct {
 	// ==========================================
 	// MULTI TENANT (COMPOSITE INDEX WITH SKU)
 	// ==========================================
-	// FIX: StoreID diikat bareng SKU agar barcode unik per tenant bray!
+	// FIX: StoreID diikat bareng SKU agar barcode unik per tenant!
 	StoreID uint `gorm:"not null;uniqueIndex:idx_store_sku;index" json:"store_id"`
 
 	// ==========================================
@@ -29,7 +29,7 @@ type Product struct {
 	NamaProduk string `gorm:"type:varchar(150);not null;index" json:"nama_produk"`
 	Kategori   string `gorm:"type:varchar(50);index" json:"kategori"`
 
-	// FIX: Menyamakan nama field struct dengan penulisan json standard bray
+	// FIX: Menyamakan nama field struct dengan penulisan json standard
 	ProductType string `gorm:"type:varchar(20);default:'retail';index" json:"product_type"`
 	Estimasi    string `gorm:"type:varchar(50);default:'Standar'" json:"estimasi"`
 
@@ -84,7 +84,7 @@ type Product struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// 🚀 BONUS SAAS ENTERPRISE: GORM Hook untuk auto-generate ULID Public ID bray!
+// 🚀 BONUS SAAS ENTERPRISE: GORM Hook untuk auto-generate ULID Public ID !
 func (p *Product) BeforeCreate(tx *gorm.DB) (err error) {
 	if p.PublicID == "" {
 		p.PublicID = ulid.Make().String()

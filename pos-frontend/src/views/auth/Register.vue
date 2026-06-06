@@ -58,7 +58,7 @@ const handleRegister = async () => {
 		return Swal.fire({ icon: 'error', title: 'Password Lemah', text: 'Password wajib minimal 6 karakter, mengandung huruf besar dan angka.' });
 	}
 	if (!isMatch.value) {
-		return Swal.fire({ icon: 'error', title: 'Password Tidak Cocok', text: 'Konfirmasi password harus sama bray.' });
+		return Swal.fire({ icon: 'error', title: 'Password Tidak Cocok', text: 'Konfirmasi password harus sama .' });
 	}
 
 	isLoading.value = true;

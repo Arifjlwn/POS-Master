@@ -42,7 +42,7 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 
 	var input TransactionInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Format keranjang tidak sesuai bray!"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format keranjang tidak sesuai !"})
 		return
 	}
 
@@ -65,7 +65,7 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 	err := db.Transaction(func(tx *gorm.DB) error {
 		activeSession, err := h.Repo.GetActiveSession(tx, userID, storeID)
 		if err != nil {
-			return fmt.Errorf("sesi laci kasir belum dibuka, isi modal awal dulu bray")
+			return fmt.Errorf("sesi laci kasir belum dibuka, isi modal awal dulu ")
 		}
 
 		if err := tx.Select("id", "nama_toko", "business_type", "pajak_persen", "wa_token", "receipt_footer").First(&store, storeID).Error; err != nil {
@@ -89,10 +89,10 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 			}
 
 			if product.Stok < item.Kuantitas {
-				return fmt.Errorf("stok %s habis bray! Sisa fisik: %d", product.NamaProduk, product.Stok)
+				return fmt.Errorf("stok %s habis ! Sisa fisik: %d", product.NamaProduk, product.Stok)
 			}
 
-			// Potong stok produk aman bray bray
+			// Potong stok produk aman  
 			product.Stok -= item.Kuantitas
 			if err := tx.Save(&product).Error; err != nil {
 				return err
@@ -119,17 +119,17 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 
 			rincianBarangWA += fmt.Sprintf("▪️ *%s*\n   %s x %s = *%s*\n", product.NamaProduk, item.UomLabel, formatRupiah(hargaSatuanResmi), formatRupiah(itemSubTotal))
 
-			// 🛡️ SAFE POINTER DEREFERENCE: Solusi jitu biar ga crash kalau SKU produk di database null bray!
+			// 🛡️ SAFE POINTER DEREFERENCE: Solusi jitu biar ga crash kalau SKU produk di database null !
 			skuSnapshot := ""
 			if product.SKU != nil {
-				skuSnapshot = *product.SKU // Ambil nilai string asli di balik pointer bray
+				skuSnapshot = *product.SKU // Ambil nilai string asli di balik pointer 
 			}
 
 			// Masukkan ke detail item transaksi
 			details = append(details, models.TransactionDetail{
 				ProductID:          product.ID,
 				NamaProdukSnapshot: product.NamaProduk, 
-				SKUProductSnapshot: skuSnapshot,        // FIX: Masuk berupa string bersih 100% aman bray!
+				SKUProductSnapshot: skuSnapshot,        // FIX: Masuk berupa string bersih 100% aman !
 				HargaSatuan:        hargaSatuanResmi,   
 				Kuantitas:          item.Kuantitas,     
 				ItemType:           "PRODUCT",
@@ -208,7 +208,7 @@ Halo Bosku! Terima kasih sudah berbelanja. Berikut rincian kuitansi digital Anda
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":    "Transaksi sukses bray! Dokumen kuitansi siap dicetak.",
+		"message":    "Transaksi sukses ! Dokumen kuitansi siap dicetak.",
 		"invoice":    savedTransaction.NoInvoice, 
 		"no_invoice": savedTransaction.NoInvoice, 
 		"tagihan":    savedTransaction.TotalHarga, 
@@ -230,7 +230,7 @@ func (h *RetailHandler) GetTransactions(c *gin.Context) {
 
 	parsedDate, err := time.ParseInLocation("2006-01-02", tanggal, time.Local)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Format rujukan tanggal tidak valid bray"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format rujukan tanggal tidak valid "})
 		return
 	}
 

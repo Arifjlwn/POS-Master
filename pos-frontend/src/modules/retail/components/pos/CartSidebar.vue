@@ -31,12 +31,12 @@
     'toggle-uom',
   ]);
 
-  // 🛡️ SECURITY LAYER FOR FRONTEND INPUT: Buang paksa karakter aneh di kuantitas barang bray!
+  // 🛡️ SECURITY LAYER FOR FRONTEND INPUT: Buang paksa karakter aneh di kuantitas barang !
   const filterQtyKeyboard = (event, item) => {
     let cleanVal = event.target.value.replace(/\D/g, ""); // Murni angka bulat positif, buang minus & desimal!
     let parsed = parseInt(cleanVal, 10);
     
-    // Paksa minimal order adalah 1 PCS bray
+    // Paksa minimal order adalah 1 PCS 
     item.qty = parsed && parsed > 0 ? parsed : 1;
   };
 </script>

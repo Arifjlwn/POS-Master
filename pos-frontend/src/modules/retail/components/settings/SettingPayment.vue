@@ -8,7 +8,7 @@ const qrisInput = ref(null);
 const onQrisSelect = (e) => {
 	const file = e.target.files[0];
 	if (file) {
-		// VALIDASI KEAMANAN: Cegah upload file gajah yang bikin server ngos-ngosan bray!
+		// VALIDASI KEAMANAN: Cegah upload file gajah yang bikin server ngos-ngosan!
 		if (file.size > 2 * 1024 * 1024) {
 			alert('Maksimal ukuran file QRIS adalah 2MB');
 			return;

@@ -227,7 +227,7 @@ func SelectStore(c *gin.Context) {
 
 	if userRole == "owner" {
 		if store.OwnerID != user.ID {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Pelanggaran Otoritas! Anda tidak memiliki hak izin akses pada gerai cabang ini bray."})
+			c.JSON(http.StatusForbidden, gin.H{"error": "Pelanggaran Otoritas! Anda tidak memiliki hak izin akses pada gerai cabang ini."})
 			return
 		}
 	} else {
