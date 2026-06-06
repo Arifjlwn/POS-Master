@@ -28,12 +28,12 @@ const features = [
     },
     {
         title: 'Kontrol Multi-Gudang',
-        desc: 'Visibilitas inventaris real-time. Dilengkapi fitur Stock Opname (SO), manajemen retur, dan sistem resep (BOM).',
+        desc: 'Visibilitas inventaris real-time. Dilengkapi fitur Stock Opname (SO) dan manajemen retur.',
         icon: `<svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>`
     },
     {
         title: 'Manajemen SDM & Shift',
-        desc: 'Lacak presensi karyawan, atur jadwal rotasi shift kerja (TSM), dan kelola komisi dengan akurasi data yang tinggi.',
+        desc: 'Lacak presensi karyawan, atur jadwal rotasi shift kerja (TSM), dan kelola struktur organisasi tim operasional Anda.',
         icon: `<svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`
     },
     {
@@ -52,22 +52,37 @@ const industries = [
 // 🚀 SINKRONISASI ENTERPRISE: Menyesuaikan teks deskripsi fitur agar sinkron dengan gembok RequireSaaSLevel di backend Go
 const pricingPlans = {
     retail: [
-        { id: 'trial', name: 'Starter Trial', price: 'Rp 0', duration: '14 Hari', desc: 'Validasi kesesuaian sistem dengan ekosistem bisnis Anda.', features: ['POS Kasir Retail', 'Master Data Produk', 'Scan Barcode Reader', 'Tanpa Kartu Kredit'] },
-        { id: 'basic', name: 'Retail Basic', price: '49k', duration: '/Bulan', desc: 'Solusi solid untuk toko dengan skala operasional ringan.', features: ['Kasir Tanpa Batas', 'Manajemen Stok & LPB', 'Struk Thermal Bluetooth', 'Laporan Penjualan Harian'] },
-        { id: 'pro', name: 'Retail Pro', price: '149k', duration: '/Bulan', desc: 'Cocok untuk toko ritel yang mulai mengelola staf operasional.', features: ['Semua Fitur Basic', 'Manajemen Staf & HR', 'Absensi & Rostering Shift', 'Laporan Ekspor (CSV/Excel)'] },
-        { id: 'premium', name: 'Retail Premium', price: '299k', duration: '/Bulan', desc: 'Kendali penuh untuk bisnis skala besar & audit inventaris ketat.', features: ['Semua Fitur Pro', 'Audit Stock Opname', 'Klaim Adjustment & Retur', 'Notifikasi WhatsApp System'] }
+        { id: 'trial',
+			name: 'Starter Trial',
+			price: 'Rp 0',
+			duration: '14 Hari',
+			desc: 'Uji coba gratis untuk melihat kesesuaian sistem dengan toko Anda.', features: ['Semua Fitur Unlocked'] },
+        { id: 'basic',
+			name: 'Retail Basic',
+			price: '49k',
+			duration: '/Bulan',
+			desc: 'Solusi tepat untuk pengelolaan satu toko skala kecil.',
+			features: ['POS Kasir', 'Manajemen Stok & LPB', 'Struk Thermal Bluetooth', 'Riwayat Struk'] },
+        { id: 'pro',
+			name: 'Retail Pro',
+			price: '149k',
+			duration: '/Bulan',
+			desc: 'Cocok untuk toko ritel yang mulai mengelola staf operasional.',
+			features: ['Semua Fitur Basic', 'Manajemen Staf & HR', 'Absensi & Pengaturan Shift', 'Laporan Ekspor (CSV/Excel)'] },
+        { id: 'premium', name: 'Retail Premium', price: '299k', duration: '/Bulan', desc: 'Kendali penuh untuk bisnis skala besar & audit inventaris.', 
+        features: ['Semua Fitur Pro', 'Audit Stock Opname', 'Dashboard Analitik', 'Notifikasi WhatsApp System'] }
     ],
     fnb: [
-        { id: 'trial', name: 'Starter Trial', price: 'Rp 0', duration: '14 Hari', desc: 'Validasi kesesuaian sistem dengan alur dapur Anda.', features: ['POS Kasir F&B', 'Manajemen Menu & Kategori', 'Hold/Simpan Pesanan', 'Tanpa Kartu Kredit'] },
+        { id: 'trial', name: 'Starter Trial', price: 'Rp 0', duration: '14 Hari', desc: 'Uji coba gratis modul resto untuk kelancaran pesanan dapur.', features: ['Semua Fitur Unlocked'] },
         { id: 'basic', name: 'F&B Basic', price: '59k', duration: '/Bulan', desc: 'Sistem operasional efisien untuk kedai atau coffee shop.', features: ['Manajemen Layout Meja', 'Cetak Tiket Dapur (Kitchen)', 'Pajak & Service Charge', 'Struk Thermal Bluetooth'] },
-        { id: 'pro', name: 'F&B Pro', price: '169k', duration: '/Bulan', desc: 'Untuk restoran dengan kontrol manajemen staf teratur.', features: ['Semua Fitur Basic', 'Manajemen Staf & HR', 'Absensi & Shift Kerja', 'Split Bill & Gabung Meja'] },
-        { id: 'premium', name: 'F&B Premium', price: '349k', duration: '/Bulan', desc: 'Skalabilitas franchise dengan kontrol bahan baku ketat.', features: ['Semua Fitur Pro', 'Resep Bahan Baku (BOM)', 'Self-Order QR Menu', 'Notifikasi WhatsApp System'] }
+        { id: 'pro', name: 'F&B Pro', price: '169k', duration: '/Bulan', desc: 'Ideal untuk restoran yang butuh kontrol manajemen staf teratur.', features: ['Semua Fitur Basic', 'Manajemen Staf & HR', 'Absensi & Shift Kerja', 'Split Bill & Gabung Meja'] },
+        { id: 'premium', name: 'F&B Premium', price: '349k', duration: '/Bulan', desc: 'Skalabilitas bisnis franchise dengan laporan analitik terpusat.', features: ['Semua Fitur Pro', 'Resep Bahan Baku (BOM)', 'Self-Order QR Menu', 'Notifikasi WhatsApp System'] }
     ],
     jasa: [
-        { id: 'trial', name: 'Starter Trial', price: 'Rp 0', duration: '14 Hari', desc: 'Coba modul layanan untuk bengkel, salon, atau laundry.', features: ['POS Layanan Jasa', 'Database Pelanggan Dasar', 'Penerimaan Pesanan', 'Tanpa Kartu Kredit'] },
+        { id: 'trial', name: 'Starter Trial', price: 'Rp 0', duration: '14 Hari', desc: 'Coba modul layanan untuk bengkel, salon, atau laundry.', features: ['Semua Fitur Unlocked'] },
         { id: 'basic', name: 'Service Basic', price: '49k', duration: '/Bulan', desc: 'Sistem tracking pesanan yang rapi untuk bisnis jasa kecil.', features: ['Tracking Status Pesanan', 'Cetak Nota / Resi Barcode', 'Manajemen Layanan & Tarif', 'Laporan Pendapatan'] },
         { id: 'pro', name: 'Service Pro', price: '159k', duration: '/Bulan', desc: 'Sistem otomatisasi performa operasional tim staf.', features: ['Semua Fitur Basic', 'Manajemen Staf & HR', 'Absensi & Shift Kerja', 'Laporan Kinerja Bulanan'] },
-        { id: 'premium', name: 'Service Premium', price: '329k', duration: '/Bulan', desc: 'Manajemen tingkat lanjut dengan komisi dan sistem booking.', features: ['Semua Fitur Pro', 'Bagi Hasil & Komisi Teknisi', 'Sistem Booking Reservasi', 'Notifikasi WhatsApp System'] }
+        { id: 'premium', name: 'Service Premium', price: '329k', duration: '/Bulan', desc: 'Manajemen booking tingkat lanjut dengan pengingat otomatis.', features: ['Semua Fitur Pro', 'Dashboard Analitik', 'Sistem Booking Reservasi', 'Notifikasi WhatsApp System'] }
     ]
 };
 

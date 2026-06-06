@@ -43,8 +43,7 @@ const pricingPlans = {
 			name: 'Starter Trial',
 			price: 'Rp 0',
 			duration: '14 Hari',
-			desc: 'Uji coba gratis untuk melihat kesesuaian sistem dengan toko Anda.',
-			features: ['POS Kasir Retail', 'Master Data Produk', 'Scan Barcode Reader', 'Tanpa Kartu Kredit'],
+			desc: 'Uji coba gratis untuk melihat kesesuaian sistem dengan toko Anda.', features: ['Semua Fitur Unlocked']
 		},
 		{
 			id: 'basic',
@@ -52,7 +51,7 @@ const pricingPlans = {
 			price: '49k',
 			duration: '/Bulan',
 			desc: 'Solusi tepat untuk pengelolaan satu toko skala kecil.',
-			features: ['Kasir Tanpa Batas', 'Manajemen Stok & LPB', 'Struk Thermal Bluetooth', 'Laporan Penjualan Harian'],
+			features: ['POS Kasir', 'Manajemen Stok & LPB', 'Struk Thermal Bluetooth', 'Riwayat Struk'],
 		},
 		{
 			id: 'pro',
@@ -60,15 +59,15 @@ const pricingPlans = {
 			price: '149k',
 			duration: '/Bulan',
 			desc: 'Cocok untuk toko ritel yang mulai mengelola staf operasional.',
-			features: ['Semua Fitur Basic', 'Manajemen Staf & HR', 'Absensi & Rostering Shift', 'Laporan Ekspor (CSV/Excel)'],
+			features: ['Semua Fitur Basic', 'Manajemen Staf & HR', 'Absensi & Pengaturan Shift', 'Laporan Ekspor (CSV/Excel)'],
 		},
 		{
 			id: 'premium',
 			name: 'Retail Premium',
 			price: '299k',
 			duration: '/Bulan',
-			desc: 'Kendali penuh manajemen multi-cabang (HO) & gudang pusat.',
-			features: ['Semua Fitur Pro', 'Audit Stock Opname', 'Klaim Adjustment & Retur', 'Notifikasi WhatsApp System'],
+			desc: 'Kendali penuh untuk bisnis skala besar & audit inventaris.',
+			features: ['Semua Fitur Pro', 'Audit Stock Opname', 'Dashboard Analitik', 'Notifikasi WhatsApp System'],
 		},
 	],
 	fnb: [
@@ -78,7 +77,7 @@ const pricingPlans = {
 			price: 'Rp 0',
 			duration: '14 Hari',
 			desc: 'Uji coba gratis modul resto untuk kelancaran pesanan dapur.',
-			features: ['POS Kasir F&B', 'Manajemen Menu & Kategori', 'Hold/Simpan Pesanan', 'Tanpa Kartu Kredit'],
+			features: ['Semua Fitur Unlocked'],
 		},
 		{
 			id: 'basic',
@@ -111,15 +110,15 @@ const pricingPlans = {
 			name: 'Starter Trial',
 			price: 'Rp 0',
 			duration: '14 Hari',
-			desc: 'Coba modul layanan praktis untuk laundry, salon, atau bengkel.',
-			features: ['POS Layanan Jasa', 'Database Pelanggan Dasar', 'Penerimaan Pesanan', 'Tanpa Kartu Kredit'],
+			desc: 'Coba modul layanan untuk bengkel, salon, atau laundry.',
+			features: ['Semua Fitur Unlocked'],
 		},
 		{
 			id: 'basic',
 			name: 'Service Basic',
 			price: '49k',
 			duration: '/Bulan',
-			desc: 'Sistem tracking status pesanan pelanggan yang rapi.',
+			desc: 'Sistem tracking pesanan yang rapi untuk bisnis jasa kecil.',
 			features: ['Tracking Status Pesanan', 'Cetak Nota / Resi Barcode', 'Manajemen Layanan & Tarif', 'Laporan Pendapatan'],
 		},
 		{
@@ -136,7 +135,7 @@ const pricingPlans = {
 			price: '329k',
 			duration: '/Bulan',
 			desc: 'Manajemen booking tingkat lanjut dengan pengingat otomatis.',
-			features: ['Semua Fitur Pro', 'Bagi Hasil & Komisi Teknisi', 'Sistem Booking Reservasi', 'Notifikasi WhatsApp System'],
+			features: ['Semua Fitur Pro', 'Dashboard Analitik', 'Sistem Booking Reservasi', 'Notifikasi WhatsApp System'],
 		},
 	],
 };

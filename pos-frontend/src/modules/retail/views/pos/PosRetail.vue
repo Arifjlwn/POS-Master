@@ -5,7 +5,7 @@ import { useRouter } from "vue-router";
 import api from "../../../../api.js";
 import { usePos } from "../../composables/usePos.js";
 
-// 🚀 PASUKAN SUB-KOMPONEN EMANG JOSS!
+// PASUKAN SUB-KOMPONEN EMANG JOSS!
 import CartSidebar from "../../components/pos/CartSidebar.vue";
 import ClosingModal from "../../components/pos/ClosingModal.vue";
 import PosHeader from "../../components/pos/PosHeader.vue";
@@ -14,26 +14,32 @@ import ReceiptModal from "../../components/pos/ReceiptModal.vue";
 import WaPromptModal from "../../components/pos/WaPromptModal.vue";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-const router = useRouter(); const storeData = ref({});
+const router = useRouter(); 
+const storeData = ref({});
+const showWaModal = ref(false);
 
 // 🚀 SATPAM KHUSUS POS & LOAD DATA TOKO
 onMounted(async () => {
   try {
-    const res = await api.get("/retail/store/settings"); storeData.value = res.data.data;
+    const res = await api.get("/retail/store/settings"); 
+    storeData.value = res.data.data;
     localStorage.setItem("storeLogo", storeData.value.logo_url || "");
 
-    // SUNTIK SCRIPT MIDTRANS DINAMIS (BACA .ENV ENVIRONMENT)
+    // SUNTIK SCRIPT MIDTRANS DINAMIS (BACA CONFIG BACKEND DATABASE)
     if (storeData.value.payment_type === "midtrans" && storeData.value.midtrans_client_key) {
       if (!document.getElementById("midtrans-script")) {
         const midtransEnv = import.meta.env.VITE_MIDTRANS_ENV || "sandbox";
         const snapUrl = midtransEnv === "production" ? "https://app.midtrans.com/snap/snap.js" : "https://app.sandbox.midtrans.com/snap/snap.js";
 
-        const script = document.createElement("script"); script.id = "midtrans-script"; script.src = snapUrl;
-        script.setAttribute("data-client-key", storeData.value.midtrans_client_key); document.head.appendChild(script);
+        const script = document.createElement("script"); 
+        script.id = "midtrans-script"; 
+        script.src = snapUrl;
+        script.setAttribute("data-client-key", storeData.value.midtrans_client_key); 
+        document.head.appendChild(script);
       }
     }
 
-    // --- BLOK SATPAM GLOBAL (ANTI-KABUR) ---
+    // --- BLOK SATPAM GLOBAL (ANTI-KABUR TOKO KADALUWARSA) ---
     const role = localStorage.getItem("role") || "owner";
     if (role === "owner") {
       let isDead = false;
@@ -44,9 +50,15 @@ onMounted(async () => {
         const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         if (diffDays <= 0) isDead = true;
       }
-      if (isDead) { router.push("/retail/account"); return; }
+      if (isDead) { 
+        Swal.fire({ icon: "error", title: "Masa Aktif Habis!", text: "Silakan selesaikan tagihan langganan SaaS Anda.", confirmButtonColor: "#ef4444" });
+        router.push("/retail/account"); 
+        return; 
+      }
     }
-  } catch (e) { console.error("Gagal narik data toko / eksekusi satpam POS:", e); }
+  } catch (e) { 
+    console.error("Gagal narik data toko / eksekusi satpam POS:", e); 
+  }
 });
 
 const {
@@ -54,50 +66,109 @@ const {
   getImageUrl, startScanner, stopScanner, handleBarcodeScan, addToCart, toggleUom, decreaseQty, increaseQty, validateQty, clearCart, holdTransaction, resumeOrder, setPaymentMethod, executeCheckout, formatInputRupiah, processCheckout, handleClosing, logout, setNominal, noHpPelanggan
 } = usePos();
 
-const printClosing = () => { window.print(); };
-const showWaModal = ref(false);
-
-// 🚀 FUNGSI INITIAL CHECKOUT: Otak percabangan Midtrans vs QRIS Statis bray!
+// INITIAL CHECKOUT ROUTER: Otak percabangan Midtrans vs QRIS Statis bray!
 const handleInitialCheckout = async () => {
+  if (cart.length === 0) return;
+
   if (paymentMethod.value === "Cash" && payAmount.value < totalBelanja.value) {
-    return Swal.fire({ icon: "error", title: "Uang Kurang!", text: `Kurang Rp ${(totalBelanja.value - payAmount.value).toLocaleString("id-ID")}` });
+    return Swal.fire({ 
+      icon: "error", 
+      title: "Uang Kurang!", 
+      text: `Uang fisik kas kurang Rp ${(totalBelanja.value - payAmount.value).toLocaleString("id-ID")}`,
+      confirmButtonColor: "#ef4444",
+      customClass: { popup: "rounded-[28px]" }
+    });
   }
 
   if (paymentMethod.value === "QRIS") {
     if (storeData.value?.payment_type === "midtrans") {
       if (typeof window.snap === "undefined") {
-        return Swal.fire("Sistem Loading", "Script Midtrans belum siap, pastikan Client Key terisi di pengaturan Toko.", "warning");
+        return Swal.fire("Sistem Loading", "Script Midtrans belum siap, pastikan koneksi internet stabil bray.", "warning");
       }
       isProcessingCheckout.value = true;
       try {
         const payRes = await api.post("/retail/pos/midtrans-order", { total: totalBelanja.value });
         window.snap.pay(payRes.data.token, {
-          onSuccess: () => { isProcessingCheckout.value = false; Swal.fire("Berhasil", "Pembayaran QRIS Diterima!", "success"); triggerCheckoutFlow(); },
-          onPending: () => { Swal.fire("Menunggu", "Pelanggan belum bayar.", "info"); isProcessingCheckout.value = false; },
-          onError: () => { Swal.fire("Gagal", "Pembayaran ditolak bank.", "error"); isProcessingCheckout.value = false; },
-          onClose: () => { isProcessingCheckout.value = false; }
+          onSuccess: () => { 
+            isProcessingCheckout.value = false; 
+            Swal.fire("Berhasil", "Pembayaran QRIS Midtrans Diterima!", "success"); 
+            triggerCheckoutFlow(); 
+          },
+          onPending: () => { 
+            Swal.fire("Menunggu", "Pelanggan sedang melakukan scan saldo.", "info"); 
+            isProcessingCheckout.value = false; 
+          },
+          onError: () => { 
+            Swal.fire("Gagal", "Pembayaran ditolak atau kadaluwarsa.", "error"); 
+            isProcessingCheckout.value = false; 
+          },
+          onClose: () => { 
+            isProcessingCheckout.value = false; 
+          }
         });
       } catch (error) {
-        Swal.fire("Error Backend", "Gagal memanggil API Midtrans dari Golang.", "error"); isProcessingCheckout.value = false;
+        Swal.fire("Error Gateway", "Gagal memanggil API Midtrans dari Golang.", "error"); 
+        isProcessingCheckout.value = false;
       }
-    } else { showQrisModal.value = true; }
-  } else { triggerCheckoutFlow(); }
+    } else { 
+      showQrisModal.value = true; // Buka Modal Gambar QRIS Manual bray
+    }
+  } else { 
+    triggerCheckoutFlow(); 
+  }
 };
 
-// 🚀 FUNGSI PERCABANGAN NOTIFIKASI WHATSAPP KASTA PREMIUM
+// 🛡️ ANTI-FRAUD QRIS MANUAL: Paksa kasir sumpah konfirmasi mutasi masuk bray!
+const verifyManualQrisPayment = () => {
+  Swal.fire({
+    title: "Konfirmasi Uang Masuk",
+    text: `Pastikan dana Rp ${totalBelanja.value.toLocaleString("id-ID")} SUDAH MASUK ke e-wallet toko sebelum mencetak struk bray!`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#4f46e5",
+    cancelButtonColor: "#cbd5e1",
+    confirmButtonText: "Ya, Sudah Masuk!",
+    cancelButtonText: "Cek Lagi",
+    customClass: { popup: "rounded-[28px]" }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      triggerCheckoutFlow();
+    }
+  });
+};
+
+// 🛡️ FIX SECURITY: Cabut validasi premium dari LocalStorage! 
+// Ambil status langsung dari object 'storeData' database aman backend bray!
 const triggerCheckoutFlow = () => {
   showQrisModal.value = false;
-  const plan = localStorage.getItem("subscriptionPlan") || "basic";
-  const isPremium = plan === "premium" || plan === "trial";
+  const planFromDb = storeData.value?.subscription_plan || "basic";
+  const isPremium = planFromDb === "premium" || planFromDb === "trial";
   const hasWaToken = storeData.value?.wa_token && storeData.value.wa_token !== "";
 
-  if (isPremium && hasWaToken) { showWaModal.value = true; } 
-  else { proceedToFinalCheckout(); }
+  if (isPremium && hasWaToken) { 
+    showWaModal.value = true; 
+  } else { 
+    proceedToFinalCheckout(); 
+  }
 };
 
-const proceedToFinalCheckout = async () => { showWaModal.value = false; await executeCheckout(); };
-const handleWaSubmit = (phone) => { noHpPelanggan.value = phone; proceedToFinalCheckout(); };
-const handleWaSkip = () => { noHpPelanggan.value = ""; proceedToFinalCheckout(); showReceipt.value = true; };
+const proceedToFinalCheckout = async () => { 
+  showWaModal.value = false; 
+  await executeCheckout(); 
+};
+
+const handleWaSubmit = (phone) => { 
+  noHpPelanggan.value = phone; 
+  proceedToFinalCheckout(); 
+};
+
+const handleWaSkip = () => { 
+  noHpPelanggan.value = ""; 
+  proceedToFinalCheckout(); 
+  showReceipt.value = true; 
+};
+
+const printClosing = () => { window.print(); };
 const finishClosing = () => router.push("/retail/pos/riwayat");
 const goToRiwayat = () => router.push("/retail/pos/riwayat");
 </script>
@@ -159,7 +230,7 @@ const goToRiwayat = () => router.push("/retail/pos/riwayat");
         <div class="bg-indigo-50 text-indigo-900 p-4 rounded-2xl mb-6 font-black text-2xl">Rp {{ totalBelanja.toLocaleString("id-ID") }}</div>
         <div class="flex gap-3">
           <button @click="showQrisModal = false" :disabled="isProcessingCheckout" class="flex-1 bg-slate-100 py-4 rounded-xl font-black text-[10px] uppercase text-slate-500">Batal</button>
-          <button @click="triggerCheckoutFlow" :disabled="isProcessingCheckout" class="flex-1 bg-indigo-600 py-4 rounded-xl font-black text-[10px] uppercase text-white shadow-lg">{{ isProcessingCheckout ? "Proses..." : "Lunas" }}</button>
+          <button @click="verifyManualQrisPayment" :disabled="isProcessingCheckout" class="flex-1 bg-indigo-600 py-4 rounded-xl font-black text-[10px] uppercase text-white shadow-lg">{{ isProcessingCheckout ? "Proses..." : "Lunas" }}</button>
         </div>
       </div>
     </div>
@@ -175,10 +246,6 @@ const goToRiwayat = () => router.push("/retail/pos/riwayat");
 @media (min-width: 768px) { .custom-scrollbar::-webkit-scrollbar { width: 6px; } }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-.animate-marquee { display: inline-block; padding-left: 100%; animation: marquee 20s linear infinite; }
-@keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-@keyframes slide-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
-.animate-slide-in-right { animation: slide-in-right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
 @media print { @page { margin: 0; } body { background: white; -webkit-print-color-adjust: exact; } }
 :deep(.swal2-popup) { font-family: "Inter", sans-serif !important; border-radius: 28px !important; }
 </style>

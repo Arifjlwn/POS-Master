@@ -415,8 +415,8 @@ onMounted(async () => {
                         Akses Terbatas
                     </h4>
                     <p class="text-[11px] font-bold text-amber-700 mt-2">
-                        Silakan hubungi <b>Owner / Manajer</b> cabang JKT2 untuk
-                        melakukan penambahan lisensi terminal operasional baru.
+                        Silakan hubungi <b>Owner</b> untuk
+                        melakukan penambahan lisensi station operasional baru.
                     </p>
                 </div>
 

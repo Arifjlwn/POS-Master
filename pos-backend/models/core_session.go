@@ -37,7 +37,7 @@ type CashierSession struct {
 	ClosedAt *time.Time `gorm:"index" json:"closed_at"`
 
 	// 🛡️ SUNTIKAN SAKTI SAKSI FORENSIK: Rekam jejak user ID siapa yang membuka dan menutup sesi 
-	// (Penting banget kalau ada kasus selisih kas raib jutaan rupiah di cabang JKT2 bray!)
+	// (Penting banget kalau ada kasus selisih kas raib jutaan rupiah)
 	OpenedBy uint `gorm:"not null;index" json:"opened_by"`
 	ClosedBy *uint `gorm:"index" json:"closed_by"`
 
