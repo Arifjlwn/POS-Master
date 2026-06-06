@@ -30,6 +30,15 @@
     'checkout',
     'toggle-uom',
   ]);
+
+  // 🛡️ SECURITY LAYER FOR FRONTEND INPUT: Buang paksa karakter aneh di kuantitas barang bray!
+  const filterQtyKeyboard = (event, item) => {
+    let cleanVal = event.target.value.replace(/\D/g, ""); // Murni angka bulat positif, buang minus & desimal!
+    let parsed = parseInt(cleanVal, 10);
+    
+    // Paksa minimal order adalah 1 PCS bray
+    item.qty = parsed && parsed > 0 ? parsed : 1;
+  };
 </script>
 
 <template>
@@ -48,7 +57,6 @@
       ]"
       class="bg-white lg:rounded-[24px] lg:border border-slate-200 flex flex-col h-full overflow-hidden shadow-lg"
     >
-      <!-- HEADER MOBILE -->
       <div class="lg:hidden p-3 bg-indigo-900 text-white flex justify-between items-center shrink-0">
         <h2 class="font-black tracking-widest uppercase text-xs flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
@@ -59,7 +67,6 @@
         </button>
       </div>
 
-      <!-- HEADER DESKTOP -->
       <div class="p-3 border-b border-slate-100 bg-slate-50/80 hidden lg:flex justify-between items-center shrink-0">
         <h2 class="text-xs xl:text-sm font-black text-slate-800 flex items-center gap-2 uppercase tracking-widest">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 xl:w-5 xl:h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
@@ -68,7 +75,6 @@
         <div class="flex gap-1 xl:gap-1.5">
           <button @click="emit('show-held')" class="p-1.5 xl:p-2 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-lg xl:rounded-xl transition-colors relative" title="Lihat Pesanan Tertunda">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 xl:w-4 xl:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <!-- 🚀 NOTIF 0 DIHILANGKAN PAKE v-if -->
             <span v-if="heldOrders.length > 0" class="absolute -top-1 -right-1 flex h-3.5 w-3.5 xl:h-4 xl:w-4 items-center justify-center rounded-full bg-rose-500 text-[7px] xl:text-[8px] font-black text-white shadow-sm">{{ heldOrders.length }}</span>
           </button>
           <button @click="emit('hold-order')" :disabled="cart.length === 0" class="p-1.5 xl:p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg xl:rounded-xl transition-colors disabled:opacity-50" title="Hold Pesanan Ini">
@@ -80,9 +86,7 @@
         </div>
       </div>
 
-      <!-- AREA LIST KERANJANG (Diberi min-h-[120px] biar ga gepeng) -->
       <div class="p-2 xl:p-3 flex-1 overflow-y-auto bg-white custom-scrollbar min-h-[120px] relative">
-        <!-- TOMBOL HOLD & HAPUS DI MOBILE -->
         <div v-if="cart.length > 0" class="flex gap-2 lg:hidden mb-3">
           <button @click="emit('hold-order')" class="flex-1 py-2 bg-amber-50 text-amber-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-amber-100 active:scale-95 transition-all">Hold Order</button>
           <button @click="emit('clear-cart')" class="flex-1 py-2 bg-rose-50 text-rose-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-rose-100 active:scale-95 transition-all">Bersihkan</button>
@@ -124,7 +128,15 @@
               <button @click="emit('decrease-qty', item)" class="w-6 h-6 xl:w-7 xl:h-7 flex items-center justify-center rounded text-slate-400 hover:bg-rose-50 hover:text-rose-600 font-black transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 xl:w-4 xl:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/></svg>
               </button>
-              <input type="number" v-model.number="item.qty" @change="emit('validate-qty', item)" class="w-8 xl:w-10 text-center text-[11px] xl:text-xs font-black text-slate-800 bg-transparent border-none focus:ring-0 p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+              
+              <input 
+                type="text" 
+                :value="item.qty" 
+                @input="filterQtyKeyboard($event, item)"
+                @change="emit('validate-qty', item)" 
+                class="w-8 xl:w-10 text-center text-[11px] xl:text-xs font-black text-slate-800 bg-transparent border-none focus:ring-0 p-0" 
+              />
+              
               <button @click="emit('increase-qty', item)" class="w-6 h-6 xl:w-7 xl:h-7 flex items-center justify-center rounded text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 font-black transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 xl:w-4 xl:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
               </button>
@@ -133,10 +145,8 @@
         </div>
       </div>
 
-      <!-- AREA TOMBOL BAYAR (ULTRA COMPACT) -->
       <div class="p-2 md:p-3 bg-white border-t border-slate-100 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)] shrink-0 z-10 lg:rounded-b-[24px]">
         
-        <!-- Metode Pembayaran -->
         <div class="mb-1.5 md:mb-2">
           <div class="grid grid-cols-3 gap-1.5">
             <button
@@ -155,7 +165,6 @@
           </div>
         </div>
 
-        <!-- 🚀 Rincian Subtotal & Pajak (Dipress sepadat mungkin) -->
         <div class="space-y-0.5 bg-slate-50 p-1.5 md:p-2 rounded-xl border border-slate-100 mb-1.5 md:mb-2">
           <div class="flex justify-between items-end">
             <span class="font-bold text-[9px] text-slate-500 uppercase tracking-widest">Subtotal</span>
@@ -173,7 +182,6 @@
           </div>
         </div>
 
-        <!-- INFO QRIS / DEBIT -->
         <div v-show="paymentMethod === 'QRIS'" class="bg-indigo-50 p-1.5 rounded-xl border border-indigo-100 flex items-center justify-between animate-[fadeInUp_0.2s_ease-out] mb-1.5">
             <div class="flex items-center gap-2">
                 <div class="p-1 bg-indigo-100 text-indigo-600 rounded">
@@ -190,27 +198,24 @@
         <div v-show="paymentMethod === 'Debit'" class="bg-slate-100 p-1.5 rounded-xl border border-slate-200 flex items-center justify-between animate-[fadeInUp_0.2s_ease-out] mb-1.5">
             <div class="flex items-center gap-2">
                 <div class="p-1 bg-slate-200 text-slate-500 rounded">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/xl" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                 </div>
                 <div class="text-[8px] font-black text-slate-600 uppercase tracking-widest leading-none">Uang Pas<br><span class="text-slate-400 font-bold">Otomatis</span></div>
             </div>
             <div class="text-right"><div class="text-[8px] font-black text-slate-400 uppercase tracking-widest">EDC External</div></div>
         </div>
 
-        <!-- 🚀 1 BARIS HORIZONTAL SCROLL BUAT QUICK CASH (HEMAT BANYAK RUANG) -->
         <div v-show="paymentMethod === 'Cash'" class="animate-[fadeInUp_0.2s_ease-out] mb-1.5">
           <div class="flex overflow-x-auto gap-1 custom-scrollbar pb-1.5">
-            <button v-for="nom in [100000, 50000, 20000, 10000, 5000, 1000, 500,100]" :key="nom" @click="emit('set-nominal', nom)" class="shrink-0 px-3 py-1.5 bg-white border border-slate-200 hover:border-indigo-400 hover:text-indigo-600 rounded-lg font-black text-[9px] text-slate-600 uppercase transition-all shadow-sm active:scale-95">
+            <button v-for="nom in [100000, 50000, 20000, 10000, 5000, 1000, 500, 100]" :key="nom" @click="emit('set-nominal', nom)" class="shrink-0 px-3 py-1.5 bg-white border border-slate-200 hover:border-indigo-400 hover:text-indigo-600 rounded-lg font-black text-[9px] text-slate-600 uppercase transition-all shadow-sm active:scale-95">
               {{ nom >= 1000 ? nom / 1000 + ' Rb' : nom }}
             </button>
           </div>
         </div>
 
-        <!-- 🚀 KOTAK BAYAR & TOMBOL CLEAR DIGABUNG JADI 1 BARIS -->
         <div class="relative z-20 flex justify-between items-center bg-slate-50 p-1.5 rounded-xl border border-slate-200 focus-within:border-indigo-500 transition-all shadow-sm mb-1.5">
           <span class="font-black text-[10px] text-slate-600 uppercase tracking-widest pl-1">Bayar</span>
           <div class="flex-1 flex gap-1 ml-2">
-            <!-- Input Harga -->
             <div class="relative flex-1">
               <span class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs italic">Rp</span>
               <input
@@ -223,8 +228,8 @@
                 placeholder="0"
               />
             </div>
-            <!-- Tombol C (Clear Nominal) -->
-            <button v-show="paymentMethod === 'Cash'" @click="emit('set-nominal', -payAmount)" class="w-8 h-[34px] bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-600 rounded-lg flex items-center justify-center font-black transition-colors active:scale-95" title="Clear Nominal">
+            
+            <button v-show="paymentMethod === 'Cash'" @click="emit('set-nominal', 0)" class="w-8 h-[34px] bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-600 rounded-lg flex items-center justify-center font-black transition-colors active:scale-95" title="Clear Nominal">
               C
             </button>
           </div>
@@ -237,7 +242,6 @@
           </span>
         </div>
 
-        <!-- Tombol Proses -->
         <button
           @click="emit('checkout')"
           :disabled="cart.length === 0 || (paymentMethod === 'Cash' && payAmount < totalBelanja) || isProcessingCheckout"
@@ -257,11 +261,3 @@
     </div>
   </div>
 </template>
-
-<style scoped>
-  .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-  @media (min-width: 768px) { .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; } }
-  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-  .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-</style>

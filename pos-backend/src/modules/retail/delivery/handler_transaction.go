@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"pos-backend/models"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // ====================================
@@ -20,8 +22,8 @@ import (
 type CartItem struct {
 	ProductID uint    `json:"product_id" binding:"required"`
 	Kuantitas int     `json:"kuantitas" binding:"required,gt=0"`
-	UomLabel  string  `json:"uom_label"`
-	HargaUom  float64 `json:"harga_uom"`
+	UomLabel  string  `json:"uom_label"` 
+	HargaUom  float64 `json:"harga_uom"` 
 }
 
 type TransactionInput struct {
@@ -32,68 +34,107 @@ type TransactionInput struct {
 }
 
 func (h *RetailHandler) CreateTransaction(c *gin.Context) {
-	storeIDRaw, _ := c.Get("store_id"); userIDRaw, _ := c.Get("user_id")
+	storeIDRaw, _ := c.Get("store_id")
+	userIDRaw, _ := c.Get("user_id")
 	var storeID, userID uint
 	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
 	switch v := userIDRaw.(type) { case float64: userID = uint(v); case uint: userID = v; case int: userID = uint(v) }
 
 	var input TransactionInput
-	if err := c.ShouldBindJSON(&input); err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Format keranjang tidak sesuai!"}); return }
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format keranjang tidak sesuai bray!"})
+		return
+	}
 
 	formatRupiah := func(amount float64) string {
-		str := fmt.Sprintf("%.0f", amount); var result string
+		str := fmt.Sprintf("%.0f", amount)
+		var result string
 		for i, n := len(str)-1, 0; i >= 0; i-- {
-			result = string(str[i]) + result; n++
+			result = string(str[i]) + result
+			n++
 			if n%3 == 0 && i > 0 { result = "." + result }
 		}
 		return "Rp " + result
 	}
 
 	var savedTransaction models.Transaction
+	var store models.Store
+	rincianBarangWA := ""
 	db := h.Repo.GetDB()
 
 	err := db.Transaction(func(tx *gorm.DB) error {
 		activeSession, err := h.Repo.GetActiveSession(tx, userID, storeID)
-		if err != nil { return fmt.Errorf("session kasir tidak ditemukan, silakan buka kasir dulu bray") }
-
-		var store models.Store
-		if err := tx.Select("id", "nama_toko", "business_type", "pajak_persen", "wa_token", "receipt_footer").First(&store, storeID).Error; err != nil {
-			return fmt.Errorf("data toko tidak ditemukan")
+		if err != nil {
+			return fmt.Errorf("sesi laci kasir belum dibuka, isi modal awal dulu bray")
 		}
 
-		tipeBisnis := "RETAIL"; statusPesanan := "SELESAI"
-		if store.BusinessType == "Jasa - Laundry" { tipeBisnis = "LAUNDRY"; statusPesanan = "ANTRI" } 
+		if err := tx.Select("id", "nama_toko", "business_type", "pajak_persen", "wa_token", "receipt_footer").First(&store, storeID).Error; err != nil {
+			return fmt.Errorf("data identitas toko gagal diverifikasi")
+		}
+
+		tipeBisnis := "RETAIL"
+		statusPesanan := "SELESAI"
+		if store.BusinessType == "Jasa - Laundry" { tipeBisnis = "LAUNDRY"; statusPesanan = "ANTRI" }
 		if store.BusinessType == "Kuliner - F&B" { tipeBisnis = "FNB"; statusPesanan = "PROSES" }
 
-		var subTotal float64; var details []models.TransactionDetail; rincianBarangWA := ""
+		var subTotal float64
+		var details []models.TransactionDetail
 
 		for _, item := range input.Items {
-			product, err := h.Repo.GetProductByID(tx, item.ProductID, storeID)
-			if err != nil { return err }
-			if product.Stok < item.Kuantitas { return fmt.Errorf("Stok %s habis! Sisa: %d", product.NamaProduk, product.Stok) }
-
-			product.Stok -= item.Kuantitas
-			if err := h.Repo.SaveProduct(tx, product); err != nil { return err }
-
-			itemSubTotal := float64(item.Kuantitas) * product.HargaJual
-			rincianDisplay := item.UomLabel; hargaSatuanDisplay := item.HargaUom
-
-			if hargaSatuanDisplay > 0 {
-				qtyOriginal := 1; fmt.Sscanf(rincianDisplay, "%d", &qtyOriginal)
-				if qtyOriginal > 0 { itemSubTotal = float64(qtyOriginal) * hargaSatuanDisplay }
+			var product models.Product
+			
+			// 🛡️ LOCK ROW CONCURRENCY
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&product, "id = ? AND store_id = ?", item.ProductID, storeID).Error; err != nil {
+				return fmt.Errorf("produk ID %d tidak ditemukan di rak toko", item.ProductID)
 			}
 
-			subTotal += itemSubTotal
-			rincianBarangWA += fmt.Sprintf("▪️ *%s*\n   %s x %s = *%s*\n", product.NamaProduk, rincianDisplay, formatRupiah(hargaSatuanDisplay), formatRupiah(itemSubTotal))
+			if product.Stok < item.Kuantitas {
+				return fmt.Errorf("stok %s habis bray! Sisa fisik: %d", product.NamaProduk, product.Stok)
+			}
 
-			// 🚀 HYBRID OPTIMAL: Detail bersih tanpa PublicID ULID, hemat index space DB!
+			// Potong stok produk aman bray bray
+			product.Stok -= item.Kuantitas
+			if err := tx.Save(&product).Error; err != nil {
+				return err
+			}
+
+			// 🛡️ ANTI TWEAKING HARGA FRONTEND
+			cleanLabel := strings.ToUpper(item.UomLabel)
+			var hargaSatuanResmi float64 = product.HargaJual
+			
+			if cleanLabel != "" {
+				if product.SatuanBesar != "" && strings.Contains(cleanLabel, strings.ToUpper(product.SatuanBesar)) {
+					hargaSatuanResmi = product.HargaJualBesar
+				} else if product.SatuanTengah != "" && strings.Contains(cleanLabel, strings.ToUpper(product.SatuanTengah)) {
+					hargaSatuanResmi = product.HargaJualTengah
+				}
+			}
+
+			qtyOriginal := 1
+			fmt.Sscanf(item.UomLabel, "%d", &qtyOriginal)
+			if qtyOriginal <= 0 { qtyOriginal = 1 }
+
+			itemSubTotal := float64(qtyOriginal) * hargaSatuanResmi
+			subTotal += itemSubTotal
+
+			rincianBarangWA += fmt.Sprintf("▪️ *%s*\n   %s x %s = *%s*\n", product.NamaProduk, item.UomLabel, formatRupiah(hargaSatuanResmi), formatRupiah(itemSubTotal))
+
+			// 🛡️ SAFE POINTER DEREFERENCE: Solusi jitu biar ga crash kalau SKU produk di database null bray!
+			skuSnapshot := ""
+			if product.SKU != nil {
+				skuSnapshot = *product.SKU // Ambil nilai string asli di balik pointer bray
+			}
+
+			// Masukkan ke detail item transaksi
 			details = append(details, models.TransactionDetail{
-				ProductID:   product.ID,
-				HargaSatuan: hargaSatuanDisplay,
-				Kuantitas:   item.Kuantitas,
-				SubTotal:    itemSubTotal,
-				ItemType:    "PRODUCT",
-				DetailNotes: rincianDisplay,
+				ProductID:          product.ID,
+				NamaProdukSnapshot: product.NamaProduk, 
+				SKUProductSnapshot: skuSnapshot,        // FIX: Masuk berupa string bersih 100% aman bray!
+				HargaSatuan:        hargaSatuanResmi,   
+				Kuantitas:          item.Kuantitas,     
+				ItemType:           "PRODUCT",
+				DetailNotes:        item.UomLabel,
+				SubTotal:           itemSubTotal,
 			})
 		}
 
@@ -102,12 +143,15 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 		roundedTotal := math.Round(rawTotal/100) * 100
 		pembulatan := roundedTotal - rawTotal
 
-		if input.NominalBayar < roundedTotal { return fmt.Errorf("Uang pelanggan kurang! Tagihan: %s", formatRupiah(roundedTotal)) }
+		if input.NominalBayar < roundedTotal {
+			return fmt.Errorf("uang kas kurang! Total wajib bayar: %s", formatRupiah(roundedTotal))
+		}
+		
 		kembalian := input.NominalBayar - roundedTotal
 		noInvoice := fmt.Sprintf("INV-%s", time.Now().Format("20060102150405"))
 
 		savedTransaction = models.Transaction{
-			PublicID:      utils.GenerateULID(), // Header tetep wajib dipasang bray buat top-level masking API eksternal
+			PublicID:      utils.GenerateULID(),
 			SessionID:     activeSession.ID,
 			StoreID:       storeID,
 			UserID:        userID,
@@ -121,15 +165,25 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 			TipeBisnis:    tipeBisnis,
 			StatusPesanan: statusPesanan,
 			NominalBayar:  input.NominalBayar,
-			Kembalian:     kembalian,
+			Kembalian:     kembalian, 
 			Details:       details,
 		}
 
-		if input.NoHPPelanggan != "" && store.WaToken != "" {
+		return tx.Create(&savedTransaction).Error
+	})
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 🚀 ASYNCHRONOUS BACKGROUND THREAD WA BROADCASTER
+	if input.NoHPPelanggan != "" && store.WaToken != "" {
+		go func(token, hp, namaToko, inv, rincian string, sub, paj, tot, nom, kemb float64, method, footer string) {
 			pesanNota := fmt.Sprintf(
 				`🏪 *%s*
 ========================
-Halo Bosku! Terima kasih sudah berbelanja. Berikut rincian transaksi Anda:
+Halo Bosku! Terima kasih sudah berbelanja. Berikut rincian kuitansi digital Anda:
 
 🧾 *No. Invoice:* %s
 📅 *Tanggal:* %s
@@ -137,33 +191,34 @@ Halo Bosku! Terima kasih sudah berbelanja. Berikut rincian transaksi Anda:
 *Rincian Pesanan:*
 %s========================
 💰 *Subtotal:* %s
-⚖️ *Pajak/Biaya:* %s
+⚖️ *Pajak Resto:* %s
 ========================
-✅ *TOTAL BAYAR: %s*
+✅ *TOTAL BELANJA: %s*
 💳 *Metode:* %s
-💵 *Tunai:* %s
-💸 *Kembali:* %s
+💵 *Tunai Kas:* %s
+💸 *Kembalian:* %s
 ========================
-				%s`,
-				store.NamaToko, noInvoice, time.Now().Format("02 Jan 2006, 15:04 WIB"), rincianBarangWA,
-				formatRupiah(subTotal), formatRupiah(pajak), formatRupiah(roundedTotal), input.MetodeBayar,
-				formatRupiah(input.NominalBayar), formatRupiah(kembalian), store.ReceiptFooter,
+%s`,
+				namaToko, inv, time.Now().Format("02 Jan 2006, 15:04 WIB"), rincian,
+				formatRupiah(sub), formatRupiah(paj), formatRupiah(tot), method,
+				formatRupiah(nom), formatRupiah(kemb), footer,
 			)
-			utils.SendWhatsAppFonnte(store.WaToken, input.NoHPPelanggan, pesanNota)
-		}
-
-		return h.Repo.CreateTransactionTx(tx, &savedTransaction)
-	})
-
-	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()}); return }
+			utils.SendWhatsAppFonnte(token, hp, pesanNota)
+		}(store.WaToken, input.NoHPPelanggan, store.NamaToko, savedTransaction.NoInvoice, rincianBarangWA, savedTransaction.SubTotal, savedTransaction.Pajak, savedTransaction.TotalHarga, input.NominalBayar, savedTransaction.Kembalian, input.MetodeBayar, store.ReceiptFooter)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Transaksi berhasil! Struk siap dicetak.",
-		"invoice": savedTransaction.NoInvoice,
-		"tagihan": savedTransaction.TotalHarga,
-		"kembali": savedTransaction.Kembalian,
+		"message":    "Transaksi sukses bray! Dokumen kuitansi siap dicetak.",
+		"invoice":    savedTransaction.NoInvoice, 
+		"no_invoice": savedTransaction.NoInvoice, 
+		"tagihan":    savedTransaction.TotalHarga, 
+		"kembali":    savedTransaction.Kembalian,  
 	})
 }
+
+// =========================================================================
+// 🛒 RIWAYAT LOG REPORT LIST DATA TRANS HANDLERS
+// =========================================================================
 
 func (h *RetailHandler) GetTransactions(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
@@ -174,13 +229,20 @@ func (h *RetailHandler) GetTransactions(c *gin.Context) {
 	if tanggal == "" { tanggal = time.Now().Format("2006-01-02") }
 
 	parsedDate, err := time.ParseInLocation("2006-01-02", tanggal, time.Local)
-	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Format tanggal tidak valid"}); return }
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format rujukan tanggal tidak valid bray"})
+		return
+	}
 
-	startOfDay := parsedDate; endOfDay := startOfDay.Add(24 * time.Hour)
+	startOfDay := parsedDate
+	endOfDay := startOfDay.Add(24 * time.Hour)
 	transactions, err := h.Repo.GetTransactionsByRange(storeID, startOfDay, endOfDay)
-	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menarik riwayat transaksi"}); return }
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menarik riwayat log laporan transaksi"})
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Riwayat transaksi berhasil ditarik!", "data": transactions})
+	c.JSON(http.StatusOK, gin.H{"message": "Daftar riwayat log transaksi berhasil ditarik!", "data": transactions})
 }
 
 func (h *RetailHandler) GetDailyClosing(c *gin.Context) {
@@ -192,11 +254,18 @@ func (h *RetailHandler) GetDailyClosing(c *gin.Context) {
 	if tanggal == "" { tanggal = time.Now().Format("2006-01-02") }
 
 	parsedDate, err := time.ParseInLocation("2006-01-02", tanggal, time.Local)
-	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Format tanggal tidak valid"}); return }
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format tanggal rujukan audit closing tidak valid"})
+		return
+	}
 
-	startOfDay := parsedDate; endOfDay := startOfDay.Add(24 * time.Hour)
+	startOfDay := parsedDate
+	endOfDay := startOfDay.Add(24 * time.Hour)
 	closings, err := h.Repo.GetClosingByRange(storeID, startOfDay, endOfDay)
-	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menarik riwayat closing"}); return }
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengumpulkan berkas rekapitulasi harian shift"})
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Riwayat closing berhasil ditarik!", "data": closings})
+	c.JSON(http.StatusOK, gin.H{"message": "Berkas data rekapitulasi closing berhasil dikumpulkan!", "data": closings})
 }

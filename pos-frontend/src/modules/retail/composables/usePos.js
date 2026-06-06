@@ -298,7 +298,13 @@ export function usePos() {
     paymentMethod.value = method; 
     payAmount.value = method !== 'Cash' ? totalBelanja.value : 0; 
   };
-  const setNominal = (amount) => { payAmount.value = amount; };
+  const setNominal = (amount) => { 
+  if (amount === 0) {
+    payAmount.value = 0; // Kalau pencet 'C', reset murni jadi 0 bray
+  } else {
+    payAmount.value += amount; // Tetap akumulatif! Klik 100 + 50 langsung jadi 150rb!
+  }
+};
 
   const formatInputRupiah = (event) => {
     let rawValue = event.target.value.replace(/\D/g, ''); 

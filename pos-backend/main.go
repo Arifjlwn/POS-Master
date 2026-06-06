@@ -99,10 +99,19 @@ func main() {
 		api.POST("/setup", auth.SetupTokoBaru)
 
 		// 🛒 Modul Bisnis: RETAIL MULTI-TENANT
-		retailAPI := api.Group("/retail")
-		{
-			retailDelivery.RegisterRetailInventoryRoutes(retailAPI, retailHandler)
-		}
+        retailAPI := api.Group("/retail")
+        {
+            // Rute inventory bawaan lu bray
+            retailDelivery.RegisterRetailInventoryRoutes(retailAPI, retailHandler)
+
+            // 🛡️ SUNTIKAN SAKTI SINKRONISASI POS CHECKOUT:
+            // Alamat penuh rute ini otomatis menjadi: POST /api/retail/pos/checkout bray!
+            retailAPI.POST("/pos/checkout", retailHandler.CreateTransaction)
+            
+            // Sekalian tambahkan rute history dan closing laci yang ada di handler baru kita kemarin bray!
+            retailAPI.GET("/pos/transactions", retailHandler.GetTransactions)
+            retailAPI.GET("/pos/daily-closing", retailHandler.GetDailyClosing)
+        }
 
 		// 🧺 Modul Bisnis: LAUNDRY ECOSYSTEM
 		laundryAPI := api.Group("/laundry")

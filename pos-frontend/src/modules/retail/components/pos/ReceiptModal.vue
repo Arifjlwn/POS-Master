@@ -4,64 +4,90 @@ import { computed } from 'vue';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const props = defineProps({
-  show: Boolean, invoiceData: Object, storeData: Object, cashierName: String, stationNumber: String,
+  show: Boolean, 
+  invoiceData: Object, 
+  storeData: Object, 
+  cashierName: String, 
+  stationNumber: String,
 });
 
 const emit = defineEmits(['close']);
 
 const formatRupiah = (angka) => {
+  if (angka === 0) return '0';
   if (typeof angka !== 'number' || isNaN(angka)) return '0';
   return new Intl.NumberFormat('id-ID').format(angka);
 };
 
-// 🚀 1. TAMPILKAN SUBTOTAL (TOTAL SEBELUM PAJAK) - PALING AKURAT
+// 🚀 1. SUB-TOTAL DISPLAY ENGINE: Kebal dari jebakan null/undefined data bray
 const subTotalDisplay = computed(() => {
-  if (props.invoiceData.subtotal !== undefined) return Number(props.invoiceData.subtotal);
-  if (props.invoiceData.sub_total !== undefined) return Number(props.invoiceData.sub_total);
+  if (props.invoiceData?.subtotal !== undefined) return Number(props.invoiceData.subtotal);
+  if (props.invoiceData?.sub_total !== undefined) return Number(props.invoiceData.sub_total);
 
-  const items = props.invoiceData.cart || props.invoiceData.details || [];
+  const items = props.invoiceData?.cart || props.invoiceData?.details || [];
   if (items.length > 0) {
     return items.reduce((sum, item) => {
       const harga = item.price || item.harga_satuan || 0;
       const qty = item.qty || item.kuantitas || 0;
-      return sum + (harga * qty);
+      return sum + (Number(harga) * Number(qty));
     }, 0);
   }
   return 0;
 });
 
-// 🚀 2. TAMPILKAN PAJAK
+// 🚀 2. TAX CALCULATOR: Akurat membaca status pajak SaaS merchant side
 const totalPajak = computed(() => {
-  if (props.invoiceData.pajak !== undefined) return Number(props.invoiceData.pajak);
-  if (!props.storeData?.is_tax_active) return 0;
-  const persen = props.storeData?.pajak_persen || 0;
-  return subTotalDisplay.value * (persen / 100);
+  if (props.invoiceData?.pajak !== undefined) return Number(props.invoiceData.pajak);
+  const isTaxActive = props.storeData?.is_tax_active || props.storeData?.IsTaxActive || false;
+  if (!isTaxActive) return 0;
+  const persen = props.storeData?.pajak_persen || props.storeData?.pajak_percent || 0;
+  return subTotalDisplay.value * (Number(persen) / 100);
 });
 
-// 🚀 3. TAMPILKAN TOTAL AKHIR
+// 🚀 3. GRAND TOTAL: Hasil final klop antara server database vs client render
 const grandTotal = computed(() => {
-  if (props.invoiceData.total !== undefined) return Number(props.invoiceData.total);
-  if (props.invoiceData.total_harga !== undefined) return Number(props.invoiceData.total_harga);
+  if (props.invoiceData?.total !== undefined) return Number(props.invoiceData.total);
+  if (props.invoiceData?.tagihan !== undefined) return Number(props.invoiceData.tagihan);
+  if (props.invoiceData?.total_harga !== undefined) return Number(props.invoiceData.total_harga);
   return subTotalDisplay.value + totalPajak.value;
 });
 
-const formatWA = (waNumber) => {
-  if (!waNumber) return '-';
-  const cleaned = waNumber.replace(/\D/g, '');
-  let localNumber = cleaned;
-  if (localNumber.startsWith('62')) localNumber = '0' + localNumber.slice(2);
-  const match = localNumber.match(/^(\d{4})(\d{4})(\d{4,5})$/);
-  return match ? `${match[1]}-${match[2]}-${match[3]}` : localNumber;
-};
+// 🚀 4. NOMINAL KEMBALIAN KAS: Anti-Bug Falsy Value (Uang Pas tercetak sempurna bray)
+const kembalianDisplay = computed(() => {
+  if (!props.invoiceData) return 0;
+  
+  // Tampung semua kemungkinan variasi nama field dari backend Go lu bray bray
+  const values = [
+    props.invoiceData.return,
+    props.invoiceData['return'],
+    props.invoiceData.kembalian,
+    props.invoiceData.kembali,
+    props.invoiceData.counter
+  ];
 
-// FUNGSI SILUMAN PEMBACA KEMASAN
+  for (let val of values) {
+    if (val !== undefined && val !== null) {
+      return Number(val);
+    }
+  }
+  
+  // Fallback hitungan manual jika backend ga ngirim data kembalian bray
+  const nominalBayar = props.invoiceData.pay ?? props.invoiceData.nominal_bayar ?? 0;
+  const hasil = Number(nominalBayar) - grandTotal.value;
+  return hasil > 0 ? hasil : 0;
+});
+
+// FUNGSI SILUMAN PEMBACA KEMASAN UOM MULTI-UNIT
 const formatKemasan = (item) => {
   if (item.detail_notes && item.detail_notes !== 'Transaksi Retail Toko') return item.detail_notes;
+  if (item.uom_label) return item.uom_label; // Jika backend udah ngirim label jadi, pakai langsung bray!
+  
   const satuanPilihan = item.selected_uom || item.satuan_terpilih || item.satuan || item.kemasan;
   const qtyPilihan = item.qty || item.kuantitas || 0;
   if (satuanPilihan) return `${qtyPilihan} ${satuanPilihan}`;
+  
   const product = item.product || item;
-  return `${qtyPilihan} ${product.satuan_dasar || 'pcs'}`;
+  return `${qtyPilihan} ${product.satuan_dasar || 'PCS'}`;
 };
 
 const triggerPrint = () => { window.print(); };
@@ -71,59 +97,59 @@ const triggerPrint = () => { window.print(); };
   <div v-if="show && invoiceData" class="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-[200] p-4 backdrop-blur-sm print:static print:bg-white print:p-0 print:block">
     <div class="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] shadow-2xl w-full max-w-sm flex flex-col max-h-[90vh] border-[6px] md:border-[8px] border-slate-800 print:border-none print:shadow-none print:max-h-none print:max-w-none print:rounded-none print:m-0 print:p-0">
       
-      <div class="overflow-y-auto custom-scrollbar bg-white p-2 mx-auto print:overflow-visible print:mx-0 print:print:px-3 print:py-2" id="print-area" :style="{ width: storeData?.printer_width || '58mm' }">
+      <div class="overflow-y-auto custom-scrollbar bg-white p-2 mx-auto print:overflow-visible print:mx-0 print:px-3 print:py-2 select-none" id="print-area">
         <div class="text-center mb-4 font-mono leading-none">
           
-          <div v-if="storeData?.logo_url && storeData.logo_url !== ''">
-            <img :src="(storeData.logo_url.startsWith('http://') || storeData.logo_url.startsWith('https://')) ? storeData.logo_url : API_BASE_URL + storeData.logo_url" class="w-20 h-20 object-contain mx-auto grayscale contrast-150" alt="Logo Toko" />
+          <div v-if="storeData?.logo_url && storeData.logo_url !== ''" class="mb-2">
+            <img :src="(storeData.logo_url.startsWith('http://') || storeData.logo_url.startsWith('https://')) ? storeData.logo_url : API_BASE_URL + storeData.logo_url" class="w-16 h-16 object-contain mx-auto grayscale contrast-200 brightness-90" alt="Logo Toko" />
           </div>
           
-          <h2 v-else class="font-black text-sm uppercase tracking-tighter mb-1 italic">{{ storeData?.nama_toko || 'NEXA POS STORE' }}</h2>
-          <p class="text-[9px] font-black uppercase tracking-widest opacity-100 leading-tight px-1">
+          <h2 v-else class="font-black text-xs md:text-sm uppercase tracking-tighter mb-1 italic">{{ storeData?.nama_toko || storeData?.NamaToko || 'NEXA POS STORE' }}</h2>
+          <p class="text-[9px] font-black uppercase tracking-tight opacity-100 leading-tight px-1">
             {{ storeData?.alamat || 'JAKARTA, INDONESIA' }}<br />
             {{ storeData?.kelurahan || 'KELURAHAN' }}, {{ storeData?.kecamatan || 'KECAMATAN' }}<br />
             {{ storeData?.kota || 'KOTA' }}, {{ storeData?.provinsi || 'PROVINSI' }} {{ storeData?.kode_pos || 'KODE POS' }}
           </p>
         </div>
 
-        <div class="border-y border-black py-1.5 text-center font-black mb-3 font-mono text-[9px] tracking-[0.2em] uppercase">
+        <div class="border-y border-black py-1 text-center font-black mb-3 font-mono text-[9px] tracking-[0.2em] uppercase">
           {{ invoiceData.created_at ? 'Invoice Reprint' : 'Struk Belanja' }}
         </div>
 
         <div class="mb-3 text-[8px] font-black font-mono uppercase space-y-0.5">
-          <div class="flex justify-between"><span>WAKTU:</span><span>{{ invoiceData.date || (invoiceData.created_at ? new Date(invoiceData.created_at).toLocaleString('id-ID', { year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':') : '-') }}</span></div>
+          <div class="flex justify-between"><span>WAKTU:</span><span>{{ invoiceData.date || invoiceData.date_time || '-' }}</span></div>
           <div class="flex justify-between"><span>KASIR:</span><span>{{ cashierName || 'KASIR' }} / POS-{{ stationNumber || '01' }}</span></div>
-          <div class="flex justify-between"><span>Inv:</span><span>{{ invoiceData.invoice || invoiceData.no_invoice }}</span></div>
+          <div class="flex justify-between"><span class="truncate pr-2">INV:</span><span class="font-bold shrink-0">{{ invoiceData.invoice || invoiceData.no_invoice || 'INV-TEMP' }}</span></div>
         </div>
 
         <div class="border-b border-black border-dashed mb-2"></div>
 
-        <div v-for="item in invoiceData.cart || invoiceData.details" :key="item.id" class="mb-2 font-bold font-mono text-[9px] leading-tight uppercase">
-          <div class="truncate w-full pr-2">{{ item.name || item.product?.nama_produk || 'Item Belanja' }}</div>
+        <div v-for="item in invoiceData.cart || invoiceData.details" :key="item.id" class="mb-2 font-bold font-mono text-[9px] leading-tight uppercase break-inside-avoid">
+          <div class="truncate w-full pr-1">{{ item.name || item.product_name || item.product?.nama_produk || 'Item Belanja' }}</div>
           <div class="flex justify-between pl-2 text-[8px] mt-0.5">
-            <span class="text-black-600">{{ formatKemasan(item) }} <span class="lowercase">x {{ formatRupiah(item.price || item.harga_satuan) }}</span></span>
-            <span class="font-black text-[9px]">{{ formatRupiah(item.sub_total || item.price * item.qty) }}</span>
+            <span>{{ formatKemasan(item) }} <span class="lowercase">x {{ formatRupiah(item.price || item.harga_uom || item.harga_satuan) }}</span></span>
+            <span class="font-black text-[9px]">{{ formatRupiah(item.sub_total || item.subtotal_item || (item.price * item.qty)) }}</span>
           </div>
         </div>
 
-        <div class="border-t border-black border-dashed mt-2 pt-2"></div>
-        <div class="flex justify-between font-bold text-[10px] mb-1 font-mono uppercase italic"><span>SUBTOTAL:</span><span>{{ formatRupiah(subTotalDisplay) }}</span></div>
-        <div v-if="totalPajak > 0" class="flex justify-between font-bold text-[10px] mb-1 font-mono uppercase italic"><span>PAJAK:</span><span>{{ formatRupiah(totalPajak) }}</span></div>
-        <div class="flex justify-between font-black text-[11px] mb-2 font-mono uppercase italic border-t border-black pt-1 mt-1"><span>TOTAL BELANJA:</span><span>{{ formatRupiah(grandTotal) }}</span></div>
+        <div class="border-t border-black border-dashed mt-2 pt-1.5"></div>
+        <div class="flex justify-between font-bold text-[9px] mb-0.5 font-mono uppercase italic"><span>SUBTOTAL:</span><span>{{ formatRupiah(subTotalDisplay) }}</span></div>
+        <div v-if="totalPajak > 0" class="flex justify-between font-bold text-[9px] mb-0.5 font-mono uppercase italic"><span>PAJAK:</span><span>{{ formatRupiah(totalPajak) }}</span></div>
+        <div class="flex justify-between font-black text-[10px] mb-1.5 font-mono uppercase italic border-t border-black pt-1 mt-1"><span>TOTAL BELANJA:</span><span>{{ formatRupiah(grandTotal) }}</span></div>
         <div class="border-b border-black border-dashed mb-2"></div>
 
-        <div class="flex justify-between mb-1 font-bold font-mono text-[10px] uppercase">
+        <div class="flex justify-between mb-0.5 font-bold font-mono text-[9px] uppercase">
           <span>BAYAR ({{ invoiceData.method || invoiceData.metode_bayar || 'CASH' }}):</span>
-          <span>{{ formatRupiah(invoiceData.pay !== undefined ? invoiceData.pay : invoiceData.nominal_bayar) }}</span>
+          <span>{{ formatRupiah(invoiceData.pay !== undefined ? invoiceData.pay : (invoiceData.nominal_bayar ?? grandTotal)) }}</span>
         </div>
 
-        <div class="flex justify-between font-black font-mono text-[10px] uppercase italic text-black">
+        <div class="flex justify-between font-black font-mono text-[9px] uppercase italic text-black">
           <span>KEMBALI:</span>
-          <span>{{ formatRupiah(invoiceData.total !== undefined ? invoiceData['return'] : invoiceData.kembalian) }}</span>
+          <span>{{ kembalianDisplay > 0 ? formatRupiah(kembalianDisplay) : '0 (PAS)' }}</span>
         </div>
 
-        <div class="text-center mt-4 font-black font-mono text-[10px] border-2 border-black p-1.5 uppercase leading-tight">
-          {{ storeData?.receipt_footer || 'TERIMA KASIH ATAS KUNJUNGAN ANDA!' }}
+        <div class="text-center mt-4 font-black font-mono text-[9px] border border-black p-1.5 uppercase leading-tight whitespace-pre-line">
+          {{ storeData?.receipt_footer || storeData?.ReceiptFooter || 'TERIMA KASIH ATAS KUNJUNGAN ANDA!' }}
         </div>
       </div>
 
@@ -136,10 +162,18 @@ const triggerPrint = () => { window.print(); };
 </template>
 
 <style scoped>
+/* FIX CSS THERMAL: Mengunci lebar container dinamis murni saat simulasi dan eksekusi printer bray! */
+#print-area {
+  width: v-bind("storeData?.printer_width || storeData?.PrinterWidth || '58mm'") !important;
+  max-width: 100% !important;
+}
+
 @media print {
   #print-area {
-    width: v-bind("storeData?.printer_width || '58mm'") !important;
-    margin: 0 !important; padding: 0 !important;
+    width: v-bind("storeData?.printer_width || storeData?.PrinterWidth || '58mm'") !important;
+    margin: 0 auto !important; 
+    padding: 0 !important;
+    background: white !important;
   }
 }
 </style>
