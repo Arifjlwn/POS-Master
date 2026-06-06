@@ -1,6 +1,5 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
-// 🚀 1. Arahkan import dengan benar ke posService, sesuaikan relative path foldernya
 import Swal from "sweetalert2";
 import { posService } from "../services/posService.js";
 
@@ -12,18 +11,24 @@ export function useBukaKasir() {
     const name = ref(localStorage.getItem("name") || "Operator");
     const storeName = ref(localStorage.getItem("storeName") || "POS UMKM");
 
-    // Sesi Input States
-    const stationNumber = ref("01");
+    // Sesi Input States - Ambil dari localStorage jika sebelumnya kasir sengaja/tidak sengaja melakukan refresh halaman bray
+    const stationNumber = ref(localStorage.getItem("active_station") || "01");
     const modalAwal = ref(0);
     const loading = ref(false);
 
     // 🔍 Cek Sesi Aktif pas Halaman Pertama Kali Dibuka
     const checkExistingSession = async () => {
         const token = localStorage.getItem("token");
+        if (!token) return;
+        
         try {
-            // 🚀 2. Ganti ke posService.checkSession dan kirim tokennya
             const res = await posService.checkSession(token);
+            // FIX INTEGRASI: Jika server bilang sesi kasir masih aktif merayap, amankan nomor stasiunnya ke client side storage
             if (res.has_session) {
+                if (res.station_number) {
+                    localStorage.setItem("active_station", res.station_number);
+                    stationNumber.value = res.station_number;
+                }
                 router.push("/retail/pos");
             }
         } catch (error) {
@@ -31,7 +36,7 @@ export function useBukaKasir() {
         }
     };
 
-    // Filter input agar murni angka saja yang masuk
+    // Filter input agar murni angka bulat saja yang masuk (Sangat aman untuk format IDR)
     const handleInputModal = (e) => {
         const val = e.target.value.replace(/\D/g, "");
         modalAwal.value = val ? parseInt(val, 10) : 0;
@@ -45,20 +50,25 @@ export function useBukaKasir() {
                 title: "Modal Kosong?",
                 text: "Masukkan nominal modal awal untuk uang kembalian di laci kasir.",
                 confirmButtonColor: "#2563eb",
+                customClass: { popup: 'rounded-[32px]' }
             });
         }
 
         loading.value = true;
         try {
-            // 🚀 3. Ganti ke objek posService yang valid
+            // EKSEKUSI API VIA SERVICE
             await posService.openSession({
                 station_number: stationNumber.value,
-                modal_awal: parseFloat(modalAwal.value),
+                // FIX FINANSIAL: Gunakan nilai Integer murni bray, buang jauh-jauh parseFloat demi menghindari data rounding fraud!
+                modal_awal: parseInt(modalAwal.value, 10),
             });
+
+            // Gembok nomor stasiun kasir aktif di lokal browser kasir biar ga hilang pas di-refresh!
+            localStorage.setItem("active_station", stationNumber.value);
 
             await Swal.fire({
                 icon: "success",
-                title: "SESSION OPENED",
+                title: "SESSION INITIALIZED",
                 text: `Kasir Station ${stationNumber.value} berhasil dibuka. Selamat bertugas!`,
                 timer: 1500,
                 showConfirmButton: false,
@@ -67,26 +77,26 @@ export function useBukaKasir() {
 
             router.push("/retail/pos");
         } catch (error) {
-            // 🚀 BYPASS KHUSUS UNTUK ERROR KUOTA PENUH (SATPAM)
-            // Lempar errornya ke BukaKasir.vue biar modal Midtrans muncul!
+            // BYPASS KHUSUS UNTUK ERROR KUOTA PENUH (SATPAM TERMINAL MULTI-TENANT)
             if (
                 error.response &&
                 error.response.status === 403 &&
                 error.response.data?.error_code === "QUOTA_FULL"
             ) {
-                throw error;
+                throw error; // Oper mentah-mentah ke BukaKasir.vue buat ngetrigger modal Midtrans bray!
             }
 
             const msg = error.response?.data?.error || "Gagal membuka kasir";
 
-            // 📸 Interseptor Otorisasi Absensi Face AI / PIN
+            // Interseptor Otorisasi Absensi Face AI / PIN Shift Kerja
             if (msg.toLowerCase().includes("absen")) {
                 Swal.fire({
-                    title: "Otorisasi Gagal",
-                    text: "Sistem mendeteksi Anda belum melakukan absensi masuk shift hari ini.",
+                    title: "Akses Ditolak",
+                    text: "Sistem mendeteksi Anda belum melakukan absensi masuk shift menggunakan Face AI hari ini.",
                     icon: "error",
                     showCancelButton: true,
                     confirmButtonText: "Absen Sekarang 📸",
+                    cancelButtonText: "Batal",
                     confirmButtonColor: "#2563eb",
                     customClass: { popup: "rounded-[32px]" },
                 }).then((result) => {
@@ -95,7 +105,13 @@ export function useBukaKasir() {
                     }
                 });
             } else {
-                Swal.fire("Error", msg, "error");
+                Swal.fire({
+                    icon: "error",
+                    title: "Gagal Inisialisasi",
+                    text: msg,
+                    confirmButtonColor: "#ef4444",
+                    customClass: { popup: "rounded-[32px]" }
+                });
             }
         } finally {
             loading.value = false;

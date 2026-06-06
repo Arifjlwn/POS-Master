@@ -60,25 +60,29 @@ export function useSchedule() {
         try {
             const resEmp = await api.get('/retail/employees');
             const allEmployees = resEmp.data.data || [];
-            
             listKaryawan.value = allEmployees.filter(emp => emp.role !== 'owner');
 
             const resSched = await api.get(`/retail/schedules?start_date=${startDate.value}&end_date=${endDate.value}`);
             listJadwal.value = resSched.data.data || [];
 
             listKaryawan.value.forEach(emp => {
-                // FIX: Utamakan public_id, fallback ke id, pastikan jadi String
-                const empKey = String(emp.public_id || emp.id); 
+                const empKey = String(emp.public_id || emp.id).trim(); 
                 formJadwal.value[empKey] = {};
                 
                 mingguJadwal.value.forEach(d => {
+                    const tglTarget = d.tanggal.substring(0, 10);
+                    
                     const match = listJadwal.value.find(s => {
                         const sTanggalClean = s.tanggal ? s.tanggal.substring(0, 10) : "";
-                        // FIX: Komparasi menggunakan String, bukan Number
-                        return String(s.user_id) === empKey && sTanggalClean === d.tanggal;
+                        
+                        // LOGIKA PINTAR: Cek apakah ID di DB (s.user_id) cocok dengan ID integer lama ATAU PublicID (ULID)
+                        const dbUserId = String(s.user_id).trim();
+                        const isMatch = (dbUserId === empKey || dbUserId === String(emp.id)) && sTanggalClean === tglTarget;
+                        
+                        return isMatch;
                     });
                     
-                    formJadwal.value[empKey][d.tanggal] = match ? match.shift_type : 'OFF';
+                    formJadwal.value[empKey][tglTarget] = match ? match.shift_type : 'OFF';
                 });
             });
         } catch (error) {

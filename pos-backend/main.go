@@ -34,21 +34,27 @@ func main() {
 	r := gin.Default()
 
 	// 🚀 SANGAR: CORS Tight Guard dinamis berbasis ENV untuk mengunci serangan XSS di Production
-	r.Use(cors.New(cors.Config{
-		AllowOriginFunc: func(origin string) bool {
-			allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
-			if allowedOrigins == "" { return true } // Fallback development local
-			for _, allowed := range strings.Split(allowedOrigins, ",") {
-				if origin == strings.TrimSpace(allowed) { return true }
-			}
-			return false
-		},
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Requested-With", "Accept"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}))
+	// 🚀 SANGAR: CORS Tight Guard dinamis berbasis ENV
+    r.Use(cors.New(cors.Config{
+        AllowOriginFunc: func(origin string) bool {
+            // JIKA MODE DEVELOPMENT, JANGAN KUNCI GERBANG BRAY, BIAR HP BISA MASUK LANCAR
+            if os.Getenv("APP_ENV") == "development" {
+                return true
+            }
+
+            allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+            if allowedOrigins == "" { return true } // Fallback development local
+            for _, allowed := range strings.Split(allowedOrigins, ",") {
+                if origin == strings.TrimSpace(allowed) { return true }
+            }
+            return false
+        },
+        AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+        AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Requested-With", "Accept"},
+        ExposeHeaders:    []string{"Content-Length"},
+        AllowCredentials: true,
+        MaxAge:           12 * time.Hour,
+    }))
 
 	r.Static("/uploads", "./uploads")
 	r.Static("/public", "./public")

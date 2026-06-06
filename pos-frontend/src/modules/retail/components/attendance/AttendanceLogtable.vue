@@ -10,6 +10,21 @@ defineProps({
 });
 
 defineEmits(['update:filterMode', 'update:tanggalDipilih', 'update:bulanDipilih', 'toggle-sort', 'download-laporan', 'lihat-foto']);
+
+// 🚀 SUNTIKAN SAKTI: Standar URL Sanitizer agar Base64 dan Cloud URL ga bentrok 404
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+const formatImageUrl = (path) => {
+    if (!path || path === 'null' || path === 'undefined' || path === '') return '';
+    // Jika data berupa Base64 bawaan jepretan webcam, biarkan lolos mentah-mentah
+    if (path.startsWith('data:image/')) return path;
+    // Jika data berupa link utuh Supabase/URL eksternal
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    
+    // Jika sisa relative path dari backend lokal
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${API_BASE_URL}${cleanPath}`;
+};
 </script>
 
 <template>
@@ -24,8 +39,8 @@ defineEmits(['update:filterMode', 'update:tanggalDipilih', 'update:bulanDipilih'
                 <select :value="filterMode" @change="$emit('update:filterMode', $event.target.value)" class="flex-1 lg:flex-none px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-700 outline-none uppercase tracking-widest shadow-sm">
                     <option value="harian">Harian</option><option value="bulanan">Bulanan</option>
                 </select>
-                <input v-if="filterMode === 'harian'" type="date" :value="tanggalDipilih" @input="$emit('update:tanggalDipilih', $event.target.value)" class="flex-1 lg:flex-none px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-700 outline-none uppercase shadow-sm cursor-pointer color-scheme-dark">
-                <input v-else type="month" :value="bulanDipilih" @input="$emit('update:bulanDipilih', $event.target.value)" class="flex-1 lg:flex-none px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-700 outline-none uppercase shadow-sm cursor-pointer color-scheme-dark">
+                <input v-if="filterMode === 'harian'" type="date" :value="tanggalDipilih" @input="$emit('update:tanggalDipilih', $event.target.value)" class="flex-1 lg:flex-none px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-700 outline-none uppercase shadow-sm cursor-pointer">
+                <input v-else type="month" :value="bulanDipilih" @input="$emit('update:bulanDipilih', $event.target.value)" class="flex-1 lg:flex-none px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-black text-slate-700 outline-none uppercase shadow-sm cursor-pointer">
                 
                 <button v-if="filterMode === 'bulanan'" @click="$emit('toggle-sort')" class="lg:hidden w-11 h-11 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-500 shadow-sm active:scale-95">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 transition-transform" :class="!urutanTanggalTerbaru ? 'rotate-180 text-indigo-600' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></svg>
@@ -70,9 +85,9 @@ defineEmits(['update:filterMode', 'update:tanggalDipilih', 'update:bulanDipilih'
                         <div>
                             <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Masuk</p>
                             <div class="flex items-center gap-2">
-                                <div v-if="log.foto_masuk" @click="$emit('lihat-foto', log.foto_masuk, log.User?.name, 'Masuk', log.jam_masuk)" class="w-8 h-8 rounded-lg border border-slate-200 overflow-hidden cursor-zoom-in">
-                                    <img :src="log.foto_masuk" class="w-full h-full object-cover">
-                                </div>
+                                <div v-if="log.foto_masuk" @click="$emit('lihat-foto', formatImageUrl(log.foto_masuk), log.User?.name, 'Masuk', log.jam_masuk)" class="w-8 h-8 rounded-lg border border-slate-200 overflow-hidden cursor-zoom-in">
+    <img :src="formatImageUrl(log.foto_masuk)" class="w-full h-full object-cover">
+</div>
                                 <div v-else class="w-8 h-8 rounded-lg border border-slate-100 bg-slate-50 flex items-center justify-center">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4-4 4 4"/></svg>
                                 </div>
@@ -83,9 +98,9 @@ defineEmits(['update:filterMode', 'update:tanggalDipilih', 'update:bulanDipilih'
                         <div>
                             <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Pulang</p>
                             <div class="flex items-center gap-2">
-                                <div v-if="log.foto_pulang" @click="$emit('lihat-foto', log.foto_pulang, log.User?.name, 'Pulang', log.jam_pulang)" class="w-8 h-8 rounded-lg border border-slate-200 overflow-hidden cursor-zoom-in">
-                                    <img :src="log.foto_pulang" class="w-full h-full object-cover">
-                                </div>
+                                <div v-if="log.foto_pulang" @click="$emit('lihat-foto', formatImageUrl(log.foto_pulang), log.User?.name, 'Pulang', log.jam_pulang)" class="w-8 h-8 rounded-lg border border-slate-200 overflow-hidden cursor-zoom-in">
+    <img :src="formatImageUrl(log.foto_pulang)" class="w-full h-full object-cover">
+</div>
                                 <div v-else class="w-8 h-8 rounded-lg border border-slate-100 bg-slate-50 flex items-center justify-center">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4-4 4 4"/></svg>
                                 </div>
@@ -148,11 +163,11 @@ defineEmits(['update:filterMode', 'update:tanggalDipilih', 'update:bulanDipilih'
                         </td>
 
                         <td class="px-6 py-5 text-center">
-                            <div v-if="log.foto_masuk" @click="$emit('lihat-foto', log.foto_masuk, log.User?.name, 'Masuk', log.jam_masuk)" class="w-12 h-12 rounded-[14px] mx-auto border-2 border-slate-200 shadow-sm overflow-hidden cursor-zoom-in hover:border-indigo-500 transition-colors">
-                                <img :src="log.foto_masuk" class="w-full h-full object-cover">
-                            </div>
-                            <span v-else class="text-slate-300 font-black text-xs">-</span>
-                        </td>
+    <div v-if="log.foto_masuk" @click="$emit('lihat-foto', formatImageUrl(log.foto_masuk), log.User?.name, 'Masuk', log.jam_masuk)" class="w-12 h-12 rounded-[14px] mx-auto border-2 border-slate-200 shadow-sm overflow-hidden cursor-zoom-in hover:border-indigo-500 transition-colors">
+        <img :src="formatImageUrl(log.foto_masuk)" class="w-full h-full object-cover">
+    </div>
+    <span v-else class="text-slate-300 font-black text-xs">-</span>
+</td>
 
                         <td class="px-6 py-5 text-center">
                             <span v-if="log.jam_masuk" class="bg-emerald-50 text-emerald-700 border border-emerald-100 font-black px-3 py-1.5 rounded-lg text-[10px]">{{ log.jam_masuk }}</span>
@@ -160,11 +175,11 @@ defineEmits(['update:filterMode', 'update:tanggalDipilih', 'update:bulanDipilih'
                         </td>
 
                         <td class="px-6 py-5 text-center">
-                            <div v-if="log.foto_pulang" @click="$emit('lihat-foto', log.foto_pulang, log.User?.name, 'Pulang', log.jam_pulang)" class="w-12 h-12 rounded-[14px] mx-auto border-2 border-slate-200 shadow-sm overflow-hidden cursor-zoom-in hover:border-indigo-500 transition-colors">
-                                <img :src="log.foto_pulang" class="w-full h-full object-cover">
-                            </div>
-                            <span v-else class="text-slate-300 font-black text-xs">-</span>
-                        </td>
+    <div v-if="log.foto_pulang" @click="$emit('lihat-foto', formatImageUrl(log.foto_pulang), log.User?.name, 'Pulang', log.jam_pulang)" class="w-12 h-12 rounded-[14px] mx-auto border-2 border-slate-200 shadow-sm overflow-hidden cursor-zoom-in hover:border-indigo-500 transition-colors">
+        <img :src="formatImageUrl(log.foto_pulang)" class="w-full h-full object-cover">
+    </div>
+    <span v-else class="text-slate-300 font-black text-xs">-</span>
+</td>
 
                         <td class="px-6 py-5 text-center">
                             <span v-if="log.jam_pulang" class="bg-amber-50 text-amber-700 border border-amber-100 font-black px-3 py-1.5 rounded-lg text-[10px]">{{ log.jam_pulang }}</span>

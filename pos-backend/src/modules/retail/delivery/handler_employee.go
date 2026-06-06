@@ -239,7 +239,7 @@ func (h *RetailHandler) DeleteEmployee(c *gin.Context) {
 // ==========================================
 
 type ScheduleItem struct {
-	UserID    uint   `json:"user_id" binding:"required"`
+	UserID    string `json:"user_id" binding:"required"`
 	Tanggal   string `json:"tanggal" binding:"required"`
 	ShiftType string `json:"shift_type" binding:"required"`
 }
@@ -269,39 +269,55 @@ func (h *RetailHandler) SaveSchedules(c *gin.Context) {
 	db := h.Repo.GetDB()
 	tx := db.Begin()
 	for _, item := range input.Schedules {
-		jamMasuk, jamPulang := "-", "-"
-		if item.ShiftType == "Shift 1" {
-			jamMasuk = "07:00"
-			jamPulang = "15:00"
-		} else if item.ShiftType == "Shift 2" {
-			jamMasuk = "15:00"
-			jamPulang = "23:00"
-		} else if item.ShiftType == "Middle" {
-			jamMasuk = "11:00"
-			jamPulang = "19:00"
-		}
+        jamMasuk, jamPulang := "-", "-"
+        if item.ShiftType == "Shift 1" {
+            jamMasuk = "07:00"
+            jamPulang = "15:00"
+        } else if item.ShiftType == "Shift 2" {
+            jamMasuk = "15:00"
+            jamPulang = "23:00"
+        } else if item.ShiftType == "Middle" {
+            jamMasuk = "11:00"
+            jamPulang = "19:00"
+        }
 
-		existing, err := h.Repo.GetScheduleByDate(tx, item.UserID, item.Tanggal)
-		if err == nil {
-			existing.ShiftType = item.ShiftType
-			existing.JamMasukJadwal = jamMasuk
-			existing.JamPulangJadwal = jamPulang
-			if err := h.Repo.SaveScheduleTx(tx, existing); err != nil {
-				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal update jadwal"})
-				return
-			}
-		} else {
-			newSchedule := models.Schedule{
-				StoreID: storeID, UserID: item.UserID, Tanggal: item.Tanggal, ShiftType: item.ShiftType, JamMasukJadwal: jamMasuk, JamPulangJadwal: jamPulang,
-			}
-			if err := h.Repo.CreateScheduleTx(tx, &newSchedule); err != nil {
-				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal simpan jadwal baru"})
-				return
-			}
-		}
-	}
+        // 🚀 FIX MUTLAK: Terjemahkan string ULID menjadi uint ID Database
+        var employee models.User
+        if err := tx.Select("id").Where("public_id = ? AND store_id = ?", item.UserID, storeID).First(&employee).Error; err != nil {
+            tx.Rollback()
+            c.JSON(http.StatusBadRequest, gin.H{"error": "Data karyawan dengan ID tersebut tidak ditemukan atau tidak valid!"})
+            return
+        }
+
+        // Gunakan employee.ID (uint) untuk ke database
+        existing, err := h.Repo.GetScheduleByDate(tx, employee.ID, item.Tanggal)
+        if err == nil {
+            existing.ShiftType = item.ShiftType
+            existing.JamMasukJadwal = jamMasuk
+            existing.JamPulangJadwal = jamPulang
+            if err := h.Repo.SaveScheduleTx(tx, existing); err != nil {
+                tx.Rollback()
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal update jadwal"})
+                return
+            }
+        } else {
+            // 🚀 FIX: Tambahkan GenerateULID() di sini!
+            newSchedule := models.Schedule{
+                PublicID:         utils.GenerateULID(),
+                StoreID:          storeID, 
+                UserID:           employee.ID, 
+                Tanggal:          item.Tanggal, 
+                ShiftType:        item.ShiftType, 
+                JamMasukJadwal:   jamMasuk, 
+                JamPulangJadwal:  jamPulang,
+            }
+            if err := h.Repo.CreateScheduleTx(tx, &newSchedule); err != nil {
+                tx.Rollback()
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal simpan jadwal baru"})
+                return
+            }
+        }
+    }
 	tx.Commit()
 	c.JSON(http.StatusOK, gin.H{"message": "Jadwal mingguan berhasil disimpan! 🚀"})
 }
@@ -333,9 +349,8 @@ func (h *RetailHandler) GetSchedules(c *gin.Context) {
 // ==========================================
 
 type AbsenInput struct {
-	UserID uint   `json:"user_id" binding:"required"`
-	Jenis  string `json:"jenis" binding:"required"`
-	Foto   string `json:"foto" binding:"required"`
+    Jenis  string `json:"jenis" binding:"required"`
+    Foto   string `json:"foto" binding:"required"`
 }
 
 func (h *RetailHandler) StoreAttendance(c *gin.Context) {
@@ -362,15 +377,13 @@ func (h *RetailHandler) StoreAttendance(c *gin.Context) {
         return
     }
 
-    // PAKSA PAKAI ID DARI TOKEN, TOLAK INPUT JSON DARI FRONTEND
-    input.UserID = userID
-
     loc, _ := time.LoadLocation("Asia/Jakarta")
     now := time.Now().In(loc)
     today := now.Format("2006-01-02")
     nowTime := now.Format("15:04:05")
     
-    attendance, err := h.Repo.GetAttendanceToday(input.UserID, today)
+    // Gunakan userID langsung dari token
+    attendance, err := h.Repo.GetAttendanceToday(userID, today)
 
     if input.Jenis == "Masuk" {
         if err == nil {
@@ -378,7 +391,7 @@ func (h *RetailHandler) StoreAttendance(c *gin.Context) {
             return
         }
         absen := models.Attendance{
-            StoreID: storeID, UserID: input.UserID, Tanggal: today, JamMasuk: nowTime, FotoMasuk: input.Foto, Status: "Hadir",
+            StoreID: storeID, UserID: userID, Tanggal: today, JamMasuk: nowTime, FotoMasuk: input.Foto, Status: "Hadir",
         }
         if err := h.Repo.CreateAttendance(&absen); err != nil {
             c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal absensi masuk!"})

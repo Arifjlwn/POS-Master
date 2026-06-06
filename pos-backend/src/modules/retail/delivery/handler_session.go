@@ -12,10 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// ================================
-// 💵 CASHIER SESSION HANDLERS
-// ================================
-
 type OpenSessionInput struct {
 	StationNumber string  `json:"station_number" binding:"required"`
 	ModalAwal     float64 `json:"modal_awal"`
@@ -32,28 +28,42 @@ func (h *RetailHandler) OpenSession(c *gin.Context) {
 	if exists { userRole = userRoleRaw.(string) }
 
 	var input OpenSessionInput
-	if err := c.ShouldBindJSON(&input); err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak lengkap!"}); return }
+	if err := c.ShouldBindJSON(&input); err != nil { 
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data input stasiun tidak lengkap!"})
+		return 
+	}
 
 	loc, _ := time.LoadLocation("Asia/Jakarta")
 	nowInJKT := time.Now().In(loc)
 	today := nowInJKT.Format("2006-01-02")
 
+	// 📸 INTEGRASI ABSENSI: Pastikan staff sudah melakukan absen Face AI hari ini bray
 	if userRole != "owner" {
 		if _, err := h.Repo.GetAttendanceToday(userID, today); err != nil {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Anda wajib Absen Wajah terlebih dahulu!", "tanggal_hari_ini": today})
+			c.JSON(http.StatusForbidden, gin.H{"error": "Sistem mendeteksi Anda belum melakukan Absen Wajah hari ini!", "tanggal_hari_ini": today})
 			return
 		}
 	}
 
 	db := h.Repo.GetDB()
+	
+	// 🔒 CONCURRENCY LOCK: Cek apakah user bersangkutan sudah punya laci aktif di toko ini
 	if _, err := h.Repo.GetActiveSession(db, userID, storeID); err == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Anda masih memiliki session yang terbuka!"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Sesi kasir Anda masih aktif di perangkat lain!"})
+		return
+	}
+
+	// 🔒 STATION CHECK: Cegah nomor stasiun yang sama di-hijack/digunakan 2 user berbeda sekaligus
+	var duplicateStation int64
+	db.Model(&models.CashierSession{}).Where("store_id = ? AND station_number = ? AND status = ?", storeID, input.StationNumber, "open").Count(&duplicateStation)
+	if duplicateStation > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Stasiun POS " + input.StationNumber + " sedang aktif digunakan oleh kasir lain!"})
 		return
 	}
 
 	var store models.Store
 	if err := db.Where("id = ?", storeID).First(&store).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Toko tidak ditemukan"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Data Toko tidak valid"})
 		return
 	}
 
@@ -63,10 +73,11 @@ func (h *RetailHandler) OpenSession(c *gin.Context) {
 	kuotaTerminal := store.QuotaTerminal
 	if kuotaTerminal == 0 { kuotaTerminal = 1 }
 
+	// 🛡️ MULTI-TENANT QUOTA FILTER
 	if activeSessions >= int64(kuotaTerminal) {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error_code": "QUOTA_FULL",
-			"error":      "Batas Terminal Kasir Tercapai! Silakan tutup shift sebelumnya atau Beli Lisensi Tambahan.",
+			"error":      "Batas maksimal kuota terminal kasir Anda telah tercapai! Silakan upgrade lisensi toko.",
 		})
 		return
 	}
@@ -77,16 +88,18 @@ func (h *RetailHandler) OpenSession(c *gin.Context) {
 		UserID:        userID,
 		StationNumber: input.StationNumber,
 		ModalAwal:     input.ModalAwal,
+		OpenedBy:      userID, // Catat penanggung jawab pembuka sesi bray bray
 		Status:        "open",
+		OpenedAt:      nowInJKT,
 	}
-	newSession.CreatedAt = nowInJKT // 🚀 FIX: Menggunakan field bawaan GORM model (CreatedAt) buat gantiin StartTime
+	newSession.CreatedAt = nowInJKT
 
 	if err := h.Repo.CreateSession(&newSession); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuka session kasir"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengaktifkan laci kasir baru"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Kasir berhasil dibuka! Selamat bertugas.", "session": newSession})
+	c.JSON(http.StatusOK, gin.H{"message": "Sesi laci kasir berhasil diaktifkan!", "session": newSession})
 }
 
 func (h *RetailHandler) CheckSessionStatus(c *gin.Context) {
@@ -105,7 +118,12 @@ func (h *RetailHandler) CheckSessionStatus(c *gin.Context) {
 	store, errStore := h.Repo.GetStoreByIDSimple(db, storeID)
 	if errStore == nil { session.Store = *store }
 
-	c.JSON(http.StatusOK, gin.H{"has_session": true, "session": session})
+	// 🛡️ SANITASI KEAMANAN DATA: Hapus data password hash dan pin hash 
+	// sebelum objek JSON dikirim ke client side browser demi mencegah XSS Leak bray!
+	session.User.Password = ""
+	// session.User.Pin = ""
+
+	c.JSON(http.StatusOK, gin.H{"has_session": true, "station_number": session.StationNumber, "session": session})
 }
 
 func (h *RetailHandler) CloseSession(c *gin.Context) {
@@ -118,16 +136,30 @@ func (h *RetailHandler) CloseSession(c *gin.Context) {
 	sessionID, _ := strconv.Atoi(sessionIDStr)
 
 	var input struct { TotalAktual float64 `json:"total_aktual"` }
-	if err := c.ShouldBindJSON(&input); err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Format input salah"}); return }
+	if err := c.ShouldBindJSON(&input); err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Format data penutupan salah"}); return }
 
 	session, err := h.Repo.GetSessionByIDPreloaded(uint(sessionID))
-	if err != nil { c.JSON(http.StatusNotFound, gin.H{"error": "Session tidak ditemukan"}); return }
+	if err != nil { c.JSON(http.StatusNotFound, gin.H{"error": "Sesi kasir tidak ditemukan"}); return }
+
+	// 🔒 ANTIDOTE IDOR ATTACK: Pastikan laci kasir yang mau ditutup bener-bener milik Toko si Kasir login!
+	if session.StoreID != storeID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Akses ilegal! Anda tidak berhak menutup laci kasir cabang lain!"})
+		return
+	}
+
+	// Pastikan sesi laci kasir tidak diproses closing berulang-ulang bray
+	if session.Status == "closed" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Sesi laci kasir ini sudah berstatus CLOSED!"})
+		return
+	}
 
 	salesGross, totalTax, _ := h.Repo.GetSalesTotalAndTax(sessionIDStr)
 	netSales := salesGross - totalTax
 	salesCash, _ := h.Repo.GetSalesMethodSummary(sessionIDStr, "Cash")
 	salesNonTunai := salesGross - salesCash
-	totalExpected := session.ModalAwal + salesCash
+	
+	// 💸 FIX AKUNTANSI: Rumus perhitungan ekspektasi wajib dikurangi dengan pengeluaran kas laci (TotalKeluar) bray!
+	totalExpected := (session.ModalAwal + salesCash) - session.TotalKeluar
 	selisih := input.TotalAktual - totalExpected
 
 	loc, _ := time.LoadLocation("Asia/Jakarta")
@@ -136,8 +168,10 @@ func (h *RetailHandler) CloseSession(c *gin.Context) {
 	session.TotalMasuk = salesCash
 	session.TotalAktual = input.TotalAktual
 	session.Selisih = selisih
-	session.UpdatedAt = now // 🚀 FIX: Menggunakan UpdatedAt bawaan GORM gantiin EndTime pointer
 	session.Status = "closed"
+	session.ClosedAt = &now
+	session.ClosedBy = &userID // Catat ID user saksi yang memproses closing bray
+	session.UpdatedAt = now
 
 	newClosing := models.ShiftClosing{
 		PublicID:      utils.GenerateULID(),
@@ -147,12 +181,12 @@ func (h *RetailHandler) CloseSession(c *gin.Context) {
 		NetSales:      netSales,
 		TotalTax:      totalTax,
 		SalesCash:     salesCash,
-		SalesNonCash:  salesNonTunai, // 🚀 FIX: Menyesuaikan penamaan standard model (SalesNonCash)
+		SalesNonCash:  salesNonTunai,
 		TotalExpected: totalExpected,
 		TotalActual:   input.TotalAktual,
 		Selisih:       selisih,
 	}
-	newClosing.CreatedAt = now // 🚀 FIX: Inject waktu closing ke CreatedAt model
+	newClosing.CreatedAt = now
 
 	db := h.Repo.GetDB()
 	errTx := db.Transaction(func(tx *gorm.DB) error {
@@ -162,19 +196,20 @@ func (h *RetailHandler) CloseSession(c *gin.Context) {
 	})
 
 	if errTx != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses penutupan laci kasir secara aman."})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses transaksi penutupan laci kasir."})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"start_time":      session.CreatedAt.In(loc).Format("02.01.06 15:04"), // 🚀 FIX: Tarik dari CreatedAt
-		"end_time":        session.UpdatedAt.In(loc).Format("02.01.06 15:04"), // 🚀 FIX: Tarik dari UpdatedAt
+		"start_time":      session.OpenedAt.In(loc).Format("02.01.06 15:04"),
+		"end_time":        session.ClosedAt.In(loc).Format("02.01.06 15:04"),
 		"sales_gross":     salesGross,
 		"total_tax":       totalTax,
 		"net_sales":       netSales,
 		"modal_awal":      session.ModalAwal,
 		"sales_cash":      salesCash,
 		"sales_non_tunai": salesNonTunai,
+		"total_keluar":    session.TotalKeluar, // Informasikan juga total pengeluaran laci kasir bray
 		"total_expected":  totalExpected,
 		"total_actual":    input.TotalAktual,
 		"selisih":         selisih,

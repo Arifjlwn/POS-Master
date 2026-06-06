@@ -9,13 +9,13 @@ export default defineConfig({
     proxy: {
       // 🚀 OPER JALUR STATIC UPLOADS KE BACKEND GO
       '/uploads': {
-        target: 'http://localhost:8080', // Sesuaikan dengan port/IP backend Go Mas Arif
+        target: 'http://127.0.0.1:8080', // Gunakan IP loopback murni atau IP komputer lu bray
         changeOrigin: true,
         secure: false,
       },
-      // Jalur API biasa (jika ada)
+      // 🚀 FIX MUTLAK: Arahkan target ke 127.0.0.1 agar Proxy Vite bisa meneruskan request HP dengan mulus
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://127.0.0.1:8080', 
         changeOrigin: true,
       }
     }

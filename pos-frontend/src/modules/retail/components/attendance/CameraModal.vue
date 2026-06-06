@@ -73,6 +73,7 @@ defineEmits(["close", "capture"]);
                     :ref="setVideoRef"
                     autoplay
                     playsinline
+                    muted
                     class="w-full h-full object-contain transform scale-x-[-1]"
                 ></video>
 

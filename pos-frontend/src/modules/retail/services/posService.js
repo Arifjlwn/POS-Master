@@ -2,17 +2,17 @@
 import api from '../../../api.js';
 
 export const posService = {
-    // --- PRODUK ---
+    // --- MASTER DATA PRODUK ---
     async getProducts() {
         const response = await api.get('/retail/products');
         return response.data;
     },
 
-    // --- SESI (Buka, Cek, Tutup) ---
-    async checkSession(token) {
-        // Pake header kalau token ada
-        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-        const response = await api.get('/retail/pos/check-session', config);
+    // --- SESI AKTIF (Buka, Cek, Tutup Sesi Laci Kasir / Cash Drawer) ---
+    // FIX AMAN: Buang parameter token manual. Biarkan api.js (Axios Interceptor) global lu 
+    // yang otomatis menyuntikkan tiket JWT Bearer Token secara terpusat dan aman bray!
+    async checkSession() {
+        const response = await api.get('/retail/pos/check-session');
         return response.data;
     },
 
@@ -26,9 +26,11 @@ export const posService = {
         return response.data;
     },
 
-    // --- TRANSAKSI ---
+    // --- TRANSAKSI CHECKOUT MESIN KASIR ---
     async checkout(payload) {
-        const response = await api.post('/retail/checkout', payload);
+        // FIX ARSITEKTUR SaaS: Arahkan ke rute terproteksi /retail/pos/checkout 
+        // supaya kasir ga bisa nembak transaksi belanja kalau laci kasir belum di-inisialisasi (Bypass Modal Awal)!
+        const response = await api.post('/retail/pos/checkout', payload);
         return response.data;
     }
 };

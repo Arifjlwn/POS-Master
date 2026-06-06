@@ -43,57 +43,60 @@ const updatePlanRealtime = () => {
 };
 
 onMounted(async () => {
-	window.addEventListener('store-updated', updatePlanRealtime);
-	window.addEventListener('storage', updatePlanRealtime);
+    window.addEventListener('store-updated', updatePlanRealtime);
+    window.addEventListener('storage', updatePlanRealtime);
 
-	const role = localStorage.getItem('role') || user.value?.role;
+    const role = localStorage.getItem('role') || user.value?.role;
 
-	if (role === 'owner') {
-		try {
-			const res = await api.get('/retail/store/settings');
-			const data = res.data.data;
-			const status = data.subscription_status;
+    try {
+        // FIX: Semua role harus menarik data ini agar langganan tidak kereset jadi Basic
+        const res = await api.get('/retail/store/settings');
+        const data = res.data.data;
+        const status = data.subscription_status;
 
-			if (data.nama_toko) {
-				user.storeName = data.nama_toko;
-				localStorage.setItem('storeName', data.nama_toko);
-			}
+        if (data.nama_toko) {
+            user.storeName = data.nama_toko;
+            localStorage.setItem('storeName', data.nama_toko);
+        }
 
-			// FIX: Sinkronisasi URL Langsung dari Engine Supabase
-			if (data.logo_url) {
-				user.storeLogo = data.logo_url;
-				localStorage.setItem('storeLogo', data.logo_url);
-			}
+        if (data.logo_url) {
+            user.storeLogo = data.logo_url;
+            localStorage.setItem('storeLogo', data.logo_url);
+        }
 
-			if (data.subscription_plan) {
-				subPlan.value = data.subscription_plan;
-				localStorage.setItem('subscriptionPlan', data.subscription_plan);
-			}
+        if (data.subscription_plan) {
+            subPlan.value = data.subscription_plan;
+            localStorage.setItem('subscriptionPlan', data.subscription_plan);
+        }
 
-			window.dispatchEvent(new Event('store-updated'));
+        window.dispatchEvent(new Event('store-updated'));
 
-			let isDead = false;
-			if (status !== 'active') {
-				isDead = true;
-			} else if (data.subscription_end) {
-				const endDate = new Date(data.subscription_end);
-				const today = new Date();
-				const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-				if (diffDays <= 0) isDead = true;
-			}
+        let isDead = false;
+        if (status !== 'active') {
+            isDead = true;
+        } else if (data.subscription_end) {
+            const endDate = new Date(data.subscription_end);
+            const today = new Date();
+            const diffDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            if (diffDays <= 0) isDead = true;
+        }
 
-			if (isDead && route.path !== '/retail/account') {
-				router.push('/retail/account');
-			}
-		} catch (e) {
-			// FIX: Intercept Error 402/403 dan tendang paksa user ke halaman penagihan bray!
-			if (e.response && (e.response.status === 402 || e.response.status === 403)) {
-				if (route.path !== '/retail/account') {
-					router.push('/retail/account');
-				}
-			}
-		}
-	}
+        if (isDead) {
+            if (role === 'owner' && route.path !== '/retail/account') {
+                router.push('/retail/account'); // Owner ditendang ke halaman bayar
+            } else if (role !== 'owner' && route.path !== '/retail/pos') {
+                router.push('/retail/pos'); // Staff ditahan di halaman POS
+            }
+        }
+    } catch (e) {
+        if (e.response && (e.response.status === 402 || e.response.status === 403)) {
+            if (role === 'owner' && route.path !== '/retail/account') {
+                router.push('/retail/account');
+            } else if (role !== 'owner' && route.path !== '/retail/pos') {
+                router.push('/retail/pos');
+            }
+        }
+    }
 });
 
 onUnmounted(() => {

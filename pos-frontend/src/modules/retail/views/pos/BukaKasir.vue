@@ -2,6 +2,7 @@
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import api from "../../../../api.js";
+import Swal from "sweetalert2";
 import { useBukaKasir } from "../../composables/useBukaKasir.js";
 
 const router = useRouter();
@@ -17,18 +18,28 @@ const {
     handleBukaKasir,
 } = useBukaKasir();
 
-// 🚀 STATE BARU BUAT MODAL & LOADING PEMBAYARAN
+// STATE UTAMA MODAL & SINKRONISASI KUOTA TERMINAL
 const showUpgradeModal = ref(false);
 const quotaTerminal = ref(1);
 const loadingPayment = ref(false);
 
-// 🚀 WRAPPER FUNGSI BUKA KASIR BIAR BISA NANGKEP ERROR DARI GOLANG
+// WRAPPER FUNGSI BUKA KASIR DENGAN VALIDASI ENKAPSULASI
 const submitBukaKasir = async () => {
+    // Jaga-jaga kalau kasir belum memilih nomor stasiun laci bray
+    if (!stationNumber.value) {
+        return Swal.fire({
+            icon: 'warning',
+            title: 'Stasiun Belum Dipilih',
+            text: 'Silakan pilih nomor pos stasiun kasir terlebih dahulu.',
+            confirmButtonColor: '#3b82f6',
+            customClass: { popup: 'rounded-[32px]' }
+        });
+    }
+
     try {
-        // Panggil fungsi asli dari composable lu
         await handleBukaKasir();
     } catch (error) {
-        // 🛡️ TANGKEP ERROR KALO DITENDANG SATPAM (QUOTA FULL)
+        // TANGKEP ERROR KALO DITENDANG SERVER GARA-GARA QUOTA FULL
         if (
             error.response &&
             error.response.status === 403 &&
@@ -36,42 +47,55 @@ const submitBukaKasir = async () => {
         ) {
             showUpgradeModal.value = true;
         } else {
-            // Error lain (misal belum absen, dll)
-            alert(
-                error.response?.data?.error ||
-                    "Terjadi kesalahan saat membuka kasir",
-            );
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Membuka Sesi',
+                text: error.response?.data?.error || "Terjadi kesalahan sistem.",
+                confirmButtonColor: '#3b82f6',
+                customClass: { popup: 'rounded-[32px]' }
+            });
         }
     }
 };
 
-// 💸 LOGIKA MIDTRANS SNAP BUAT BELI LISENSI
+// ALUR AMAN MIDTRANS SNAP PEMBELIAN TERMINAL BARU
 const beliLisensiTambahan = async () => {
     loadingPayment.value = true;
     try {
-        // 2. Ganti axios.post menjadi api.post, dan hapus '/api' di depannya karena biasanya instance api udah otomatis nambahin itu
+        // FIX AMAN: Cabut parameter 'price' dari client-side request! 
+        // Biarkan backend Go yang menentukan harga Rp 50.000 demi menghindari manipulasi harga fraud Rp 1 rupiah!
         const response = await api.post("/retail/subscription/upgrade", {
-            plan_name: "Terminal Tambahan",
-            price: 50000,
+            plan_name: "Terminal Tambahan"
         });
 
         const snapToken = response.data.token;
 
         window.snap.pay(snapToken, {
             onSuccess: function (result) {
-                alert(
-                    "Pembayaran Berhasil! Kuota Mesin Kasir Anda telah bertambah.",
-                );
-                showUpgradeModal.value = false;
-                loadingPayment.value = false;
-                handleBukaKasir();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Pembayaran Berhasil!',
+                    text: 'Kuota stasiun mesin kasir Anda otomatis telah bertambah.',
+                    confirmButtonColor: '#4f46e5',
+                    customClass: { popup: 'rounded-[32px]' }
+                }).then(() => {
+                    showUpgradeModal.value = false;
+                    loadingPayment.value = false;
+                    handleBukaKasir(); // Eksekusi langsung buka terminal barunya bray
+                });
             },
             onPending: function (result) {
-                alert("Menunggu pembayaran Anda diselesaikan...");
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Menunggu Pembayaran',
+                    text: 'Silakan selesaikan tagihan Anda pada aplikasi e-wallet / banking.',
+                    confirmButtonColor: '#4f46e5',
+                    customClass: { popup: 'rounded-[32px]' }
+                });
                 loadingPayment.value = false;
             },
             onError: function (result) {
-                alert("Pembayaran Gagal!");
+                Swal.fire({ icon: 'error', title: 'Pembayaran Gagal', text: 'Sesi transaksi dibatalkan oleh sistem.', confirmButtonColor: '#ef4444', customClass: { popup: 'rounded-[32px]' } });
                 loadingPayment.value = false;
             },
             onClose: function () {
@@ -79,9 +103,13 @@ const beliLisensiTambahan = async () => {
             },
         });
     } catch (error) {
-        alert(
-            error.response?.data?.error || "Gagal menghubungi Payment Gateway.",
-        );
+        Swal.fire({
+            icon: 'error',
+            title: 'Koneksi Terputus',
+            text: error.response?.data?.error || "Gagal menghubungi server pembayaran Midtrans.",
+            confirmButtonColor: '#ef4444',
+            customClass: { popup: 'rounded-[32px]' }
+        });
         loadingPayment.value = false;
     }
 };
@@ -89,23 +117,26 @@ const beliLisensiTambahan = async () => {
 onMounted(async () => {
     checkExistingSession();
 
-    // 🚀 TAMBAHKAN BLOK INI UNTUK MENARIK DATA QUOTA DARI BACKEND
+    // AMBIL DATA LIMITASI SETTING TOKO DARI DATABASE SERVER
     try {
         const res = await api.get("/retail/store/settings");
         if (res.data && res.data.data) {
-            // Mengambil quota_terminal dari response database
             quotaTerminal.value = res.data.data.quota_terminal || 1;
         }
     } catch (error) {
         console.error("Gagal menarik pengaturan toko:", error);
     }
 
-    // 🚀 INJECT SCRIPT MIDTRANS SNAP KE DALAM VUE
+    // INJECT SCRIPT MIDTRANS SNAP DENGAN PENGAMAN ENV CONFIG
     const script = document.createElement("script");
-    script.src = "https://app.sandbox.midtrans.com/snap/snap.js"; // Pakai sandbox buat testing
+    const isSandbox = import.meta.env.VITE_MIDTRANS_ENV === "sandbox";
+    script.src = isSandbox 
+        ? "https://app.sandbox.midtrans.com/snap/snap.js" 
+        : "https://app.midtrans.com/snap/snap.js";
 
-    // ⚠️ WAJIB GANTI PAKE CLIENT KEY MIDTRANS LU SENDIRI DI SINI:
-    script.setAttribute("data-client-key", "SB-Mid-client-XXXXXXXXXXXXXXXX");
+    // FIX AMAN: Ambil Client Key SaaS secara dinamis dari environment system (.env) bray!
+    const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY || "SB-Mid-client-fallback";
+    script.setAttribute("data-client-key", clientKey);
     document.head.appendChild(script);
 });
 </script>
@@ -143,16 +174,9 @@ onMounted(async () => {
                             stroke-linecap="round"
                             stroke-linejoin="round"
                         >
-                            <path
-                                d="M20 20H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2z"
-                            />
-                            <path d="M2 12h20" />
-                            <path d="M7 16h.01" />
-                            <path d="M11 16h.01" />
-                            <path d="M15 16h.01" />
-                            <path d="M7 8h.01" />
-                            <path d="M11 8h.01" />
-                            <path d="M15 8h.01" />
+                            <rect width="18" height="12" x="3" y="4" rx="2" ry="2" />
+                            <line x1="2" x2="22" y1="20" y2="20" />
+                            <line x1="12" x2="12" y1="16" y2="20" />
                         </svg>
                     </div>
                     <h1
@@ -200,8 +224,9 @@ onMounted(async () => {
                             >Select Device Station</label
                         >
                         <div class="grid grid-cols-3 gap-3">
+                            <!-- RENDER LIMITASI PILIHAN KASIR BERDASARKAN TOTAL KUOTA MAKSIMALNYA BRAY -->
                             <button
-                                v-for="n in ['01', '02', '03']"
+                                v-for="n in Array.from({length: Math.max(3, quotaTerminal)}, (_, i) => String(i + 1).padStart(2, '0'))"
                                 :key="n"
                                 @click="stationNumber = n"
                                 :class="
@@ -219,14 +244,7 @@ onMounted(async () => {
                                     stroke="currentColor"
                                     stroke-width="2.5"
                                 >
-                                    <rect
-                                        width="18"
-                                        height="12"
-                                        x="3"
-                                        y="4"
-                                        rx="2"
-                                        ry="2"
-                                    />
+                                    <rect width="18" height="12" x="3" y="4" rx="2" ry="2" />
                                     <line x1="2" x2="22" y1="20" y2="20" />
                                     <line x1="12" x2="12" y1="16" y2="20" />
                                 </svg>
@@ -281,7 +299,8 @@ onMounted(async () => {
                                     : "Initialize Session"
                             }}</span>
                             <svg
-                                v-if="!loading && !loadingPayment"
+                                v-for="item in (!loading && !loadingPayment ? [1] : [])"
+                                :key="item"
                                 xmlns="http://www.w3.org/2000/svg"
                                 class="w-5 h-5"
                                 fill="none"
@@ -317,13 +336,13 @@ onMounted(async () => {
             </div>
         </div>
 
-        <!-- MODAL UPGRADE / JUALAN LISENSI KASIR -->
+        <!-- MODAL UPGRADE TERMINAL -->
         <div
             v-if="showUpgradeModal"
             class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-[100] px-4 transition-all"
         >
             <div
-                class="bg-white p-8 rounded-[40px] shadow-2xl max-w-sm w-full text-center border-8 border-slate-100 relative overflow-hidden transform scale-100"
+                class="bg-white p-8 rounded-[40px] shadow-2xl max-w-sm w-full text-center border-8 border-slate-100 relative overflow-hidden"
             >
                 <div
                     class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-red-500 to-rose-500"
@@ -355,11 +374,10 @@ onMounted(async () => {
                     class="text-xs font-bold text-slate-500 mt-3 leading-relaxed"
                 >
                     Lisensi toko Anda saat ini hanya mengizinkan
-                    {{ quotaTerminal }} Kasir beroperasi. Karyawan lain sedang
-                    menggunakan laci kasir di perangkat lain.
+                    {{ quotaTerminal }} Kasir beroperasi sekaligus. Karyawan lain sedang
+                    menggunakan laci aktif di stasiun kerja lain.
                 </p>
 
-                <!-- LOGIKA UNTUK OWNER (MUNCUL TOMBOL BAYAR) -->
                 <div
                     v-if="role === 'owner'"
                     class="mt-8 bg-indigo-50/50 border-2 border-indigo-100 p-5 rounded-[24px]"
@@ -370,8 +388,8 @@ onMounted(async () => {
                         Upgrade Sistem Kasir
                     </h4>
                     <p class="text-[11px] font-bold text-indigo-600 mt-2">
-                        Buka 2 Terminal Kasir sekaligus untuk mempercepat
-                        antrean pelanggan Anda.
+                        Buka terminal tambahan sekaligus untuk mempercepat
+                        antrean pelanggan retail Anda.
                     </p>
 
                     <button
@@ -387,7 +405,6 @@ onMounted(async () => {
                     </button>
                 </div>
 
-                <!-- LOGIKA UNTUK KASIR (MUNCUL INFO HUBUNGI OWNER) -->
                 <div
                     v-else
                     class="mt-8 bg-amber-50 border-2 border-amber-100 p-5 rounded-[24px]"
@@ -398,8 +415,8 @@ onMounted(async () => {
                         Akses Terbatas
                     </h4>
                     <p class="text-[11px] font-bold text-amber-700 mt-2">
-                        Silakan hubungi <b>Owner / Manajer</b> toko untuk
-                        melakukan penambahan lisensi terminal Kasir.
+                        Silakan hubungi <b>Owner / Manajer</b> cabang JKT2 untuk
+                        melakukan penambahan lisensi terminal operasional baru.
                     </p>
                 </div>
 
@@ -407,7 +424,7 @@ onMounted(async () => {
                     @click="showUpgradeModal = false"
                     class="mt-6 text-[10px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest transition-colors outline-none"
                 >
-                    Tutup & Kembali
+                    Tutup & Batal
                 </button>
             </div>
         </div>
@@ -417,10 +434,5 @@ onMounted(async () => {
 <style scoped>
 .transition-all {
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
 }
 </style>
