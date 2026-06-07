@@ -12,12 +12,5 @@
                 Keranjang Pemusnahan & Retur Barang
             </p>
         </div>
-
-        <div class="z-10">
-            <router-link to="/retail/produk/retur-barang/report" class="bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-sm text-white px-6 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                Riwayat & Cetak B.A
-            </router-link>
-        </div>
     </div>
 </template>

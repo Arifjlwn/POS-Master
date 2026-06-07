@@ -7,7 +7,14 @@ defineProps({
     form: Object, 
     alasanOptions: Array 
 });
-defineEmits(['update:searchProductQuery', 'update:form', 'start-scanner', 'select-product', 'clear-product', 'add-to-cart']);
+
+const emit = defineEmits(['update:searchProductQuery', 'update:form', 'start-scanner', 'select-product', 'clear-product', 'add-to-cart']);
+
+// 🚀 SECURITY: Fungsi untuk memotong angka minus dan huruf 'e' dari inputan kasir
+const sanitizeNumber = (value) => {
+    let sanitized = String(value).replace(/[^0-9]/g, '');
+    return sanitized === '' ? 0 : Number(sanitized);
+};
 </script>
 
 <template>
@@ -68,19 +75,19 @@ defineEmits(['update:searchProductQuery', 'update:form', 'start-scanner', 'selec
                 
                 <div class="flex flex-wrap items-center justify-center gap-2">
                     <div v-if="selectedProduct.satuan_besar" class="flex flex-col items-center gap-1 w-20">
-                        <input v-model="form.qty_besar" type="number" min="0" class="w-full p-2 bg-white border-2 border-slate-200 rounded-xl text-center font-black text-rose-600 outline-none focus:border-rose-500 shadow-inner">
+                        <input v-model.number="form.qty_besar" @input="form.qty_besar = sanitizeNumber($event.target.value)" type="text" inputmode="numeric" class="w-full p-2 bg-white border-2 border-slate-200 rounded-xl text-center font-black text-rose-600 outline-none focus:border-rose-500 shadow-inner">
                         <span class="text-[8px] font-black text-slate-400 uppercase">{{ selectedProduct.satuan_besar }}</span>
                     </div>
 
                     <span v-if="selectedProduct.is_nested_uom" class="font-bold text-slate-300 mb-4">+</span>
                     <div v-if="selectedProduct.is_nested_uom" class="flex flex-col items-center gap-1 w-20">
-                        <input v-model="form.qty_tengah" type="number" min="0" class="w-full p-2 bg-white border-2 border-slate-200 rounded-xl text-center font-black text-rose-600 outline-none focus:border-rose-500 shadow-inner">
+                        <input v-model.number="form.qty_tengah" @input="form.qty_tengah = sanitizeNumber($event.target.value)" type="text" inputmode="numeric" class="w-full p-2 bg-white border-2 border-slate-200 rounded-xl text-center font-black text-rose-600 outline-none focus:border-rose-500 shadow-inner">
                         <span class="text-[8px] font-black text-slate-400 uppercase">{{ selectedProduct.satuan_tengah }}</span>
                     </div>
 
                     <span v-if="selectedProduct.satuan_besar" class="font-bold text-slate-300 mb-4">+</span>
                     <div class="flex flex-col items-center gap-1 w-20">
-                        <input v-model="form.qty_dasar" type="number" min="0" class="w-full p-2 bg-white border-2 border-slate-200 rounded-xl text-center font-black text-rose-600 outline-none focus:border-rose-500 shadow-inner">
+                        <input v-model.number="form.qty_dasar" @input="form.qty_dasar = sanitizeNumber($event.target.value)" type="text" inputmode="numeric" class="w-full p-2 bg-white border-2 border-slate-200 rounded-xl text-center font-black text-rose-600 outline-none focus:border-rose-500 shadow-inner">
                         <span class="text-[8px] font-black text-slate-400 uppercase">{{ selectedProduct.satuan_dasar }}</span>
                     </div>
                 </div>
@@ -88,13 +95,13 @@ defineEmits(['update:searchProductQuery', 'update:form', 'start-scanner', 'selec
 
             <div v-else>
                 <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Qty Retur</label>
-                <input type="number" disabled class="w-full px-4 py-3.5 bg-slate-100 border-2 border-slate-100 rounded-2xl text-slate-400 font-black cursor-not-allowed" placeholder="Pilih barang dulu...">
+                <input type="text" disabled class="w-full px-4 py-3.5 bg-slate-100 border-2 border-slate-100 rounded-2xl text-slate-400 font-black cursor-not-allowed " placeholder="Pilih barang dulu...">
             </div>
 
             <div>
                 <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Alasan</label>
                 <div class="relative">
-                    <select v-model="form.alasan" required class="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-rose-500 focus:bg-white outline-none font-bold text-slate-800 text-xs appearance-none cursor-pointer transition-all disabled:opacity-50" :disabled="!selectedProduct">
+                    <select v-model="form.alasan" required class="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-rose-500 focus:bg-white outline-none font-bold text-slate-800 text-xs appearance-none cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed" :disabled="!selectedProduct">
                         <option value="" disabled selected hidden>Pilih...</option>
                         <option v-for="opt in alasanOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                     </select>
@@ -106,7 +113,7 @@ defineEmits(['update:searchProductQuery', 'update:form', 'start-scanner', 'selec
 
             <div>
                 <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Keterangan Opsional</label>
-                <textarea v-model="form.catatan" rows="1" class="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-rose-500 focus:bg-white outline-none font-medium text-slate-700 text-sm transition-all resize-none placeholder:text-slate-300 disabled:opacity-50" placeholder="Contoh: Jatuh pecah..." :disabled="!selectedProduct"></textarea>
+                <textarea v-model="form.catatan" rows="1" class="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-rose-500 focus:bg-white outline-none font-medium text-slate-700 text-sm transition-all resize-none placeholder:text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed" placeholder="Contoh: Jatuh pecah saat diturunin dari truk..." :disabled="!selectedProduct"></textarea>
             </div>
 
             <button type="submit" :disabled="!selectedProduct" class="w-full bg-slate-100 hover:bg-rose-50 border-2 border-slate-200 hover:border-rose-200 text-slate-600 hover:text-rose-600 py-4 rounded-[20px] font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed mt-2 flex items-center justify-center gap-2">

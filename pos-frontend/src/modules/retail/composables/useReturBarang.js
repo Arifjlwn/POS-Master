@@ -26,12 +26,9 @@ export function useReturBarang() {
 
     const form = ref({
         product_id: '',
-        
-        // 🚀 FORM QTY SEKARANG 3 LAPIS
         qty_besar: 0,
         qty_tengah: 0,
-        qty_dasar: 1, // Default eceran 1
-        
+        qty_dasar: 1, 
         alasan: '',
         catatan: ''
     });
@@ -58,9 +55,14 @@ export function useReturBarang() {
 
     onMounted(() => fetchProducts());
 
+    // 🚀 FIX: CLEANUP CAMERA MEMORY LEAK!
     onUnmounted(() => {
-        if (html5QrCode && html5QrCode.isScanning) {
-            html5QrCode.stop().then(() => html5QrCode.clear());
+        if (html5QrCode) {
+            if (html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => html5QrCode.clear()).catch(e => console.log(e));
+            } else {
+                html5QrCode.clear();
+            }
         }
     });
 
@@ -70,7 +72,9 @@ export function useReturBarang() {
             const devices = await Html5Qrcode.getCameras();
             if (devices && devices.length) {
                 cameras.value = devices;
-                selectedCamera.value = devices[1]?.id || devices[0]?.id; // Fallback kalau kamera cuma 1
+                // Pilih kamera belakang (environment) jika ada, fallback kamera pertama
+                const backCam = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('environment'));
+                selectedCamera.value = backCam ? backCam.id : devices[0].id;
             }
         } catch (err) {
             console.error("Gagal mendapatkan kamera:", err);
@@ -83,7 +87,7 @@ export function useReturBarang() {
         await getCameras();
 
         if (cameras.value.length === 0) {
-            Swal.fire('Error', 'Tidak ada kamera terdeteksi!', 'error');
+            Swal.fire('Error', 'Tidak ada hardware kamera terdeteksi di perangkat ini!', 'error');
             isScannerOpen.value = false;
             return;
         }
@@ -94,7 +98,7 @@ export function useReturBarang() {
 
     const startScanning = () => {
         if (!selectedCamera.value || !html5QrCode) return;
-        const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+        const config = { fps: 15, qrbox: { width: 250, height: 150 } };
         
         html5QrCode.start(
             selectedCamera.value,
@@ -116,12 +120,17 @@ export function useReturBarang() {
         }
     };
 
+    // 🚀 FIX: MATIKAN STREAM TOTAL BIAR GAK NYEDOT BATERAI HP
     const stopScanner = async () => {
-        if (html5QrCode && html5QrCode.isScanning) {
-            await html5QrCode.stop();
-            html5QrCode.clear();
-        }
         isScannerOpen.value = false;
+        if (html5QrCode && html5QrCode.isScanning) {
+            try {
+                await html5QrCode.stop();
+                html5QrCode.clear();
+            } catch (err) {
+                console.error("Gagal mematikan kamera", err);
+            }
+        }
     };
 
     // 🚀 PENCARIAN PRODUK REALTIME
@@ -137,12 +146,9 @@ export function useReturBarang() {
     const selectProduct = (prod) => {
         selectedProduct.value = prod;
         form.value.product_id = prod.id;
-        
-        // Reset form qty setiap milih produk baru
         form.value.qty_besar = 0;
         form.value.qty_tengah = 0;
         form.value.qty_dasar = 1; 
-
         searchProductQuery.value = ''; 
         isDropdownOpen.value = false;
     };
@@ -165,11 +171,11 @@ export function useReturBarang() {
         form.value.qty_dasar = 1;
     };
 
-    // 🚀 RUMUS SILUMAN: HITUNG TOTAL QTY DASAR
+    // 🚀 FIX SECURITY: HINDARI ANGKA MINUS DARI INSPECT ELEMENT / TYPO KASIR
     const hitungTotalFisik = (qty_besar, qty_tengah, qty_dasar, product) => {
-        const qBesar = Number(qty_besar) || 0;
-        const qTengah = Number(qty_tengah) || 0;
-        const qDasar = Number(qty_dasar) || 0;
+        const qBesar = Math.max(0, Number(qty_besar) || 0);
+        const qTengah = Math.max(0, Number(qty_tengah) || 0);
+        const qDasar = Math.max(0, Number(qty_dasar) || 0);
 
         if (product.is_nested_uom) {
             const stokDariBesar = qBesar * Number(product.isi_per_besar); 
@@ -183,10 +189,15 @@ export function useReturBarang() {
 
     // 🚀 KERANJANG LOGIC
     const addToCart = () => {
+        // 1. Kalibrasi form input paksa jadi positif bray
+        form.value.qty_besar = Math.max(0, Number(form.value.qty_besar) || 0);
+        form.value.qty_tengah = Math.max(0, Number(form.value.qty_tengah) || 0);
+        form.value.qty_dasar = Math.max(0, Number(form.value.qty_dasar) || 0);
+
         const totalQtyRetur = hitungTotalFisik(form.value.qty_besar, form.value.qty_tengah, form.value.qty_dasar, selectedProduct.value);
 
         if (!form.value.product_id || !form.value.alasan || totalQtyRetur < 1) {
-            return Swal.fire('Data Kurang', 'Pilih produk, alasan, dan kuantitas retur wajib diisi!', 'warning');
+            return Swal.fire('Data Kurang', 'Pilih produk, alasan, dan kuantitas minimal 1 untuk diretur!', 'warning');
         }
 
         if (totalQtyRetur > selectedProduct.value.stok) {
@@ -196,38 +207,27 @@ export function useReturBarang() {
         const existingIndex = cart.value.findIndex(item => item.product_id === form.value.product_id && item.alasan === form.value.alasan);
         
         if (existingIndex !== -1) {
-            // Kalau udah ada di keranjang, kita tambahin total qty-nya
             if ((cart.value[existingIndex].qty + totalQtyRetur) > selectedProduct.value.stok) {
-                 return Swal.fire('Melebihi Stok', `Total di keranjang + input baru melebihi stok yang ada!`, 'error');
+                 return Swal.fire('Melebihi Stok', `Total keranjang + input baru melebihi stok yang ada!`, 'error');
             }
             cart.value[existingIndex].qty += totalQtyRetur;
-            
-            // Simpan juga data kemasannya biar gampang ditampilin di struk/tabel (opsional)
-            cart.value[existingIndex].qty_besar += Number(form.value.qty_besar);
-            cart.value[existingIndex].qty_tengah += Number(form.value.qty_tengah);
-            cart.value[existingIndex].qty_dasar += Number(form.value.qty_dasar);
-
+            cart.value[existingIndex].qty_besar += form.value.qty_besar;
+            cart.value[existingIndex].qty_tengah += form.value.qty_tengah;
+            cart.value[existingIndex].qty_dasar += form.value.qty_dasar;
         } else {
             cart.value.push({
                 product_id: form.value.product_id,
                 nama_produk: selectedProduct.value.nama_produk,
                 sku: selectedProduct.value.sku,
-                
-                // Qty untuk dikirim ke Backend
                 qty: totalQtyRetur, 
-                
-                // Qty untuk ditampilin di UI/Struk
-                qty_besar: Number(form.value.qty_besar),
-                qty_tengah: Number(form.value.qty_tengah),
-                qty_dasar: Number(form.value.qty_dasar),
-                
-                // Data kemasan buat referensi label UI
+                qty_besar: form.value.qty_besar,
+                qty_tengah: form.value.qty_tengah,
+                qty_dasar: form.value.qty_dasar,
                 satuan_dasar: selectedProduct.value.satuan_dasar,
                 has_satuan_besar: !!selectedProduct.value.satuan_besar && selectedProduct.value.isi_per_besar > 1,
                 satuan_besar: selectedProduct.value.satuan_besar,
                 is_nested: selectedProduct.value.is_nested_uom,
                 satuan_tengah: selectedProduct.value.satuan_tengah,
-
                 alasan: form.value.alasan,
                 catatan: form.value.catatan
             });
@@ -242,9 +242,11 @@ export function useReturBarang() {
         cart.value.splice(index, 1);
     };
 
-    // 🚀 SUBMIT BATCH & CETAK LANGSUNG
+    // 🚀 SUBMIT BATCH & CETAK LANGSUNG (ANTI-DOUBLE CLICK)
     const submitBatchReturn = async () => {
-        if (cart.value.length === 0) return;
+        if (cart.value.length === 0 || isSubmitting.value) return;
+
+        isSubmitting.value = true; // Kunci duluan biar gak double tap!
 
         const confirm = await Swal.fire({
             title: 'Proses Berita Acara?',
@@ -256,14 +258,16 @@ export function useReturBarang() {
             confirmButtonText: 'Ya, Proses Sekarang!'
         });
 
-        if (!confirm.isConfirmed) return;
+        if (!confirm.isConfirmed) {
+            isSubmitting.value = false;
+            return;
+        }
 
-        isSubmitting.value = true;
         try {
             const payload = {
                 items: cart.value.map(item => ({
                     product_id: item.product_id,
-                    qty: item.qty, // Ini total satuan dasar yang dipotong ke Golang
+                    qty: item.qty,
                     alasan: item.alasan,
                     catatan: item.catatan
                 }))
@@ -288,14 +292,10 @@ export function useReturBarang() {
                 title: 'Berhasil Diproses!',
                 html: `Dokumen: <b>${res.data.return_no}</b><br/>Stok telah berhasil dipotong dari sistem.`,
                 showCancelButton: true,
-                confirmButtonText: '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline-block mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg> Cetak Bukti',
+                confirmButtonText: 'Cetak Bukti',
                 cancelButtonText: 'Tutup',
                 confirmButtonColor: '#4f46e5',
                 cancelButtonColor: '#94a3b8',
-                customClass: {
-                    confirmButton: 'rounded-xl font-black px-6 py-3 flex items-center gap-2',
-                    cancelButton: 'rounded-xl font-black px-6 py-3'
-                }
             });
 
             if (resultPrint.isConfirmed) {
