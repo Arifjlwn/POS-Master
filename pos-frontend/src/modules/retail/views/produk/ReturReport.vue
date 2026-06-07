@@ -111,6 +111,6 @@ const {
     .no-print, header, nav, .sidebar { display: none !important; }
     table { page-break-inside: auto; }
     tr    { page-break-inside: avoid; page-break-after: auto; }
-    @page { margin: 20mm; size: A4 portrait; }
+    @page { margin: 10mm; size: A4 portrait; }
 }
 </style>
