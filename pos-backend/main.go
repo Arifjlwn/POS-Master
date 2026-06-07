@@ -50,7 +50,7 @@ func main() {
             return false
         },
         AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-        AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Requested-With", "Accept"},
+        AllowHeaders: []string{"Origin", "Content-Type", "Authorization", "X-Requested-With", "Accept", "ngrok-skip-browser-warning"},
         ExposeHeaders:    []string{"Content-Length"},
         AllowCredentials: true,
         MaxAge:           12 * time.Hour,
