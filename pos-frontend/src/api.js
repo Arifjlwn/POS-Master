@@ -2,9 +2,8 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 
 const api = axios.create({
-    // 🚀 FIX MUTLAK: Buang VITE_API_BASE_URL lengkap. Cukup tulis '/api' agar request diculik dan dioper oleh Proxy Vite!
-    baseURL: '/api', 
-    withCredentials: true // Supaya cookie session (jika ada) ikut nempel aman
+    baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+    withCredentials: true 
 });
 
 // Otomatis bawa tiket JWT setiap kali request dikirim
