@@ -217,38 +217,52 @@ Halo Bosku! Terima kasih sudah berbelanja. Berikut rincian kuitansi digital Anda
 }
 
 // =========================================================================
-// 🛒 RIWAYAT LOG REPORT LIST DATA TRANS HANDLERS
+// 🛒 RIWAYAT LOG REPORT LIST DATA TRANS HANDLERS - FIX TIME WINDOW SINKRON
 // =========================================================================
 
 func (h *RetailHandler) GetTransactions(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
+	switch v := storeIDRaw.(type) { 
+	case float64: storeID = uint(v); 
+	case uint: storeID = v; 
+	case int: storeID = uint(v) 
+	}
 
 	tanggal := c.Query("tanggal")
 	if tanggal == "" { tanggal = time.Now().Format("2006-01-02") }
 
+	// Gunakan time.Local atau location target ruko biar sinkron jamnya bray
 	parsedDate, err := time.ParseInLocation("2006-01-02", tanggal, time.Local)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Format rujukan tanggal tidak valid "})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format rujukan tanggal tidak valid bray!"})
 		return
 	}
 
-	startOfDay := parsedDate
-	endOfDay := startOfDay.Add(24 * time.Hour)
+	// 🚀 FIX BOUNDARY: Set batas waktu tepat dari detik pertama sampai detik terakhir hari itu!
+	startOfDay := time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 0, 0, 0, 0, parsedDate.Location())
+	endOfDay := time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 23, 59, 59, 999999999, parsedDate.Location())
+
 	transactions, err := h.Repo.GetTransactionsByRange(storeID, startOfDay, endOfDay)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menarik riwayat log laporan transaksi"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Daftar riwayat log transaksi berhasil ditarik!", "data": transactions})
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Daftar riwayat log transaksi berhasil ditarik!", 
+		"data": transactions,
+	})
 }
 
 func (h *RetailHandler) GetDailyClosing(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
+	switch v := storeIDRaw.(type) { 
+	case float64: storeID = uint(v); 
+	case uint: storeID = v; 
+	case int: storeID = uint(v) 
+	}
 
 	tanggal := c.Query("tanggal")
 	if tanggal == "" { tanggal = time.Now().Format("2006-01-02") }
@@ -259,13 +273,18 @@ func (h *RetailHandler) GetDailyClosing(c *gin.Context) {
 		return
 	}
 
-	startOfDay := parsedDate
-	endOfDay := startOfDay.Add(24 * time.Hour)
+	// 🚀 FIX BOUNDARY: Rekapitulasi setoran modal closing shift dikunci di hari yang sama!
+	startOfDay := time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 0, 0, 0, 0, parsedDate.Location())
+	endOfDay := time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 23, 59, 59, 999999999, parsedDate.Location())
+
 	closings, err := h.Repo.GetClosingByRange(storeID, startOfDay, endOfDay)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengumpulkan berkas rekapitulasi harian shift"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Berkas data rekapitulasi closing berhasil dikumpulkan!", "data": closings})
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Berkas data rekapitulasi closing berhasil dikumpulkan!", 
+		"data": closings,
+	})
 }

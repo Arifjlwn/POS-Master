@@ -24,13 +24,34 @@ const {
     openClosingReceipt
 } = useJournal();
 
-// 🚀 BIKIN FITUR SEARCH LIVE KHUSUS TAB CLOSING
+// 🚀 PARSING AMAN UNTUK NAMA KASIR (Mencegah crash case-sensitive JSON backend)
+const getCashierName = (item) => {
+    // Cek fallback jika backend mengirimkan key 'User' atau 'user'
+    const userObj = item?.User || item?.user;
+    return userObj?.name || 'KASIR';
+};
+
+// 🚀 PARSING AMAN UNTUK FORMAT JAM (Mencegah 'Invalid Date' di browser mobile)
+const formatJam = (dateString) => {
+    if (!dateString || dateString.startsWith('0001')) return '--:--';
+    try {
+        const d = new Date(dateString);
+        if (isNaN(d.getTime())) return '--:--';
+        return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':');
+    } catch (e) {
+        return '--:--';
+    }
+};
+
+// 🚀 BIKIN FITUR SEARCH LIVE KHUSUS TAB CLOSING (Ditambahkan parsing aman)
 const filteredRiwayatClosing = computed(() => {
+    if (!riwayatClosing.value) return [];
     if (!searchQuery.value) return riwayatClosing.value;
     const query = searchQuery.value.toLowerCase();
-    return riwayatClosing.value.filter(close => 
-        (close.User?.name && close.User.name.toLowerCase().includes(query))
-    );
+    return riwayatClosing.value.filter(close => {
+        const name = getCashierName(close).toLowerCase();
+        return name.includes(query);
+    });
 });
 
 // 🚀 FUNGSI BUAT TRIGGER PRINT BROWSER
@@ -81,7 +102,7 @@ const handlePrint = () => {
                             <div>
                                 <div class="font-mono font-black text-sm text-slate-800 tracking-tighter">{{ trx.no_invoice }}</div>
                                 <div class="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
-                                    {{ new Date(trx.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }} • OPR: {{ trx.User?.name ? trx.User.name.split(' ')[0] : 'KASIR' }}
+                                    {{ formatJam(trx.created_at) }} • OPR: {{ getCashierName(trx).split(' ')[0] }}
                                 </div>
                             </div>
                             <span class="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border" :class="trx.metode_bayar === 'Cash' ? 'border-emerald-100 bg-emerald-50 text-emerald-600' : 'border-blue-100 bg-blue-50 text-blue-600'">
@@ -101,7 +122,7 @@ const handlePrint = () => {
                     </div>
                 </div>
 
-                <div v-if="filteredRiwayat.length > 0" class="hidden md:block w-full bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden transition-all">
+                <div v-if="filteredRiwayat && filteredRiwayat.length > 0" class="hidden md:block w-full bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden transition-all">
                     <table class="w-full text-left border-collapse whitespace-nowrap">
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-100">
@@ -116,8 +137,8 @@ const handlePrint = () => {
                         <tbody class="divide-y divide-slate-50">
                             <tr v-for="trx in filteredRiwayat" :key="trx.id" class="hover:bg-blue-50/40 transition-all group">
                                 <td class="px-6 py-4 font-mono font-black text-sm text-slate-700 tracking-tighter">{{ trx.no_invoice }}</td>
-                                <td class="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{{ new Date(trx.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':') }}</td>
-                                <td class="px-6 py-4 text-xs font-black text-slate-700 uppercase">{{ trx.User?.name || 'KASIR' }}</td>
+                                <td class="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{{ formatJam(trx.created_at) }}</td>
+                                <td class="px-6 py-4 text-xs font-black text-slate-700 uppercase">{{ getCashierName(trx) }}</td>
                                 <td class="px-6 py-4">
                                     <span class="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border" :class="trx.metode_bayar === 'Cash' ? 'border-emerald-100 bg-emerald-50 text-emerald-600' : 'border-blue-100 bg-blue-50 text-blue-600'">
                                         {{ trx.metode_bayar || 'CASH' }}
@@ -142,9 +163,9 @@ const handlePrint = () => {
                         <div class="absolute left-0 top-0 bottom-0 w-1.5" :class="close.selisih < 0 ? 'bg-rose-500' : (close.selisih > 0 ? 'bg-amber-500' : 'bg-emerald-400')"></div>
                         <div class="flex justify-between items-start">
                             <div>
-                                <div class="font-mono font-black text-sm text-slate-800 tracking-tighter">Shift: {{ close.User?.name?.split(' ')[0] || 'KASIR' }}</div>
+                                <div class="font-mono font-black text-sm text-slate-800 tracking-tighter">Shift: {{ getCashierName(close).split(' ')[0] }}</div>
                                 <div class="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
-                                    END: {{ new Date(close.end_time || close.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }}
+                                    END: {{ formatJam(close.end_time || close.created_at) }}
                                 </div>
                             </div>
                             <span class="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border" :class="close.selisih < 0 ? 'border-rose-100 bg-rose-50 text-rose-600' : (close.selisih > 0 ? 'border-amber-100 bg-amber-50 text-amber-600' : 'border-emerald-100 bg-emerald-50 text-emerald-600')">
@@ -179,10 +200,10 @@ const handlePrint = () => {
                         <tbody class="divide-y divide-slate-50">
                             <tr v-for="close in filteredRiwayatClosing" :key="close.id" class="hover:bg-blue-50/40 transition-all group">
                                 <td class="px-6 py-4 text-xs font-bold text-slate-500 uppercase">
-                                    {{ new Date(close.end_time || close.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':') }}
+                                    {{ formatJam(close.end_time || close.created_at) }}
                                 </td>
                                 <td class="px-6 py-4 text-xs font-black text-slate-700 uppercase">
-                                    {{ close.User?.name || 'KASIR' }}
+                                    {{ getCashierName(close) }}
                                 </td>
                                 <td class="px-6 py-4 text-right font-black text-slate-800 text-sm">
                                     Rp{{ formatRupiah(close.total_expected) }}
@@ -211,34 +232,40 @@ const handlePrint = () => {
     <ReceiptModal 
         :show="showReceipt" 
         :invoiceData="selectedTrx" 
-        :storeData="selectedTrx?.Store || currentSession?.store || currentSession?.Store"
-        :cashierName="selectedTrx?.User?.name ? selectedTrx.User.name.split(' ')[0] : (currentUser?.name ? currentUser.name.split(' ')[0] : 'KASIR')"
+        :storeData="selectedTrx?.Store || selectedTrx?.store || currentSession?.store || currentSession?.Store"
+        :cashierName="selectedTrx ? getCashierName(selectedTrx).split(' ')[0] : 'KASIR'"
         :stationNumber="'01'"
         @close="showReceipt = false" 
     />
 
     <ClosingModal
-    :show="false"
-    :showReceiptClosing="showClosingReceipt"
-    :pecahan="{}"
-    :totalUangFisik="0"
-    :lastClosingData="selectedClosing"
-    :currentSession="currentSession"
-    :currentUser="selectedClosing?.User || currentUser"
-    :storeData="selectedClosing?.Store || currentSession?.store || currentSession?.Store" 
-    @print-closing="handlePrint"
-    @finish-closing="showClosingReceipt = false"
-    @close="showClosingReceipt = false"
-/>
+        :show="false"
+        :showReceiptClosing="showClosingReceipt"
+        :pecahan="selectedClosing?.pecahan || selectedClosing?.Pecahan || {}"
+        :totalUangFisik="selectedClosing?.total_actual || 0"
+        :lastClosingData="selectedClosing"
+        :currentSession="currentSession"
+        :currentUser="selectedClosing?.User || selectedClosing?.user || currentUser"
+        :storeData="selectedClosing?.Store || selectedClosing?.store || currentSession?.store || currentSession?.Store" 
+        @print-closing="handlePrint"
+        @finish-closing="showClosingReceipt = false"
+        @close="showClosingReceipt = false"
+    />
 </template>
 
 <style scoped>
 @media print {
     @page { margin: 0; }
     body { background: white; -webkit-print-color-adjust: exact; }
+
+    :deep(aside), 
+    :deep(header), 
+    :deep(nav) {
+        display: none !important;
+    }
 }
 
-.custom-scrollbar::-webkit-scrollbar { width: 5px; }
+.custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 20px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }

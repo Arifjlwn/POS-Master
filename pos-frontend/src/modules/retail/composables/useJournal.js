@@ -2,13 +2,21 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { journalService } from '../services/journalService.js';
 
 export function useJournal() {
-    // --- STATE DATA SALES ---
+    // --- STATE DATA SALES & CLOSING ---
     const riwayat = ref([]);
+    const riwayatClosing = ref([]); 
     const isLoading = ref(true);
-    const tanggalDipilih = ref(new Date().toISOString().split('T')[0]); 
+    
+    // 🚀 FIX TIMEZONE SHIFTING: Gunakan penanggalan lokal (WIB), bukan UTC!
+    const dapatkanTanggalLokal = () => {
+        const d = new Date();
+        const offset = d.getTimezoneOffset();
+        const localDate = new Date(d.getTime() - (offset * 60 * 1000));
+        return localDate.toISOString().split('T')[0];
+    };
+    
+    const tanggalDipilih = ref(dapatkanTanggalLokal()); 
 
-    // --- 🚀 STATE DATA CLOSING (BARU) ---
-    const riwayatClosing = ref([]); // Nyimpen data closing
     const activeTab = ref('sales'); // 'sales' atau 'closing'
     const selectedClosing = ref(null); // Data closing yang dipilih buat di-print
     const showClosingReceipt = ref(false); // Modal struk closing
@@ -20,7 +28,7 @@ export function useJournal() {
     const showReceipt = ref(false);
     const selectedTrx = ref(null);
 
-    // 🚀 AMBIL DATA USER DAN TOKO DARI LOCAL STORAGE
+    // --- STATE DATA USER DAN TOKO ---
     const currentUser = ref(null);
     const currentSession = ref(null);
 
@@ -32,7 +40,7 @@ export function useJournal() {
             const store = localStorage.getItem('storeData') || localStorage.getItem('store');
             if (store) currentSession.value = { store: JSON.parse(store) };
         } catch (e) {
-            console.error("Gagal parse data session", e);
+            console.error("Gagal parse data session:", e);
         }
     };
 
@@ -43,49 +51,61 @@ export function useJournal() {
 
     // 🚀 AMBIL DATA SALES DARI API
     const fetchRiwayat = async () => {
-        isLoading.value = true;
         try {
             const response = await journalService.getDailyTransactions(tanggalDipilih.value);
-            riwayat.value = response.data.data || [];
+            riwayat.value = response.data?.data || [];
         } catch (error) {
             console.error("Gagal menarik riwayat transaksi:", error);
-        } finally {
-            isLoading.value = false;
+            riwayat.value = [];
         }
     };
 
-    // 🚀 AMBIL DATA CLOSING DARI API (FUNGSI BARU)
+    // 🚀 AMBIL DATA CLOSING DARI API
     const fetchRiwayatClosing = async () => {
         try {
-            // Asumsi di journalService.js lu bikin fungsi getDailyClosing(date)
-            // Kalo belum ada di service-nya, jangan lupa lu buat ya!
             const response = await journalService.getDailyClosing(tanggalDipilih.value);
-            riwayatClosing.value = response.data.data || [];
+            riwayatClosing.value = response.data?.data || [];
         } catch (error) {
             console.error("Gagal menarik riwayat closing:", error);
+            riwayatClosing.value = [];
         }
     };
 
-    // 🚀 AUTO-LOAD PAS TANGGAL BERUBAH ATAU PERTAMA KALI MOUNT
+    // 🚀 AGREGASI BUNDLE LOADING AGAR SINKRON
+    const fetchSemuaData = async () => {
+        isLoading.value = true;
+        await Promise.allSettled([
+            fetchRiwayat(),
+            fetchRiwayatClosing()
+        ]);
+        isLoading.value = false;
+    };
+
+    // 🚀 AUTO-LOAD PAS PERTAMA KALI MOUNT & PAS TANGGAL BERUBAH
     onMounted(() => {
         loadSessionData(); 
-        fetchRiwayat();
-        fetchRiwayatClosing(); // Langsung tarik data closing juga
+        fetchSemuaData();
     });
 
     watch(tanggalDipilih, () => {
-        fetchRiwayat();
-        fetchRiwayatClosing(); // Kalo tanggal ganti, update dua-duanya
+        fetchSemuaData();
     });
 
-    // 🚀 FITUR PENCARIAN REALTIME (SALES)
+    // 🚀 FITUR PENCARIAN REALTIME (SALES) - Proteksi Case-Sensitive Object
     const filteredRiwayat = computed(() => {
+        if (!riwayat.value) return [];
         if (!searchQuery.value) return riwayat.value;
         const query = searchQuery.value.toLowerCase();
-        return riwayat.value.filter(trx => 
-            (trx.no_invoice && trx.no_invoice.toLowerCase().includes(query)) ||
-            (trx.User?.name && trx.User.name.toLowerCase().includes(query))
-        );
+        
+        return riwayat.value.filter(trx => {
+            const invoiceMatch = trx.no_invoice && trx.no_invoice.toLowerCase().includes(query);
+            
+            // Cek properti 'User' kapital atau 'user' kecil dari backend
+            const userObj = trx.User || trx.user;
+            const userMatch = userObj?.name && userObj.name.toLowerCase().includes(query);
+            
+            return invoiceMatch || userMatch;
+        });
     });
 
     // 🚀 BUKA MODAL STRUK SALES
@@ -94,23 +114,33 @@ export function useJournal() {
         showReceipt.value = true;
     };
 
-    // 🚀 BUKA MODAL STRUK CLOSING (FUNGSI BARU)
+    // 🚀 BUKA MODAL STRUK CLOSING
     const openClosingReceipt = (closingData) => {
         selectedClosing.value = closingData;
         showClosingReceipt.value = true;
     };
 
     return {
-        riwayat, isLoading, tanggalDipilih, searchQuery, showReceipt, selectedTrx,
-        filteredRiwayat, formatRupiah, fetchRiwayat, openReceipt,
-        currentUser, currentSession,
+        riwayat, 
+        isLoading, 
+        tanggalDipilih, 
+        searchQuery, 
+        showReceipt, 
+        selectedTrx,
+        filteredRiwayat, 
+        formatRupiah, 
+        fetchRiwayat, 
+        openReceipt,
+        currentUser, 
+        currentSession,
 
-        // 🚀 PASTIKAN SEMUA STATE & FUNGSI CLOSING DI-EXPORT!
+        // STATE & FUNGSI CLOSING
         activeTab,
         riwayatClosing,
         showClosingReceipt,
         selectedClosing,
         openClosingReceipt,
-        fetchRiwayatClosing
+        fetchRiwayatClosing,
+        fetchSemuaData
     };
 }

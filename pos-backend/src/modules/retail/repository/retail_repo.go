@@ -132,11 +132,11 @@ func (r *retailRepo) GetProductByID(tx *gorm.DB, id uint, storeID uint) (*models
 	err := tx.Where("id = ? AND store_id = ?", id, storeID).First(&p).Error
 	return &p, err
 }
-func (r *retailRepo) SaveProduct(tx *gorm.DB, p *models.Product) error { 
-    // 🔒 ANTI-SABOTASE: Memastikan cuma bisa nge-update barang di toko lu sendiri
-    return tx.Model(&models.Product{}).
-        Where("id = ? AND store_id = ?", p.ID, p.StoreID).
-        Updates(p).Error 
+func (r *retailRepo) SaveProduct(tx *gorm.DB, p *models.Product) error {
+	// 🔒 ANTI-SABOTASE: Memastikan cuma bisa nge-update barang di toko lu sendiri
+	return tx.Model(&models.Product{}).
+		Where("id = ? AND store_id = ?", p.ID, p.StoreID).
+		Updates(p).Error
 }
 func (r *retailRepo) UpdateProductStokExpr(tx *gorm.DB, id uint, storeID uint, qty int) error {
 	return tx.Model(&models.Product{}).
@@ -307,28 +307,89 @@ func (r *retailRepo) GetDailySalesReport(storeID uint, tgl time.Time, tglEnd tim
 	return sales.Omzet, sales.Laba, returLoss, nil
 }
 
-// 🚀 SANGAR: Senjata Utama Dashboard Tingkat Pro (Satu Query Gabungan via Raw SQL/GORM)
+// 🚀 SANGAR V2: Senjata Utama Dashboard Tingkat Pro - FIX FILTER TANGGAL BERGESER
 func (r *retailRepo) GetAggregatedDailySales(storeID uint, start time.Time, end time.Time) ([]map[string]interface{}, error) {
 	var result []map[string]interface{}
+
+	// Kita paksa Postgres convert date_val pake TO_CHAR agar output tanggalnya string bersih "YYYY-MM-DD" bray!
 	query := `
-		SELECT 
-			TO_CHAR(t.created_at, 'DD Mon') as tanggal,
-			COALESCE(SUM(td.sub_total), 0) as omzet,
-			COALESCE(SUM(td.sub_total - (COALESCE(p.harga_modal, 0) * td.kuantitas)), 0) as laba,
-			(
-				SELECT COALESCE(SUM(r.qty * COALESCE(p2.harga_modal, 0)), 0)
-				FROM retail_product_returns r
-				LEFT JOIN products p2 ON p2.id = r.product_id
-				WHERE r.store_id = ? AND DATE_TRUNC('day', r.created_at) = DATE_TRUNC('day', t.created_at)
-			) as retur_loss
-		FROM transaction_details td
-		JOIN transactions t ON t.id = td.transaction_id
-		LEFT JOIN products p ON p.id = td.product_id
-		WHERE t.store_id = ? AND t.created_at BETWEEN ? AND ?
-		GROUP BY DATE_TRUNC('day', t.created_at), TO_CHAR(t.created_at, 'DD Mon')
-		ORDER BY DATE_TRUNC('day', t.created_at) ASC;
-	`
-	err := r.db.Raw(query, storeID, storeID, start, end).Scan(&result).Error
+WITH dates AS (
+    SELECT generate_series(
+        DATE(?),
+        DATE(?),
+        INTERVAL '1 day'
+    )::date AS date_val
+),
+
+sales_data AS (
+    SELECT
+        DATE(t.created_at) as date_val,
+        COALESCE(SUM(td.sub_total), 0) as omzet,
+        COALESCE(
+            SUM(
+                td.sub_total -
+                (COALESCE(p.harga_modal, 0) * td.kuantitas)
+            ),
+            0
+        ) as laba
+    FROM transaction_details td
+    JOIN transactions t
+        ON t.id = td.transaction_id
+    LEFT JOIN products p
+        ON p.id = td.product_id
+    WHERE
+        t.store_id = ?
+        AND t.created_at BETWEEN ? AND ?
+    GROUP BY DATE(t.created_at)
+),
+
+return_data AS (
+    SELECT
+        DATE(r.created_at) as date_val,
+        COALESCE(
+            SUM(
+                r.qty * COALESCE(p2.harga_modal, 0)
+            ),
+            0
+        ) as retur_loss
+    FROM retail_product_returns r
+    LEFT JOIN products p2
+        ON p2.id = r.product_id
+    WHERE
+        r.store_id = ?
+        AND r.created_at BETWEEN ? AND ?
+    GROUP BY DATE(r.created_at)
+)
+
+SELECT
+    TO_CHAR(d.date_val, 'YYYY-MM-DD') as tanggal,
+    COALESCE(s.omzet, 0) as omzet,
+    COALESCE(s.laba, 0) as laba,
+    COALESCE(r.retur_loss, 0) as retur_loss
+FROM dates d
+LEFT JOIN sales_data s
+    ON s.date_val = d.date_val
+LEFT JOIN return_data r
+    ON r.date_val = d.date_val
+ORDER BY d.date_val ASC;
+`
+
+	// 🚀 FIX CRITICAL BOUNDARY: Jangan kurangi 'end' dengan 24 jam bray!
+	// Karena 'end' dari handler udah dikunci di jam 23:59:59 pada hari terakhir yang dipilih owner.
+	err := r.db.Raw(
+		query,
+		start, // Generator Tanggal Mulai
+		end,   // Generator Tanggal Akhir (Tetap utuh hari terakhir bray!)
+
+		storeID,
+		start,
+		end,
+
+		storeID,
+		start,
+		end,
+	).Scan(&result).Error
+
 	return result, err
 }
 

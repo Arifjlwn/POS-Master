@@ -77,6 +77,48 @@ const kembalianDisplay = computed(() => {
   return hasil > 0 ? hasil : 0;
 });
 
+// 🚀 WAKTU DISPLAY ENGINE: Sniper Regex (Garansi Aman di POS & Riwayat)
+const waktuDisplay = computed(() => {
+  if (!props.invoiceData) return '--:--';
+  
+  let rawDate = props.invoiceData.created_at || props.invoiceData.date || props.invoiceData.date_time;
+  
+  if (!rawDate) return '--:--';
+
+  // Ubah ke string biar seragam cara nge-ceknya
+  const strDate = String(rawDate);
+
+  // 🎯 1. KASUS KHUSUS REPRINT RIWAYAT (Database Go UTC)
+  // Tandanya: ada field 'created_at', atau datanya ditarik dari backend harian
+  if (props.invoiceData.created_at) {
+    try {
+      let tempDate = strDate;
+      // Jika string polos dari DB belum ada penanda UTC, paksa inject 'Z' biar JS tahu itu UTC
+      if (!tempDate.endsWith('Z') && !tempDate.includes('+')) {
+        tempDate = tempDate.replace(' ', 'T') + 'Z';
+      }
+      const d = new Date(tempDate);
+      if (!isNaN(d.getTime())) {
+        // Tambah 7 jam otomatis ke WIB
+        return new Intl.DateTimeFormat('id-ID', {
+          hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta'
+        }).format(d).replace('.', ':');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // 🎯 2. KASUS LIVE POS KASIR (Waktu Lokal Akurat)
+  // Kita langsung nyomot pola angka "HH:MM" dari string tanpa lewat proses "new Date()" yang bikin jam bergeser/bocor T-Z
+  const match = strDate.match(/(\d{2}):(\d{2})/);
+  if (match && match[0]) {
+    return match[0]; // Langsung keluarin angka jam mentahnya, misal "18:49"
+  }
+
+  return strDate; // Fallback terakhir tampilkan apa adanya
+});
+
 // FUNGSI SILUMAN PEMBACA KEMASAN UOM MULTI-UNIT
 const formatKemasan = (item) => {
   if (item.detail_notes && item.detail_notes !== 'Transaksi Retail Toko') return item.detail_notes;
@@ -117,10 +159,11 @@ const triggerPrint = () => { window.print(); };
         </div>
 
         <div class="mb-3 text-[8px] font-black font-mono uppercase space-y-0.5">
-          <div class="flex justify-between"><span>WAKTU:</span><span>{{ invoiceData.date || invoiceData.date_time || '-' }}</span></div>
-          <div class="flex justify-between"><span>KASIR:</span><span>{{ cashierName || 'KASIR' }} / POS-{{ stationNumber || '01' }}</span></div>
-          <div class="flex justify-between"><span class="truncate pr-2">INV:</span><span class="font-bold shrink-0">{{ invoiceData.invoice || invoiceData.no_invoice || 'INV-TEMP' }}</span></div>
-        </div>
+  <div class="flex justify-between"><span>WAKTU:</span><span>{{ waktuDisplay }}</span></div>
+  
+  <div class="flex justify-between"><span>KASIR:</span><span>{{ cashierName || 'KASIR' }} / POS-{{ stationNumber || '01' }}</span></div>
+  <div class="flex justify-between"><span class="truncate pr-2">INV:</span><span class="font-bold shrink-0">{{ invoiceData.invoice || invoiceData.no_invoice || 'INV-TEMP' }}</span></div>
+</div>
 
         <div class="border-b border-black border-dashed mb-2"></div>
 
