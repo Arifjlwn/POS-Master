@@ -12,7 +12,7 @@ const {
 
 <template>
     <Sidebar>
-        <div class="p-4 md:p-8 lg:p-10 max-w-7xl mx-auto font-sans bg-[#f8fafc] min-h-screen">
+        <div id="stock-opname-view" class="p-4 md:p-8 lg:p-10 max-w-7xl mx-auto font-sans bg-[#f8fafc] min-h-screen">
             
             <div class="no-print bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 rounded-[40px] p-8 md:p-10 mb-6 text-white shadow-2xl flex flex-col md:flex-row items-center justify-between relative overflow-hidden border border-white/10 select-none">
                 <div class="z-10 text-center md:text-left">
@@ -73,8 +73,25 @@ const {
 </template>
 
 <style scoped>
-/* Pengaman tambahan global no-print bray */
+/* ==========================================
+   📈 CORE LAYOUT PRINT RECONCILIATION ENGINE
+   ========================================== */
 @media print {
-    .no-print { display: none !important; }
+    /* Gembok total sirkulasi shadow DOM sidebar pas print view dipicu bray */
+    :deep(aside), 
+    :deep(nav), 
+    :deep(header),
+    :deep(#sidebar-wrapper),
+    .no-print {
+        display: none !important;
+    }
+    
+    #stock-opname-view {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        background: #ffffff !important;
+    }
 }
 </style>

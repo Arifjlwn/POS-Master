@@ -62,8 +62,8 @@ export function useStockOpnameReport() {
         isApproving.value = true;
         try {
             const endpoint = type === 'SO'
-                ? `/retail/stock-opname/${id}/approve`
-                : `/retail/stock-adjustment/${id}/approve`;
+    ? `/retail/stock-opname/approve/${id}`
+    : `/retail/stock-adjustment/approve/${id}`;
 
             // 🚀 BIKIN FORMDATA BIAR BISA NGIRIM FILE
             let payload = new FormData();
@@ -72,8 +72,7 @@ export function useStockOpnameReport() {
             }
 
             // 🚀 PERBAIKAN: HAPUS HEADERS MANUAL! 
-            // Cukup lempar 'payload' aja, Axios bakal otomatis nambahin boundary multipart-nya.
-            await api.patch(endpoint, payload);
+            await api.post(endpoint, payload);
             
             Swal.fire('Berhasil!', 'Persetujuan sukses & Bukti tersimpan.', 'success');
             await fetchReports();

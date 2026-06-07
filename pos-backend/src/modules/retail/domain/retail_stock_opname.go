@@ -11,14 +11,14 @@ import (
 
 type StockOpname struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	PublicID  string    `gorm:"size:26;uniqueIndex;not null" json:"public_id"` // Masking ID eksternal via ULID
+	PublicID  string    `gorm:"size:26;uniqueIndex;not null" json:"public_id"`
 
 	StoreID   uint      `gorm:"index;not null" json:"store_id"`
 	UserID    uint      `gorm:"not null;index" json:"user_id"`
 
 	Notes     string    `gorm:"type:text" json:"notes"`
-	Status    string    `gorm:"type:varchar(50);default:'PENDING_APPROVAL';index" json:"status"` // PENDING_APPROVAL / APPROVED
-	BuktiBar  string    `gorm:"type:text" json:"bukti_bar"` // URL Panjang Supabase aman tanpa takut truncate
+	Status    string    `gorm:"type:varchar(50);default:'PENDING_APPROVAL';index" json:"status"`
+	BuktiBar  string    `gorm:"type:text" json:"bukti_bar"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -36,13 +36,11 @@ type StockOpnameDetail struct {
 	SystemQty int            `gorm:"not null" json:"system_qty"`
 	ActualQty int            `gorm:"not null" json:"actual_qty"`
 	Selisih   int            `gorm:"not null" json:"selisih"`
-	NilaiUang float64        `gorm:"type:decimal(18,2);not null;default:0" json:"nilai_uang"` // Nominal kerugian/keuntungan rupiah stok
-
+	NilaiUang float64        `gorm:"type:decimal(18,2);not null;default:0" json:"nilai_uang"`
 	Alasan    string         `gorm:"type:text" json:"alasan"`
 	Product   models.Product `gorm:"foreignKey:ProductID" json:"product"`
 }
 
-// 🛡️ FIX NAMA TABEL: Bersihkan typo double kata 'stock_stock'  biar query GORM lurus total!
 func (StockOpnameDetail) TableName() string { return "retail_stock_opname_details" }
 
 // ==========================================

@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"regexp"
 
 	"pos-backend/models"
 	"pos-backend/src/modules/retail/domain"
@@ -55,7 +56,7 @@ func (h *RetailHandler) CreateStockOpname(c *gin.Context) {
 
 	var input StockOpnameInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data audit tidak valid !"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data audit tidak valid!"})
 		return
 	}
 
@@ -126,7 +127,7 @@ func (h *RetailHandler) CreateStockOpname(c *gin.Context) {
 		return
 	}
 	
-	msg := "Berkas berkuitansi Stock Opname berhasil diteruskan ke laptop Owner !"
+	msg := "Berkas berkuitansi Stock Opname berhasil diteruskan ke laptop Owner!"
 	if status == "APPROVED" {
 		msg = "Audit Stock Opname berhasil dieksekusi, stok master cabang diperbarui!"
 	}
@@ -143,7 +144,7 @@ func (h *RetailHandler) ApproveStockOpname(c *gin.Context) {
 
 	file, errFile := c.FormFile("bukti_bar")
 	if errFile != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Dokumen fisik PDF Berita Acara (BAR TTD) wajib diunggah !"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dokumen fisik PDF Berita Acara (BAR TTD) wajib diunggah!"})
 		return
 	}
 
@@ -155,46 +156,54 @@ func (h *RetailHandler) ApproveStockOpname(c *gin.Context) {
 	}
 	defer fileSrc.Close()
 
-	remotePath := fmt.Sprintf("audit/so_%s_bar", opnameID)
+	// 🚀 FIX PATH EXTENSION: Kunci nama file dengan format .pdf bray
+	remotePath := fmt.Sprintf("audit/so_%s_bar.pdf", opnameID)
 	urlResult, errUpload := utils.UploadToSupabase(fileSrc, file.Filename, "application/pdf", bucketName, remotePath)
 	if errUpload != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Koneksi cloud storage storage terputus, gagal simpan dokumen BAR"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Koneksi cloud storage terputus, gagal simpan dokumen BAR"})
 		return
 	}
 
 	db := h.Repo.GetDB()
-err = db.Transaction(func(tx *gorm.DB) error {
-    var so domain.StockOpname
-    
-    // 🚀 FIX: Eksplisit sebut nama kolomnya biar GORM ga salah deteksi tipe data ULID/String bray!
-    // Sesuaikan kolomnya ya, pakai "public_id = ?" atau "id = ?" tergantung skema tabel SO lu.
-    if err := tx.Preload("Details").Clauses(clause.Locking{Strength: "UPDATE"}).First(&so, "public_id = ?", opnameID).Error; err != nil {
-        return fmt.Errorf("berkas ID SO tidak ditemukan atau gagal dikunci")
-    }
-    
-    if so.Status == "APPROVED" {
-        return nil
-    }
+	err = db.Transaction(func(tx *gorm.DB) error {
+		var so domain.StockOpname
+		
+		// 🚀 FIX LOOKUP ENGINE: Cek tipe data parameter biar GORM ga salah parsing integer vs string ULID bray
+		var checkErr error
+		if regexp.MustCompile(`^[0-9]+$`).MatchString(opnameID) {
+			checkErr = tx.Preload("Details").Clauses(clause.Locking{Strength: "UPDATE"}).First(&so, "id = ?", opnameID).Error
+		} else {
+			checkErr = tx.Preload("Details").Clauses(clause.Locking{Strength: "UPDATE"}).First(&so, "public_id = ?", opnameID).Error
+		}
 
-    if err := tx.Model(&so).Updates(map[string]interface{}{"status": "APPROVED", "bukti_bar": urlResult}).Error; err != nil {
-        return err
-    }
+		if checkErr != nil {
+			return fmt.Errorf("berkas ID SO tidak ditemukan di database master")
+		}
+		
+		if so.Status == "APPROVED" {
+			return nil
+		}
 
-    for _, detail := range so.Details {
-        var product models.Product
-        if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&product, "id = ? AND store_id = ?", detail.ProductID, so.StoreID).Error; err != nil {
-            return err
-        }
-        product.Stok = detail.ActualQty
-        if err := tx.Save(&product).Error; err != nil {
-            return err
-        }
-    }
-    return nil
-})
+		// Gunakan model updates bray agar sinkron dengan struktur properti domain/retail_stock_opname.go
+		if err := tx.Model(&so).Updates(map[string]interface{}{"status": "APPROVED", "bukti_bar": urlResult}).Error; err != nil {
+			return err
+		}
+
+		for _, detail := range so.Details {
+			var product models.Product
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&product, "id = ? AND store_id = ?", detail.ProductID, so.StoreID).Error; err != nil {
+				return err
+			}
+			product.Stok = detail.ActualQty
+			if err := tx.Save(&product).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal eksekusi persetujuan SO : " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal eksekusi persetujuan SO: " + err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Audit berhasil disetujui, stok master diperbarui di Cloud!"})
@@ -205,7 +214,7 @@ err = db.Transaction(func(tx *gorm.DB) error {
 // ==========================================
 
 type AuditCompareResult struct {
-	SO    domain.StockOpname       `json:"so"`
+	SO    domain.StockOpname      `json:"so"`
 	Klaim *domain.StockAdjustment `json:"klaim"`
 }
 
@@ -288,7 +297,7 @@ func (h *RetailHandler) SubmitKlaimBarang(c *gin.Context) {
 
 	var req KlaimRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Format berkas klaim tidak sesuai !"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format berkas klaim tidak sesuai!"})
 		return
 	}
 
@@ -319,13 +328,12 @@ func (h *RetailHandler) SubmitKlaimBarang(c *gin.Context) {
 				return fmt.Errorf("produk ID %d ditolak! Barang ini tidak terdaftar sebagai produk hilang minus di SO terakhir", item.ProductID)
 			}
 
-			// 🛡️ SECURITY FIX: Hitung kumulatif qty yang SUDAH PERNAH diajukan sebelumnya (Pending/Approved)
 			var totalClaimedBefore int64
 			err = tx.Model(&domain.StockAdjustmentDetail{}).
-				Joins("JOIN stock_adjustments ON stock_adjustments.id = stock_adjustment_details.adjustment_id").
-				Where("stock_adjustments.store_id = ? AND stock_adjustments.created_at >= ? AND stock_adjustment_details.product_id = ?", 
+				Joins("JOIN retail_stock_adjustments ON retail_stock_adjustments.id = retail_stock_adjustment_details.adjustment_id").
+				Where("retail_stock_adjustments.store_id = ? AND retail_stock_adjustments.created_at >= ? AND retail_stock_adjustment_details.product_id = ?", 
 					storeID, lastSO.CreatedAt, item.ProductID).
-				Select("COALESCE(SUM(stock_adjustment_details.qty), 0)").
+				Select("COALESCE(SUM(retail_stock_adjustment_details.qty), 0)").
 				Row().Scan(&totalClaimedBefore)
 			
 			if err != nil {
@@ -357,7 +365,7 @@ func (h *RetailHandler) SubmitKlaimBarang(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Klaim penemuan penyesuaian dana barang berhasil diteruskan ke laptop Owner !"})
+	c.JSON(http.StatusOK, gin.H{"message": "Klaim penemuan penyesuaian dana barang berhasil diteruskan ke laptop Owner!"})
 }
 
 func (h *RetailHandler) GetStockAdjustmentHistory(c *gin.Context) {
@@ -397,7 +405,8 @@ func (h *RetailHandler) ApproveStockAdjustment(c *gin.Context) {
 	}
 	defer fileSrc.Close()
 
-	remotePath := fmt.Sprintf("audit/claim_%s_bar", adjustmentID)
+	// 🚀 FIX PATH EXTENSION: Kunci nama file dengan format .pdf bray
+	remotePath := fmt.Sprintf("audit/claim_%s_bar.pdf", adjustmentID)
 	urlResult, errUpload := utils.UploadToSupabase(fileSrc, file.Filename, "application/pdf", bucketName, remotePath)
 	if errUpload != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengamankan berkas BAR Klaim ke cloud storage"})
@@ -407,14 +416,24 @@ func (h *RetailHandler) ApproveStockAdjustment(c *gin.Context) {
 	db := h.Repo.GetDB()
 	err = db.Transaction(func(tx *gorm.DB) error {
 		var adjustment domain.StockAdjustment
-		if err := tx.Preload("Details").Clauses(clause.Locking{Strength: "UPDATE"}).First(&adjustment, adjustmentID).Error; err != nil {
-			return fmt.Errorf("berkas kode ID Klaim tidak valid")
+		
+		// 🚀 FIX LOOKUP ENGINE: Cegah eror mismatch data ID integer dari parameter URL bray bray bray
+		var checkErr error
+		if regexp.MustCompile(`^[0-9]+$`).MatchString(adjustmentID) {
+			checkErr = tx.Preload("Details").Clauses(clause.Locking{Strength: "UPDATE"}).First(&adjustment, "id = ?", adjustmentID).Error
+		} else {
+			checkErr = tx.Preload("Details").Clauses(clause.Locking{Strength: "UPDATE"}).First(&adjustment, "public_id = ?", adjustmentID).Error
 		}
+
+		if checkErr != nil {
+			return fmt.Errorf("berkas kode ID Klaim tidak valid di database master")
+		}
+		
 		if adjustment.Status == "APPROVED" {
 			return nil
 		}
 
-		// 🛠️ ALIGNMENT FIX: Pakai .Updates() biar hook record update_at jalan semestinya bray
+		// Update kolom status dan bukti_bar sesuai blueprint domain bray
 		if err := tx.Model(&adjustment).Updates(map[string]interface{}{"status": "APPROVED", "bukti_bar": urlResult}).Error; err != nil {
 			return err
 		}
@@ -433,7 +452,7 @@ func (h *RetailHandler) ApproveStockAdjustment(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyetujui kuitansi klaim : " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyetujui kuitansi klaim: " + err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Klaim berhasil disetujui, jumlah stok fisik rak bertambah di Cloud!"})

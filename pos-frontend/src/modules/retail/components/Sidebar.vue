@@ -106,7 +106,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<div class="h-screen w-screen flex flex-col bg-[#F8FAFC] font-sans overflow-hidden relative selection:bg-indigo-100 selection:text-indigo-600 print:hidden">
+	<div class="h-screen w-screen flex flex-col bg-[#F8FAFC] font-sans overflow-hidden relative selection:bg-indigo-100 selection:text-indigo-600">
 		<header class="bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-40 shadow-sm shrink-0 no-print">
 			<div class="flex items-center gap-4 sm:gap-5">
 				<button @click="sidebarOpen = true" class="group flex flex-col gap-1.5 p-2 rounded-xl hover:bg-indigo-50 transition-all active:scale-95">
@@ -142,7 +142,7 @@ onUnmounted(() => {
 			<div v-if="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-40 transition-all"></div>
 		</Transition>
 
-		<aside :class="sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'" class="fixed inset-y-0 left-0 w-[280px] sm:w-[320px] bg-white transform transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-50 flex flex-col border-r border-slate-100 h-full">
+		<aside :class="sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'" class="no-print fixed inset-y-0 left-0 w-[280px] sm:w-[320px] bg-white transform transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-50 flex flex-col border-r border-slate-100 h-full">
 			<div class="p-6 sm:p-8 flex items-center justify-between bg-slate-50/50 border-b border-slate-100 shrink-0">
 				<div class="flex flex-col">
 					<img v-if="user.storeLogo && user.storeLogo !== 'null' && user.storeLogo !== ''" :src="user.storeLogo" class="h-16 sm:h-20 max-w-[240px] object-contain mb-2 origin-left" alt="Logo Toko" />
@@ -357,7 +357,7 @@ onUnmounted(() => {
 			</div>
 		</aside>
 
-		<main class="flex-1 w-full overflow-y-auto bg-[#F8FAFC] relative scroll-smooth custom-scrollbar"><slot /></main>
+		<main class="flex-1 w-full overflow-y-auto bg-[#F8FAFC] relative scroll-smooth custom-scrollbar print:overflow-visible print:bg-white"><slot /></main>
 	</div>
 </template>
 
