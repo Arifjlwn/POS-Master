@@ -1,6 +1,11 @@
 #env files
 .env
 .env.local
+.env.development
+.env.production
+*.env
+pos-backend/.env*
+pos-frontend/.env*
 
 
 # Logs
