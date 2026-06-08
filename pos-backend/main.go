@@ -27,39 +27,61 @@ import (
 
 func main() {
 	if err := godotenv.Load(); err != nil {
-		log.Println("Peringatan: File .env tidak ditemukan, menggunakan src default system")
+		log.Println("Peringatan: File .env tidak ditemukan, menggunakan environment default system")
 	}
 
+	// 1. KONEKSI & INSTANSIASI LAYER (Dependency Injection Terpusat)
 	src.ConnectDatabase()
+
+	// Inisialisasi Modul Retail
+	retailRepo := retailRepository.NewRetailRepo(src.DB)
+	retailHandler := retailDelivery.NewRetailHandler(retailRepo)
+
+	// Inisialisasi Modul Laundry
+	laundryRepo := laundryRepository.NewLaundryRepo(src.DB)
+	laundryHandler := &laundryDelivery.LaundryHandler{Repo: laundryRepo}
+
+	// Inisialisasi Modul Food & Beverages (FnB)
+	fnbMenuRepo := fnbRepository.NewMenuRepo(src.DB)
+	fnbMenuHandler := &fnbDelivery.MenuHandler{Repo: fnbMenuRepo}
+	fnbOrderRepo := fnbRepository.NewOrderRepo(src.DB)
+	fnbOrderHandler := fnbDelivery.NewOrderHandler(fnbOrderRepo)
+
+
+	// 2. KONFIGURASI ENGINE WEB SERVER
 	r := gin.Default()
 
-	// 🚀 SANGAR: CORS Tight Guard dinamis berbasis ENV untuk mengunci serangan XSS di Production
-	// 🚀 SANGAR: CORS Tight Guard dinamis berbasis ENV
-    r.Use(cors.New(cors.Config{
-        AllowOriginFunc: func(origin string) bool {
-            // JIKA MODE DEVELOPMENT, JANGAN KUNCI GERBANG , BIAR HP BISA MASUK LANCAR
-            if os.Getenv("APP_ENV") == "development" {
-                return true
-            }
+	// CORS Tight Guard dinamis berbasis ENV untuk mengunci eksploitasi di Production
+	r.Use(cors.New(cors.Config{
+		AllowOriginFunc: func(origin string) bool {
+			// Jika mode development, buka gerbang untuk memudahkan pengujian via HP/Lokal
+			if os.Getenv("APP_ENV") == "development" {
+				return true
+			}
 
-            allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
-            if allowedOrigins == "" { return true } // Fallback development local
-            for _, allowed := range strings.Split(allowedOrigins, ",") {
-                if origin == strings.TrimSpace(allowed) { return true }
-            }
-            return false
-        },
-        AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-        AllowHeaders: []string{"Origin", "Content-Type", "Authorization", "X-Requested-With", "Accept", "ngrok-skip-browser-warning"},
-        ExposeHeaders:    []string{"Content-Length"},
-        AllowCredentials: true,
-        MaxAge:           12 * time.Hour,
-    }))
+			allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+			// FIX SECURITY: Jika di Production ENV kosong, TOLAK akses demi keamanan data penyewa (Tenant)
+			if allowedOrigins == "" { 
+				log.Println("CRITICAL ERROR: ALLOWED_ORIGINS tidak terdeteksi di lingkungan Production!")
+				return false 
+			} 
+			
+			for _, allowed := range strings.Split(allowedOrigins, ",") {
+				if origin == strings.TrimSpace(allowed) { return true }
+			}
+			return false
+		},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Requested-With", "Accept", "ngrok-skip-browser-warning"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	r.Static("/uploads", "./uploads")
 	r.Static("/public", "./public")
 
-	// Payload Size Global Limiter (Max 5 MB upload protection)
+	// Payload Size Global Limiter (Max 5 MB upload protection) - Mencegah DOS dari upload file raksasa
 	r.Use(func(c *gin.Context) {
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 5*1024*1024)
 		c.Next()
@@ -69,6 +91,7 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": "sukses", "message": "Halo Bos! Server Go Berhasil Menyala !"})
 	})
 
+
 	// ==========================================
 	// -- RUTE API SAAS PUBLIC (GLOBAL & AUTH) --
 	// ==========================================
@@ -77,13 +100,13 @@ func main() {
 	r.POST("/api/verify-otp", auth.VerifyOTP)
 	r.POST("/api/login", auth.Login)
 	r.POST("/api/auth/send-otp-wa", auth.SendOTPWhatsApp)
+	r.POST("/api/auth/send-otp-email", auth.SendOTPEmailEndpoint) // 🚀 FIX: Endpoint baru email OTP sinkron
 	r.POST("/api/reset-password", auth.ResetPassword)
 	r.POST("/api/auth/check-account", auth.CheckAccount)
 
-	// Instansiasi Modul Retail Layer
-	retailRepo := retailRepository.NewRetailRepo(src.DB)
-	retailHandler := retailDelivery.NewRetailHandler(retailRepo)
+	// Webhook Gateway Midtrans (Harus divalidasi Signature Key-nya di dalam handler untuk mencegah pemalsuan status bayar)
 	r.POST("/api/retail/midtrans/webhook", retailHandler.MidtransWebhook)
+
 
 	// ==========================================
 	// -- RUTE TERPROTEKSI (MIDDLEWARE GATEWAY) --
@@ -99,35 +122,23 @@ func main() {
 		api.POST("/setup", auth.SetupTokoBaru)
 
 		// 🛒 Modul Bisnis: RETAIL MULTI-TENANT
-        retailAPI := api.Group("/retail")
-        {
-            // Rute inventory bawaan
-            retailDelivery.RegisterRetailInventoryRoutes(retailAPI, retailHandler)
-
-            // 🛡️ SUNTIKAN SAKTI SINKRONISASI POS CHECKOUT:
-            // Alamat penuh rute ini otomatis menjadi: POST /api/retail/pos/checkout!
-            retailAPI.POST("/pos/checkout", retailHandler.CreateTransaction)
-            
-            // Sekalian tambahkan rute history dan closing laci yang ada di handler baru kita kemarin!
-            retailAPI.GET("/pos/transactions", retailHandler.GetTransactions)
-            retailAPI.GET("/pos/daily-closing", retailHandler.GetDailyClosing)
-        }
+		retailAPI := api.Group("/retail")
+		{
+			retailDelivery.RegisterRetailInventoryRoutes(retailAPI, retailHandler)
+			retailAPI.POST("/pos/checkout", retailHandler.CreateTransaction)
+			retailAPI.GET("/pos/transactions", retailHandler.GetTransactions)
+			retailAPI.GET("/pos/daily-closing", retailHandler.GetDailyClosing)
+		}
 
 		// 🧺 Modul Bisnis: LAUNDRY ECOSYSTEM
 		laundryAPI := api.Group("/laundry")
 		{
-			laundryRepo := laundryRepository.NewLaundryRepo(src.DB)
-			laundryHandler := &laundryDelivery.LaundryHandler{Repo: laundryRepo}
 			laundryDelivery.RegisterLaundryRoutes(laundryAPI, laundryHandler)
 		}
 
 		// 🍔 Modul Bisnis: FOOD & BEVERAGES (FnB)
-		fnbAPI := api.Group("/fnb") // 🚀 FIX: Redundansi middleware RequireAuth dicabut dari sini
+		fnbAPI := api.Group("/fnb")
 		{
-			fnbMenuRepo := fnbRepository.NewMenuRepo(src.DB)
-			fnbMenuHandler := &fnbDelivery.MenuHandler{Repo: fnbMenuRepo}
-			fnbOrderRepo := fnbRepository.NewOrderRepo(src.DB)
-			fnbOrderHandler := fnbDelivery.NewOrderHandler(fnbOrderRepo)
 			fnbDelivery.RegisterFnBRoutes(fnbAPI, fnbMenuHandler, fnbOrderHandler)
 		}
 	}

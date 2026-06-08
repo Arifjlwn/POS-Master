@@ -1,6 +1,7 @@
 import { ref, onMounted } from 'vue';
 import api from '../../../api.js';
 import Swal from 'sweetalert2';
+import imageCompression from 'browser-image-compression';
 
 export function useAccount() {
     const isLoading = ref(true);
@@ -21,20 +22,18 @@ export function useAccount() {
     const fotoPreview = ref(null);
     const bioPreview = ref(null);
 
-    // 🚀 HELPER FUNGSI: Biar bisa ngebaca link Cloud Supabase (https://...) ATAU sisa data Lokal
+    // HELPER FUNGSI: Biar bisa ngebaca link Cloud Supabase (https://...) ATAU sisa data Lokal
     const getCleanUrl = (url) => {
         if (!url) return null;
         if (url.startsWith('http://') || url.startsWith('https://')) {
             return url; // Sudah dari Cloud, balikin mentah!
         }
-        // Jika data lama lokal (misal: /uploads/foto.png), gabungin sama API Base URL
         return API_BASE_URL + url;
     };
 
     const fetchProfile = async () => {
         isLoading.value = true;
         try {
-            // Narik data dari fungsi GetMe di Golang lu
             const response = await api.get('/me');
             const data = response.data;
 
@@ -44,7 +43,6 @@ export function useAccount() {
             profileForm.value.tempat_lahir = data.tempat_lahir || '';
             profileForm.value.tanggal_lahir = data.tanggal_lahir ? data.tanggal_lahir.substring(0, 10) : '';
 
-            // 🚀 PAKE HELPER BARU!
             fotoPreview.value = getCleanUrl(data.foto_url);
             bioPreview.value = getCleanUrl(data.biometric_url);
             
@@ -55,13 +53,55 @@ export function useAccount() {
         }
     };
 
-    const handleFileChange = (type, file, previewUrl) => {
-        if (type === 'foto') {
-            profileForm.value.foto = file;
-            fotoPreview.value = previewUrl;
-        } else if (type === 'bio') {
-            profileForm.value.biometric_file = file;
-            bioPreview.value = previewUrl;
+    // 🚀 FIX: handleFileChange sekarang mendukung kompresi background sebelum disimpan di state form
+    const handleFileChange = async (type, file) => {
+        if (!file) return;
+
+        // Jika tipe file bukan gambar (misal file biner lain), lewati kompresi
+        if (!file.type.startsWith('image/')) {
+            if (type === 'foto') {
+                profileForm.value.foto = file;
+                fotoPreview.value = URL.createObjectURL(file);
+            } else if (type === 'bio') {
+                profileForm.value.biometric_file = file;
+                bioPreview.value = URL.createObjectURL(file);
+            }
+            return;
+        }
+
+        // Tentukan aturan kompresi dinamis berdasarkan jenis dokumen
+        const options = {
+            maxSizeMB: type === 'foto' ? 0.3 : 1.0,       // Avatar cukup 300KB, Biometrik/Nota max 1MB
+            maxWidthOrHeight: type === 'foto' ? 1024 : 1920, // Batasi resolusi piksel maksimal
+            useWebWorker: true,
+            fileType: file.type
+        };
+
+        try {
+            // Tampilkan loading screen mini agar kasir tahu gambar sedang diproses browser
+            const compressedFile = await imageCompression(file, options);
+
+            // Buat preview URL dari hasil file yang sudah dikompresi
+            const previewUrl = URL.createObjectURL(compressedFile);
+
+            if (type === 'foto') {
+                profileForm.value.foto = compressedFile;
+                fotoPreview.value = previewUrl;
+            } else if (type === 'bio') {
+                profileForm.value.biometric_file = compressedFile;
+                bioPreview.value = previewUrl;
+            }
+        } catch (error) {
+            console.error("Gagal melakukan optimasi gambar:", error);
+            // Fallback: Jika kompresi gagal total, gunakan file asli agar aplikasi tidak macet
+            const fallbackUrl = URL.createObjectURL(file);
+            if (type === 'foto') {
+                profileForm.value.foto = file;
+                fotoPreview.value = fallbackUrl;
+            } else if (type === 'bio') {
+                profileForm.value.biometric_file = file;
+                bioPreview.value = fallbackUrl;
+            }
         }
     };
 
@@ -77,25 +117,25 @@ export function useAccount() {
             if (profileForm.value.foto) {
                 formData.append('foto', profileForm.value.foto);
             }
+            
+            // 🚀 SINKRONISASI BACKEND: Tambahkan pengiriman file biometrik yang kemarin tertinggal di FormData!
+            if (profileForm.value.biometric_file) {
+                formData.append('biometric_file', profileForm.value.biometric_file);
+            }
 
             const res = await api.put('/profile', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
-            // 🚀 ANTISIPASI FORMAT RESPONSE GOLANG (Bisa res.data.data atau res.data langsung)
             const responseData = res.data.data || res.data;
 
-            // 1. Simpan nama baru
             if (responseData.name) {
                 localStorage.setItem('name', responseData.name);
             }
-
-            // 2. Simpan URL foto baru
             if (responseData.foto_url) {
                 localStorage.setItem('foto_url', responseData.foto_url);
             }
 
-            // 3. TEMBAK SINYAL CUSTOM KE SIDEBAR!
             window.dispatchEvent(new Event('profile-updated'));
 
             Swal.fire({
@@ -126,7 +166,6 @@ export function useAccount() {
 
         isSaving.value = true;
         try {
-            // Asumsi rute ini bakal kita buat di Golang nanti
             await api.put('/password', {
                 old_password: passwordForm.value.old_password,
                 new_password: passwordForm.value.new_password

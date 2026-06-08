@@ -12,6 +12,7 @@
     "@formkit/auto-animate": "^0.9.0",
     "@formkit/vue": "^2.0.0",
     "axios": "^1.16.0",
+    "browser-image-compression": "^2.0.2",
     "chart.js": "^4.5.1",
     "face-api.js": "^0.22.2",
     "html5-qrcode": "^2.3.8",
