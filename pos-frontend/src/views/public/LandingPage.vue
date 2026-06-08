@@ -377,7 +377,7 @@ const handlePilihPaket = (industry, planId) => {
 			<div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
 				<div>
 					<div class="font-black text-2xl tracking-tighter text-slate-800 uppercase">
-						NEXA
+						ARZURA
 						<span class="text-indigo-600">POS</span>
 					</div>
 					<p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2">Premium Operations System Platform</p>
