@@ -14,7 +14,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 // ==============================================================
 // PENGATURAN NAMA BRAND APLIKASI (Ubah di sini untuk ganti nama)
 // ==============================================================
-const BRAND_NAME = 'ARZURA'; // <-- GANTI NAMA BRAND ABANG DI SINI
+const BRAND_NAME = 'ARZURA'; // <-- NAMA BRAND ABANG
 
 // ==============================================================
 // STATE & DATA REAKTIF MODAL PRICING
@@ -47,7 +47,8 @@ const pricingPlans = {
             name: 'Starter Trial',
             price: 'Rp 0',
             duration: '14 Hari',
-            desc: 'Uji coba gratis untuk melihat kesesuaian sistem dengan toko Anda.', features: ['Semua Fitur Unlocked']
+            desc: 'Uji coba gratis untuk melihat kesesuaian sistem dengan toko Anda.', 
+            features: ['Semua Fitur Unlocked']
         },
         {
             id: 'basic',
@@ -222,12 +223,12 @@ const handleLogout = () => {
         text: 'Anda harus memasukkan ulang kredensial untuk mengakses data kasir kembali.',
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#6366f1',
+        confirmButtonColor: '#4f46e5',
         cancelButtonColor: '#f43f5e',
         confirmButtonText: 'Ya, Keluar Sesi',
         cancelButtonText: 'Batal',
         customClass: {
-            popup: 'rounded-[32px] p-8',
+            popup: 'rounded-[32px] p-6 md:p-8',
             confirmButton: 'rounded-xl px-5 py-3 text-xs font-black uppercase tracking-wider',
             cancelButton: 'rounded-xl px-5 py-3 text-xs font-black uppercase tracking-wider'
         }
@@ -241,9 +242,9 @@ const handleLogout = () => {
 
 const getPlanStyle = (plan) => {
     const p = plan ? plan.toLowerCase() : 'basic';
-    if (p === 'premium') return 'bg-amber-50 text-amber-700 border-amber-200 ring-amber-500 text-amber-500 shadow-amber-100';
-    if (p === 'pro') return 'bg-indigo-50 text-indigo-700 border-indigo-200 ring-indigo-500 text-indigo-500 shadow-indigo-100';
-    return 'bg-sky-50 text-sky-700 border-sky-200 ring-sky-500 text-sky-500 shadow-sky-100';
+    if (p === 'premium') return 'bg-amber-50 text-amber-700 border-amber-200 ring-amber-500 shadow-amber-100/50';
+    if (p === 'pro') return 'bg-indigo-50 text-indigo-700 border-indigo-200 ring-indigo-500 shadow-indigo-100/50';
+    return 'bg-sky-50 text-sky-700 border-sky-200 ring-sky-500 shadow-sky-100/50';
 };
 
 const cleanLogoUrl = (url) => {
@@ -266,71 +267,71 @@ const getStoreLabel = (index) => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-[#FAFCFF] flex flex-col items-center py-12 px-4 md:px-8 font-sans relative overflow-x-hidden select-none">
+    <div class="min-h-screen bg-[#FAFCFF] flex flex-col items-center py-6 md:py-12 px-4 md:px-8 font-sans relative overflow-x-hidden select-none">
         <!-- Latar Belakang Gradien Mewah -->
-        <div class="absolute top-[-10%] left-[-10%] w-[50rem] h-[50rem] bg-gradient-to-br from-indigo-200/30 to-purple-200/20 rounded-full filter blur-[150px] pointer-events-none"></div>
-        <div class="absolute bottom-[-10%] right-[-10%] w-[50rem] h-[50rem] bg-gradient-to-tr from-blue-200/30 to-sky-200/20 rounded-full filter blur-[150px] pointer-events-none"></div>
+        <div class="absolute top-[-10%] left-[-10%] w-[30rem] md:w-[50rem] h-[30rem] md:h-[50rem] bg-gradient-to-br from-indigo-200/30 to-purple-200/20 rounded-full filter blur-[100px] md:blur-[150px] pointer-events-none"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[30rem] md:w-[50rem] h-[30rem] md:h-[50rem] bg-gradient-to-tr from-blue-200/30 to-sky-200/20 rounded-full filter blur-[100px] md:blur-[150px] pointer-events-none"></div>
 
         <!-- Tombol LOGOUT PREMIUM -->
-        <div class="absolute top-6 right-6 md:right-12 z-20">
+        <div class="w-full max-w-6xl flex justify-end mb-6 md:mb-0 md:absolute md:top-6 md:right-12 z-20">
             <button 
                 @click="handleLogout" 
-                class="flex items-center gap-2.5 px-5 py-3 bg-white/80 backdrop-blur-md border border-rose-100 hover:border-rose-200 text-rose-600 hover:text-white hover:bg-rose-600 rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
+                class="flex items-center gap-2.5 px-4 md:px-5 py-2.5 md:py-3 bg-white/80 backdrop-blur-md border border-rose-100 hover:border-rose-200 text-rose-600 hover:text-white hover:bg-rose-600 rounded-2xl font-black text-[10px] md:text-[11px] uppercase tracking-widest shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 w-full sm:w-auto justify-center"
             >
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
-                Keluar Akun
+                Keluar Sesi
             </button>
         </div>
 
-        <div class="w-full max-w-6xl z-10 flex flex-col items-center animate-fade-in-up mt-8">
+        <div class="w-full max-w-6xl z-10 flex flex-col items-center animate-fade-in-up md:mt-8">
             <!-- Header Brand Dinamis -->
-            <div class="text-center mb-16">
-                <div class="inline-flex items-center justify-center px-5 py-2.5 bg-white rounded-2xl shadow-sm border border-slate-100/80 mb-6 hover:scale-105 transition-transform duration-300">
-                    <div class="font-black text-2xl text-slate-900 tracking-tighter leading-none flex items-center gap-1.5 uppercase">
+            <div class="text-center mb-10 md:mb-16 w-full px-2">
+                <div class="inline-flex items-center justify-center px-4 md:px-5 py-2 md:py-2.5 bg-white rounded-2xl shadow-sm border border-slate-100/80 mb-4 md:mb-6 hover:scale-105 transition-transform duration-300">
+                    <div class="font-black text-xl md:text-2xl text-slate-900 tracking-tighter leading-none flex items-center gap-1.5 uppercase">
                         {{ BRAND_NAME }}
-                        <span class="text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-xl border border-indigo-100/70 text-xs tracking-normal normal-case">POS</span>
+                        <span class="text-indigo-600 bg-indigo-50 px-2 md:px-2.5 py-0.5 md:py-1 rounded-xl border border-indigo-100/70 text-[10px] md:text-xs tracking-normal normal-case">POS</span>
                     </div>
                 </div>
-                <h1 class="text-4xl md:text-6xl font-black text-slate-900 tracking-tight mb-4">
-                    Selamat Datang, <span class="bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">{{ userName.split(' ')[0] }}</span> !
+                <h1 class="text-3xl md:text-6xl font-black text-slate-900 tracking-tight mb-4 leading-tight">
+                    Selamat Datang, <span class="bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">{{ userName ? userName.split(' ')[0] : 'Owner' }}</span>!
                 </h1>
-                <p class="text-slate-400 font-bold text-[11px] uppercase tracking-widest bg-white border border-slate-100/60 px-6 py-2.5 rounded-full inline-block shadow-sm">
+                <p class="text-slate-400 font-bold text-[9px] md:text-[11px] uppercase tracking-widest bg-white border border-slate-100/60 px-4 md:px-6 py-2 md:py-2.5 rounded-full inline-block shadow-sm max-w-xs sm:max-w-none">
                     {{ stores.length > 0 ? 'Silakan pilih gerai toko untuk memulai transaksi kasir' : 'Inisialisasi Pembuatan Toko Baru' }}
                 </p>
             </div>
 
             <!-- List Gerai Toko Aktif -->
             <div v-if="stores.length > 0" class="w-full">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full relative z-10 items-stretch">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 w-full relative z-10 items-stretch">
                     <div 
                         v-for="(store, idx) in sortedStores" 
                         :key="store.id" 
                         @click="selectBranch(store.id)" 
-                        class="group bg-white rounded-[36px] p-7 border border-slate-100/80 shadow-sm hover:shadow-[0_25px_60px_-15px_rgba(99,102,241,0.15)] hover:-translate-y-2.5 transition-all duration-500 cubic-bezier-card cursor-pointer flex flex-col relative overflow-hidden justify-between"
+                        class="group bg-white rounded-[32px] md:rounded-[36px] p-6 md:p-7 border border-slate-100/80 shadow-sm hover:shadow-[0_25px_60px_-15px_rgba(99,102,241,0.15)] hover:-translate-y-2 transition-all duration-500 cubic-bezier-card cursor-pointer flex flex-col relative overflow-hidden justify-between"
                     >
-                        <div class="absolute top-0 left-0 w-full h-1.5 transition-all duration-500" :class="getPlanStyle(store.subscription_plan).split(' ')[3].replace('ring-', 'bg-')"></div>
+                        <div class="absolute top-0 left-0 w-full h-1.5 transition-all duration-500" :class="getPlanStyle(store.subscription_plan).includes('ring-amber-500') ? 'bg-amber-500' : (getPlanStyle(store.subscription_plan).includes('ring-indigo-500') ? 'bg-indigo-500' : 'bg-sky-500')"></div>
 
                         <div>
-                            <div class="flex items-start justify-between mb-8">
-                                <div class="w-16 h-16 rounded-[22px] bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden shrink-0 group-hover:scale-105 shadow-inner transition-all duration-500">
+                            <div class="flex items-start justify-between mb-6 md:mb-8">
+                                <div class="w-14 h-14 md:w-16 md:h-16 rounded-[20px] md:rounded-[22px] bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden shrink-0 group-hover:scale-105 shadow-inner transition-all duration-500">
                                     <img v-if="store.logo_url" :src="cleanLogoUrl(store.logo_url)" class="w-full h-full object-cover" />
-                                    <svg v-else class="w-7 h-7 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <svg v-else class="w-6 h-6 md:w-7 h-7 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                     </svg>
                                 </div>
-                                <span class="text-[10px] font-black uppercase tracking-widest bg-slate-50 border border-slate-200/50 px-3.5 py-1.5 rounded-xl transition-all duration-300 group-hover:bg-indigo-50 group-hover:text-indigo-600 group-hover:border-indigo-100">
+                                <span class="text-[9px] md:text-[10px] font-black uppercase tracking-widest bg-slate-50 border border-slate-200/50 px-3 md:px-3.5 py-1 md:py-1.5 rounded-xl transition-all duration-300 group-hover:bg-indigo-50 group-hover:text-indigo-600 group-hover:border-indigo-100">
                                     {{ getStoreLabel(idx) }}
                                 </span>
                             </div>
 
-                            <div class="mb-8">
-                                <h3 class="text-2xl font-black text-slate-800 mb-2 line-clamp-1 uppercase tracking-tight group-hover:text-indigo-600 transition-colors duration-300">
+                            <div class="mb-6 md:mb-8">
+                                <h3 class="text-xl md:text-2xl font-black text-slate-800 mb-1.5 md:mb-2 line-clamp-1 uppercase tracking-tight group-hover:text-indigo-600 transition-colors duration-300">
                                     {{ store.nama_toko }}
                                 </h3>
-                                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider line-clamp-1 flex items-center gap-1">
-                                    <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <p class="text-[11px] md:text-xs font-bold text-slate-400 uppercase tracking-wider line-clamp-1 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
@@ -339,16 +340,16 @@ const getStoreLabel = (index) => {
                             </div>
                         </div>
 
-                        <div class="mt-auto flex items-center justify-between border-t border-slate-50 pt-5">
+                        <div class="mt-auto flex items-center justify-between border-t border-slate-50 pt-4 md:pt-5">
                             <div class="flex flex-col">
                                 <span class="text-[8px] font-black text-slate-300 uppercase tracking-widest leading-none">Lisensi</span>
-                                <span class="text-[10px] font-black uppercase tracking-wider mt-1 px-2.5 py-0.5 border rounded-md" :class="getPlanStyle(store.subscription_plan).split(' ').slice(0,3).join(' ')">
+                                <span class="text-[9px] md:text-[10px] font-black uppercase tracking-wider mt-1 px-2 py-0.5 border rounded-md" :class="getPlanStyle(store.subscription_plan)">
                                     {{ store.subscription_plan || 'Basic' }}
                                 </span>
                             </div>
-                            <div class="text-xs font-black text-slate-700 group-hover:text-indigo-600 uppercase tracking-widest flex items-center gap-1 transition-colors duration-300">
-                                Masuk Aplikasi
-                                <svg class="w-4 h-4 group-hover:translate-x-1.5 transition-transform duration-300 ease-out" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                            <div class="text-[10px] md:text-xs font-black text-slate-700 group-hover:text-indigo-600 uppercase tracking-widest flex items-center gap-1 transition-colors duration-300">
+                                Kelola Toko
+                                <svg class="w-3.5 h-3.5 md:w-4 h-4 group-hover:translate-x-1.5 transition-transform duration-300 ease-out" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                                 </svg>
                             </div>
@@ -356,99 +357,111 @@ const getStoreLabel = (index) => {
                     </div>
 
                     <!-- Tombol Buka Cabang Baru -->
-                    <div @click="showPricingModal = true" class="bg-white rounded-[36px] p-7 border-2 border-dashed border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/5 hover:-translate-y-1.5 transition-all duration-500 cubic-bezier-card cursor-pointer flex flex-col items-center justify-center text-center min-h-[230px] group shadow-sm">
-                        <div class="w-14 h-14 rounded-full bg-slate-50 border border-slate-200 group-hover:bg-indigo-100/50 group-hover:scale-105 transition-all duration-300 flex items-center justify-center mb-4 shadow-sm">
-                            <svg class="w-6 h-6 text-slate-400 group-hover:text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <div @click="showPricingModal = true" class="bg-white rounded-[32px] md:rounded-[36px] p-6 md:p-7 border-2 border-dashed border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/5 hover:-translate-y-1.5 transition-all duration-500 cubic-bezier-card cursor-pointer flex flex-col items-center justify-center text-center min-h-[200px] md:min-h-[230px] group shadow-sm">
+                        <div class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-slate-50 border border-slate-200 group-hover:bg-indigo-100/50 group-hover:scale-105 transition-all duration-300 flex items-center justify-center mb-3 md:mb-4 shadow-sm">
+                            <svg class="w-5 h-5 md:w-6 h-6 text-slate-400 group-hover:text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                             </svg>
                         </div>
-                        <h3 class="text-sm font-black text-slate-700 group-hover:text-indigo-800 uppercase tracking-widest mb-1 transition-colors">Buka Cabang Baru</h3>
-                        <p class="text-xs font-bold text-slate-400 px-6 leading-relaxed">Ekspansi bisnis Anda dengan mendaftarkan lokasi toko atau gerai baru.</p>
+                        <h3 class="text-xs md:text-sm font-black text-slate-700 group-hover:text-indigo-800 uppercase tracking-widest mb-1 transition-colors">Buka Cabang Baru</h3>
+                        <p class="text-[11px] md:text-xs font-bold text-slate-400 px-4 md:px-6 leading-relaxed">Ekspansi bisnis Anda dengan mendaftarkan lokasi toko atau gerai baru.</p>
                     </div>
                 </div>
             </div>
 
             <!-- Tampilan Jika Belum Memiliki Toko -->
-            <div v-else class="w-full max-w-xl text-center py-16 px-8 bg-white rounded-[44px] border border-slate-100 shadow-xl">
-                <div class="w-24 h-24 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-[32px] flex items-center justify-center mx-auto mb-8 shadow-sm">
-                    <svg class="w-12 h-12 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <div v-else class="w-full max-w-xl text-center py-12 md:py-16 px-6 md:px-8 bg-white rounded-[36px] md:rounded-[44px] border border-slate-100 shadow-xl mx-2">
+                <div class="w-20 h-20 md:w-24 md:h-24 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-[28px] md:rounded-[32px] flex items-center justify-center mx-auto mb-6 md:mb-8 shadow-sm">
+                    <svg class="w-10 h-10 md:w-12 md:h-12 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
                 </div>
-                <h2 class="text-3xl font-black text-slate-800 uppercase tracking-tight mb-3">Belum Ada Toko Terdaftar</h2>
-                <p class="text-slate-400 font-bold text-xs md:text-sm leading-relaxed mb-8 px-6">Akun Anda telah aktif secara global. Silakan tentukan kluster industri untuk mengonfigurasi database toko pertama Anda.</p>
-                <button @click="showPricingModal = true" class="w-full py-4.5 bg-indigo-600 hover:bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 hover:shadow-none transition-all duration-300 transform active:scale-95">Buat Toko Pertama Anda</button>
+                <h2 class="text-2xl md:text-3xl font-black text-slate-800 uppercase tracking-tight mb-3">Belum Ada Toko Terdaftar</h2>
+                <p class="text-slate-400 font-bold text-[11px] md:text-sm leading-relaxed mb-6 md:mb-8 px-4">Akun Anda telah aktif secara global. Silakan tentukan kluster industri untuk mengonfigurasi database toko pertama Anda.</p>
+                <button @click="showPricingModal = true" class="w-full py-3.5 md:py-4 bg-indigo-600 hover:bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 hover:shadow-none transition-all duration-300 transform active:scale-95">Buat Toko Pertama Anda</button>
             </div>
         </div>
 
-        <!-- MODAL INVESTASI PRICING -->
+        <!-- MODAL INVESTASI PRICING (Super Responsive Custom Grid) -->
         <Transition name="modal-fade">
-            <div v-if="showPricingModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 overflow-y-auto">
-                <div @click="stores.length > 0 ? (showPricingModal = false) : null" class="fixed inset-0 bg-slate-950/40 backdrop-blur-md transition-opacity duration-300"></div>
+            <div v-if="showPricingModal" class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
+                <div @click="stores.length > 0 ? (showPricingModal = false) : null" class="fixed inset-0 bg-slate-950/50 backdrop-blur-md transition-opacity duration-300"></div>
 
-                <div class="bg-white w-full max-w-6xl rounded-[44px] shadow-2xl p-6 md:p-10 relative border border-slate-100 my-auto max-h-[92vh] overflow-y-auto custom-scrollbar flex flex-col items-center z-10 transform transition-all duration-500 cubic-bezier-modal">
-                    <button v-if="stores.length > 0" @click="showPricingModal = false" class="absolute top-6 right-6 w-11 h-11 bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-full flex items-center justify-center transition-all duration-300 hover:rotate-90 focus:outline-none shadow-sm">
+                <div class="bg-white w-full max-w-6xl rounded-[32px] md:rounded-[44px] shadow-2xl p-5 sm:p-6 md:p-10 relative border border-slate-100 my-auto max-h-[92vh] overflow-y-auto custom-scrollbar flex flex-col items-center z-10 transform transition-all duration-500 cubic-bezier-modal">
+                    <button v-if="stores.length > 0" @click="showPricingModal = false" class="absolute top-4 right-4 md:top-6 md:right-6 w-10 h-10 md:w-11 md:h-11 bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-500 rounded-full flex items-center justify-center transition-all duration-300 hover:rotate-90 focus:outline-none shadow-sm z-30">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
 
-                    <div class="text-center mb-10">
-                        <h2 class="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">
+                    <div class="text-center mb-6 md:mb-10 mt-4 md:mt-2 w-full px-2">
+                        <h2 class="text-2xl sm:text-3xl md:text-5xl font-black text-slate-900 tracking-tight">
                             INVESTASI <span class="bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">TRANSPARAN</span>
                         </h2>
-                        <p class="text-slate-400 font-bold text-[11px] mt-3 max-w-2xl uppercase tracking-widest">PILIH MODUL INDUSTRI ANDA, DAN TEMUKAN SKALABILITAS YANG DIRANCANG KHUSUS UTUK BISNIS ANDA.</p>
+                        <p class="text-slate-400 font-bold text-[9px] md:text-[11px] mt-2.5 md:mt-3 max-w-2xl mx-auto uppercase tracking-widest leading-relaxed">PILIH MODUL INDUSTRI ANDA, DAN TEMUKAN SKALABILITAS YANG DIRANCANG KHUSUS UNTUK BISNIS ANDA.</p>
                     </div>
 
-                    <div class="bg-slate-50 p-1.5 rounded-[24px] border border-slate-200/50 flex w-full max-w-xl mb-12 shrink-0 shadow-inner">
-                        <button v-for="ind in industries" :key="ind.id" @click="activePricingTab = ind.id" :class="activePricingTab === ind.id ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/60'" class="flex-1 px-2 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all text-center duration-500 focus:outline-none">
+                    <!-- Tab Menu Industri -->
+                    <div class="bg-slate-50 p-1 md:p-1.5 rounded-[20px] md:rounded-[24px] border border-slate-200/50 flex flex-col sm:flex-row w-full max-w-xl mb-8 md:mb-12 shrink-0 shadow-inner gap-1 sm:gap-0">
+                        <button v-for="ind in industries" :key="ind.id" @click="activePricingTab = ind.id" :class="activePricingTab === ind.id ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-white/60'" class="flex-1 px-2 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all text-center duration-300 focus:outline-none">
                             {{ ind.title }}
                         </button>
                     </div>
 
+                    <!-- Grid Rencana Harga Otomatis & Sempurna di HP -->
                     <Transition name="tab-swap" mode="out-in">
-                        <div :key="activePricingTab" class="flex flex-wrap justify-center gap-6 w-full items-stretch min-h-[400px]">
-                            <div
-                                v-for="plan in filteredPlans"
-                                :key="plan.id"
-                                class="p-8 rounded-[36px] border flex flex-col relative group w-full sm:w-[calc(50%-12px)] lg:w-[calc(25%-18px)] min-w-[245px] transition-all duration-500"
-                                :class="[plan.id === 'trial' ? 'bg-white border-slate-200 shadow-sm border-2 border-dashed' : '', plan.id === 'basic' ? 'bg-white border-slate-200 shadow-sm hover:border-sky-300 hover:shadow-xl' : '', plan.id === 'pro' ? 'bg-white border-2 border-indigo-600 shadow-xl lg:scale-105 z-10' : '', plan.id === 'premium' ? 'bg-slate-900 border-slate-800 shadow-xl z-0' : '']">
-                                <div v-if="plan.id === 'pro'" class="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg whitespace-nowrap animate-pulse">REKOMENDASI UMKM</div>
-                                <div v-if="plan.id === 'premium'" class="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg whitespace-nowrap">FITUR ENTERPRISE</div>
-
-                                <div class="mb-8 mt-2 flex-1">
-                                    <h3 class="font-black text-[11px] uppercase tracking-[0.2em] mb-4" :class="[plan.id === 'trial' ? 'text-indigo-500' : '', plan.id === 'basic' ? 'text-sky-500' : '', plan.id === 'pro' ? 'text-indigo-600' : '', plan.id === 'premium' ? 'text-amber-400' : '']">
-                                        {{ plan.name }}
-                                    </h3>
-                                    <div class="flex items-baseline gap-1">
-                                        <span class="text-4xl lg:text-5xl font-black tracking-tighter" :class="plan.id === 'premium' ? 'text-white' : 'text-slate-900'">{{ plan.price }}</span>
-                                        <span class="font-bold text-[10px] uppercase tracking-widest mb-1 ml-1" :class="plan.id === 'premium' ? 'text-slate-400' : 'text-slate-400'">{{ plan.duration }}</span>
-                                    </div>
-                                    <p class="text-xs font-bold mt-5 h-12 leading-relaxed" :class="plan.id === 'premium' ? 'text-slate-400' : 'text-slate-500'">
-                                        {{ plan.desc }}
-                                    </p>
-
-                                    <ul class="space-y-4 mb-2 mt-6 border-t pt-6" :class="plan.id === 'premium' ? 'border-slate-800' : 'border-slate-100'">
-                                        <li v-for="feat in plan.features" :key="feat" class="flex items-start gap-3 text-xs font-bold leading-tight" :class="plan.id === 'premium' ? 'text-slate-300' : 'text-slate-700'">
-                                            <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" :class="[plan.id === 'premium' ? 'text-amber-400' : '', plan.id === 'pro' ? 'text-indigo-500' : '', plan.id === 'basic' ? 'text-sky-500' : '', plan.id === 'trial' ? 'text-indigo-500' : '']">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                                            </svg>
-                                            {{ feat }}
-                                        </li>
-                                    </ul>
-                                </div>
-
-                                <button
-                                    @click="handlePilihPaketEkspansi(activePricingTab, plan.id)"
+                        <div :key="activePricingTab" class="w-full">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full items-stretch">
+                                <div
+                                    v-for="plan in filteredPlans"
+                                    :key="plan.id"
+                                    class="p-6 md:p-8 rounded-[28px] md:rounded-[36px] border flex flex-col relative group w-full transition-all duration-500 min-h-[420px] justify-between"
                                     :class="[
-                                        plan.id === 'trial' ? 'bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white border border-indigo-100' : '',
-                                        plan.id === 'basic' ? 'bg-slate-900 text-white hover:bg-sky-600 shadow-md' : '',
-                                        plan.id === 'pro' ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-slate-900 hover:to-slate-900 shadow-md' : '',
-                                        plan.id === 'premium' ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-extrabold hover:from-white hover:to-white shadow-md' : '',
+                                        plan.id === 'trial' ? 'bg-white border-slate-200 shadow-sm border-2 border-dashed' : '', 
+                                        plan.id === 'basic' ? 'bg-white border-slate-200 shadow-sm hover:border-sky-300 hover:shadow-xl' : '', 
+                                        plan.id === 'pro' ? 'bg-white border-2 border-indigo-600 shadow-xl lg:scale-[1.03] z-10' : '', 
+                                        plan.id === 'premium' ? 'bg-slate-900 border-slate-800 shadow-xl z-0' : ''
                                     ]"
-                                    class="block w-full text-center py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-300 transform active:scale-95 group-hover:scale-[1.01]">
-                                    PILIH {{ plan.name }}
-                                </button>
+                                >
+                                    <!-- Tag Rekomendasi Fitur -->
+                                    <div v-if="plan.id === 'pro'" class="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-4 py-1.5 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest shadow-lg whitespace-nowrap">REKOMENDASI UMKM</div>
+                                    <div v-if="plan.id === 'premium'" class="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 px-4 py-1.5 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest shadow-lg whitespace-nowrap">FITUR ENTERPRISE</div>
+
+                                    <div class="mb-6 mt-2 flex-1 flex flex-col">
+                                        <h3 class="font-black text-[10px] md:text-[11px] uppercase tracking-[0.2em] mb-3 md:mb-4" :class="[plan.id === 'trial' ? 'text-indigo-500' : '', plan.id === 'basic' ? 'text-sky-500' : '', plan.id === 'pro' ? 'text-indigo-600' : '', plan.id === 'premium' ? 'text-amber-400' : '']">
+                                            {{ plan.name }}
+                                        </h3>
+                                        <div class="flex items-baseline gap-1">
+                                            <span class="text-3xl md:text-5xl font-black tracking-tighter" :class="plan.id === 'premium' ? 'text-white' : 'text-slate-900'">{{ plan.price }}</span>
+                                            <span class="font-bold text-[9px] md:text-[10px] uppercase tracking-widest mb-1 ml-1" :class="plan.id === 'premium' ? 'text-slate-400' : 'text-slate-400'">{{ plan.duration }}</span>
+                                        </div>
+                                        <p class="text-xs font-bold mt-4 md:mt-5 leading-relaxed min-h-[40px]" :class="plan.id === 'premium' ? 'text-slate-400' : 'text-slate-500'">
+                                            {{ plan.desc }}
+                                        </p>
+
+                                        <ul class="space-y-3.5 mb-2 mt-5 border-t pt-5 flex-1" :class="plan.id === 'premium' ? 'border-slate-800' : 'border-slate-100'">
+                                            <li v-for="feat in plan.features" :key="feat" class="flex items-start gap-2.5 text-xs font-bold leading-tight" :class="plan.id === 'premium' ? 'text-slate-300' : 'text-slate-700'">
+                                                <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" :class="[plan.id === 'premium' ? 'text-amber-400' : '', plan.id === 'pro' ? 'text-indigo-500' : '', plan.id === 'basic' ? 'text-sky-500' : '', plan.id === 'trial' ? 'text-indigo-500' : '']">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                                <span>{{ feat }}</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    <button
+                                        @click="handlePilihPaketEkspansi(activePricingTab, plan.id)"
+                                        :class="[
+                                            plan.id === 'trial' ? 'bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white border border-indigo-100' : '',
+                                            plan.id === 'basic' ? 'bg-slate-900 text-white hover:bg-sky-600 shadow-md' : '',
+                                            plan.id === 'pro' ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-slate-900 hover:to-slate-900 shadow-md' : '',
+                                            plan.id === 'premium' ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-extrabold hover:from-white hover:to-white shadow-md' : '',
+                                        ]"
+                                        class="block w-full text-center py-3.5 rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest transition-all duration-300 transform active:scale-95 group-hover:scale-[1.01]"
+                                    >
+                                        PILIH {{ plan.name }}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </Transition>
@@ -457,10 +470,10 @@ const getStoreLabel = (index) => {
         </Transition>
 
         <!-- Modul Loading -->
-        <div v-if="isLoading" class="fixed inset-0 z-[150] bg-slate-950/40 backdrop-blur-sm flex items-center justify-center">
-            <div class="bg-white p-8 rounded-[28px] shadow-2xl border border-slate-100 flex flex-col items-center">
-                <div class="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-                <div class="text-xs font-black text-slate-600 uppercase tracking-widest animate-pulse">Memuat Sesi Kasir...</div>
+        <div v-if="isLoading" class="fixed inset-0 z-[150] bg-slate-950/40 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-white p-6 md:p-8 rounded-[24px] md:rounded-[28px] shadow-2xl border border-slate-100 flex flex-col items-center max-w-xs w-full text-center">
+                <div class="w-11 h-11 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                <div class="text-[10px] font-black text-slate-600 uppercase tracking-widest animate-pulse">Memuat Sesi Kasir...</div>
             </div>
         </div>
     </div>
@@ -475,12 +488,12 @@ const getStoreLabel = (index) => {
 }
 
 .animate-fade-in-up {
-    animation: fadeInUp 0.7s cubic-bezier(0.25, 1, 0.5, 1) both;
+    animation: fadeInUp 0.6s cubic-bezier(0.25, 1, 0.5, 1) both;
 }
 @keyframes fadeInUp {
     from {
         opacity: 0;
-        transform: translateY(24px);
+        transform: translateY(16px);
     }
     to {
         opacity: 1;
@@ -488,7 +501,7 @@ const getStoreLabel = (index) => {
     }
 }
 
-.modal-fade-enter-from .bg-slate-950\/40 {
+.modal-fade-enter-from {
     opacity: 0;
 }
 .modal-fade-enter-from .cubic-bezier-modal {
@@ -498,10 +511,10 @@ const getStoreLabel = (index) => {
 
 .modal-fade-enter-active,
 .modal-fade-leave-active {
-    transition: all 0.4s ease-out;
+    transition: all 0.35s ease-out;
 }
 
-.modal-fade-leave-to .bg-slate-950\/40 {
+.modal-fade-leave-to {
     opacity: 0;
 }
 .modal-fade-leave-to .cubic-bezier-modal {
@@ -522,15 +535,15 @@ const getStoreLabel = (index) => {
 
 .tab-swap-enter-from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(4px);
 }
 .tab-swap-leave-to {
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translateY(-4px);
 }
 .tab-swap-enter-active,
 .tab-swap-leave-active {
-    transition: opacity 0.25s ease, transform 0.25s ease;
+    transition: opacity 0.2s ease, transform 0.2s ease;
     will-change: transform, opacity;
 }
 </style>
