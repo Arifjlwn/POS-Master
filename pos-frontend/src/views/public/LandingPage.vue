@@ -95,11 +95,8 @@ const handlePilihPaket = (industry, planId) => {
 	<div class="min-h-screen bg-[#F8FAFC] font-sans text-slate-900 selection:bg-indigo-100 selection:text-indigo-600 overflow-x-hidden antialiased">
 		<nav :class="['fixed top-0 w-full z-50 transition-all duration-300', isScrolled ? 'bg-white/80 backdrop-blur-xl border-b border-slate-200/60 py-4 shadow-md shadow-slate-100/50' : 'bg-transparent py-6']">
 			<div class="max-w-7xl mx-auto px-6 flex items-center justify-between">
-				<div class="flex flex-col cursor-pointer" @click="scrollToSection('hero')">
-					<div class="font-black text-2xl md:text-3xl tracking-tighter uppercase">
-						AR
-						<span class="text-indigo-600">ZURA</span>
-					</div>
+				<div class="flex items-center cursor-pointer" @click="scrollToSection('hero')">
+					<img src="../../../public/favicon.svg" alt="ARZURA POS LOGO" class="h-8 md:h-10 w-auto object-contain transition-transform duration-300 hover:scale-105" />
 				</div>
 
 				<div class="hidden md:flex items-center gap-10">
