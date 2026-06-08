@@ -18,12 +18,12 @@ func SendOTPEmail(targetEmail string, otp string) error {
 
 	// TAHAP LOGO: Silakan upload file PNG logo Anda ke hosting/CDN, lalu masukkan URL-nya di bawah ini.
 	// Jika belum diupload, kode di bawah otomatis menggunakan teks teks fallback yang elegan.
-	logoURL := "https://arzura-pos-dev.vercel.app/logo.png" // <-- GANTI DENGAN LINK LOGO PNG ANDA
+	logoURL := "https://arzura-pos-dev.vercel.app/logo.png"
 
 	currentYear := time.Now().Year()
 
 	requestBody, err := json.Marshal(map[string]interface{}{
-		"from":    "Arzura POS Official <no-reply@arzura-pos.my.id>", // Diubah jadi no-reply biar makin resmi
+		"from":    "Arzura POS Official <no-reply@arzura-pos.my.id>",
 		"to":      []string{targetEmail},
 		"subject": "Keamanan Akun: Kode OTP Verifikasi Arzura POS",
 		"html": fmt.Sprintf(`
