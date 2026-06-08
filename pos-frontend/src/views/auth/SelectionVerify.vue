@@ -10,43 +10,76 @@ const phone = route.query.phone;
 const intent = route.query.intent || 'register';
 
 const selectMethod = async (method) => {
-	if (method === 'email') {
-		router.push({ path: '/verify-otp', query: { email: email, phone: phone, method: 'email', intent: intent } });
-		return;
-	}
-	
-	if (method === 'whatsapp') {
-		Swal.fire({
-			title: 'Mengirim OTP...',
-			text: 'Mohon tunggu, kami sedang mengirim kode ke WhatsApp Anda',
-			allowOutsideClick: false,
-			didOpen: () => { Swal.showLoading(); }
-		});
+    // --------------------------------------------------------
+    // OPSI 1: JIKA USER MEMILIH VERIFIKASI VIA EMAIL
+    // --------------------------------------------------------
+    if (method === 'email') {
+        Swal.fire({
+            title: 'Mengirim OTP...',
+            text: 'Mohon tunggu, kami sedang mengirim kode ke Email Anda',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
 
-		try {
-			await api.post('/auth/send-otp-wa', { phone: phone });
-			Swal.close();
-			
-			// 🚀 FIX UX NAVIGASI: Dikunci pake callback .then() biar pop-up sukses gak hilang berkedip ketabrak redirect!
-			Swal.fire({
-				icon: 'success',
-				title: 'Berhasil Sent !',
-				text: 'Kode OTP aman sudah meluncur ke WhatsApp Anda.',
-				confirmButtonColor: '#4f46e5'
-			}).then(() => {
-				router.push({ path: '/verify-otp', query: { email: email, phone: phone, method: 'whatsapp', intent: intent } });
-			});
-			
-		} catch (error) {
-			Swal.close();
-			Swal.fire({
-				icon: 'error',
-				title: 'Gagal Mengirim',
-				text: error.response?.data?.error || 'Server gateway Fonnte sedang sibuk, coba lagi nanti.',
-				confirmButtonColor: '#ef4444'
-			});
-		}
-	}
+        try {
+            // Pemicu kirim OTP via Email ke Backend
+            await api.post('/auth/send-otp-email', { email: email });
+            Swal.close();
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Email Terkirim!',
+                text: 'Kode OTP aman sudah meluncur ke kotak masuk/spam Email Anda.',
+                confirmButtonColor: '#4f46e5'
+            }).then(() => {
+                router.push({ path: '/verify-otp', query: { email: email, phone: phone, method: 'email', intent: intent } });
+            });
+        } catch (error) {
+            Swal.close();
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Mengirim Email',
+                text: error.response?.data?.error || 'Layanan email server sedang sibuk, coba lagi nanti.',
+                confirmButtonColor: '#ef4444'
+            });
+        }
+        return;
+    }
+    
+    // --------------------------------------------------------
+    // OPSI 2: JIKA USER MEMILIH VERIFIKASI VIA WHATSAPP
+    // --------------------------------------------------------
+    if (method === 'whatsapp') {
+        Swal.fire({
+            title: 'Mengirim OTP...',
+            text: 'Mohon tunggu, kami sedang mengirim kode ke WhatsApp Anda',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        try {
+            await api.post('/auth/send-otp-wa', { phone: phone });
+            Swal.close();
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil Sent!',
+                text: 'Kode OTP aman sudah meluncur ke WhatsApp Anda.',
+                confirmButtonColor: '#4f46e5'
+            }).then(() => {
+                router.push({ path: '/verify-otp', query: { email: email, phone: phone, method: 'whatsapp', intent: intent } });
+            });
+            
+        } catch (error) {
+            Swal.close();
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Mengirim WA',
+                text: error.response?.data?.error || 'Server gateway Fonnte sedang sibuk, coba lagi nanti.',
+                confirmButtonColor: '#ef4444'
+            });
+        }
+    }
 };
 </script>
 

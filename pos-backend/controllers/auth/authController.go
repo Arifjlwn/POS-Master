@@ -56,6 +56,7 @@ func Register(c *gin.Context) {
 	var existingUser models.User
 	email := strings.ToLower(strings.TrimSpace(input.Email))
 	cleanPhone := utils.FormatPhoneNumber(input.NoHP)
+	
 	if err := src.DB.Where("LOWER(email) = ? OR no_hp = ?", email, cleanPhone).First(&existingUser).Error; err == nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "Email atau Nomor WhatsApp sudah terdaftar di sistem!"})
 		return
@@ -65,14 +66,57 @@ func Register(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengamankan sandi akun"})
 		return
 	}
-	otp := generateOTP()
-	user := models.User{PublicID: utils.GenerateULID(), Name: input.Name, Email: &email, Password: string(hashedPassword), Role: "owner", IsVerified: false, OTPCode: otp, OTPExpired: time.Now().Add(time.Minute * 5), TempatLahir: input.TempatLahir, TanggalLahir: input.TanggalLahir, NoHP: cleanPhone}
+
+	// 🚀 FIX ALUR: Registrasi tidak langsung men-generate OTP aktif atau mengirim email secara paksa.
+	// Status IsVerified: false, membiarkan user memilih jalurnya sendiri di frontend halaman SelectVerify.
+	user := models.User{
+		PublicID:     utils.GenerateULID(),
+		Name:         input.Name,
+		Email:        &email,
+		Password:     string(hashedPassword),
+		Role:         "owner",
+		IsVerified:   false,
+		OTPCode:      "", 
+		OTPExpired:   time.Now(),
+		TempatLahir:  input.TempatLahir,
+		TanggalLahir: input.TanggalLahir,
+		NoHP:         cleanPhone,
+	}
+	
 	if err := src.DB.Create(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat infrastruktur tenant"})
 		return
 	}
-	go utils.SendOTPEmail(input.Email, otp)
-	c.JSON(http.StatusCreated, gin.H{"message": "Pendaftaran berhasil! Silakan periksa kotak masuk email Anda untuk kode OTP.", "email": input.Email})
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Pendaftaran berhasil! Silakan tentukan metode aktivasi akun Anda.", "email": input.Email, "phone": cleanPhone})
+}
+
+func SendOTPEmailEndpoint(c *gin.Context) {
+	var input struct {
+		Email string `json:"email" binding:"required,email"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Email target wajib diisi dengan benar!"})
+		return
+	}
+
+	var user models.User
+	emailClean := strings.ToLower(strings.TrimSpace(input.Email))
+	if err := src.DB.Where("email = ?", emailClean).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Alamat email tidak terdaftar di sistem kami!"})
+		return
+	}
+
+	otp := generateOTP()
+	if err := src.DB.Model(&user).Updates(map[string]interface{}{"otp_code": otp, "otp_expired": time.Now().Add(time.Minute * 5)}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui token keamanan"})
+		return
+	}
+
+	// Menjalankan pengiriman email pihak ketiga secara asynchronous agar response API tetap instan
+	go utils.SendOTPEmail(emailClean, otp)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Kode OTP sukses dikirim ke Email Anda! Silakan cek kotak masuk atau spam.", "email": emailClean})
 }
 
 func VerifyOTP(c *gin.Context) {
@@ -85,15 +129,23 @@ func VerifyOTP(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Format parameter data tidak valid"})
 		return
 	}
+	
 	var user models.User
 	cleanIdentifier := strings.ToLower(strings.TrimSpace(input.Email))
-	if !strings.Contains(cleanIdentifier, "@") {
-		cleanIdentifier = utils.FormatPhoneNumber(cleanIdentifier)
+	
+	// FIX QUERY: Presisi pencarian data berdasarkan tipe input identitas
+	query := src.DB
+	if strings.Contains(cleanIdentifier, "@") {
+		query = query.Where("email = ?", cleanIdentifier)
+	} else {
+		query = query.Where("no_hp = ?", utils.FormatPhoneNumber(cleanIdentifier))
 	}
-	if err := src.DB.Where("email = ? OR no_hp = ?", cleanIdentifier, cleanIdentifier).First(&user).Error; err != nil {
+
+	if err := query.First(&user).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Identitas pengguna tidak ditemukan"})
 		return
 	}
+	
 	if user.LockedUntil != nil && user.LockedUntil.Year() == 2099 {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Akun dibekukan permanen. Hubungi IT Operations pusat."})
 		return
@@ -107,6 +159,7 @@ func VerifyOTP(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Kode OTP telah kedaluwarsa!"})
 		return
 	}
+	
 	if user.OTPCode == "" || user.OTPCode != input.OTP {
 		newAttempts := user.OTPAttempts + 1
 		updates := map[string]interface{}{"otp_attempts": newAttempts}
@@ -119,13 +172,14 @@ func VerifyOTP(c *gin.Context) {
 		if newAttempts >= 4 {
 			updates["locked_until"] = time.Now().Add(time.Hour * 1)
 			src.DB.Model(&user).Updates(updates)
-			c.JSON(http.StatusForbidden, gin.H{"error": "Terlalu banyak kegagalan! Akses ditangguhkan selama 1 jam."})
+			c.JSON(http.StatusForbidden, gin.H{"error": "Terlalu banyak kegagalan! Akses ditangguhkan selama 1 hour."})
 			return
 		}
 		src.DB.Model(&user).Updates(updates)
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Kode OTP tidak cocok! Sisa percobaan: %d kali lagi.", 4-newAttempts%4)})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Kode OTP tidak cocok! Sisa percobaan sebelum dikunci: %d kali.", 4-newAttempts%4)})
 		return
 	}
+	
 	updates := map[string]interface{}{"is_verified": true, "otp_attempts": 0, "locked_until": nil, "otp_code": ""}
 	src.DB.Model(&user).Updates(updates)
 	c.JSON(http.StatusOK, gin.H{"message": "Verifikasi identitas sukses!"})
@@ -191,7 +245,6 @@ func Login(c *gin.Context) {
 		planType = stores[0].SubscriptionPlan
 	}
 
-	// 🚀 FIX: is_select HARUS false agar token ini BEBAS menembus whitelist!
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{"user_id": user.ID, "public_id": user.PublicID, "store_id": storeID, "plan_type": planType, "role": user.Role, "is_select": false, "exp": time.Now().Add(time.Hour * 72).Unix()})
 	tokenString, err := token.SignedString([]byte(jwtSecret))
 	if err != nil {
@@ -238,7 +291,6 @@ func SelectStore(c *gin.Context) {
 	}
 
 	jwtSecret := os.Getenv("JWT_SECRET")
-	// 🚀 FIX: is_select HARUS false agar token ini BEBAS menembus whitelist!
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{"user_id": user.ID, "public_id": user.PublicID, "store_id": store.ID, "plan_type": store.SubscriptionPlan, "role": user.Role, "is_select": false, "exp": time.Now().Add(time.Hour * 72).Unix()})
 	tokenString, err := token.SignedString([]byte(jwtSecret))
 	if err != nil {
@@ -276,9 +328,7 @@ func UpdateProfile(c *gin.Context) {
 	if tanggalLahir := c.PostForm("tanggal_lahir"); tanggalLahir != "" {
 		user.TanggalLahir = tanggalLahir
 	}
-	if noHP := c.PostForm("no_hp"); noHP != "" {
-		user.NoHP = utils.FormatPhoneNumber(noHP)
-	}
+	
 	bucketName := os.Getenv("SUPABASE_BUCKET_NAME")
 	if fileHeader, err := c.FormFile("foto"); err == nil {
 		if fileHeader.Size > 5*1024*1024 {
@@ -382,7 +432,7 @@ func SendOTPWhatsApp(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengonfigurasi token verifikasi baru"})
 		return
 	}
-	message := fmt.Sprintf("Halo Bos %s!\n\nKode OTP Verifikasi Akun NEXA POS Anda adalah: *%s*\n\nKode ini rahasia dan berlaku selama 3 menit. Jangan bagikan kode ini kepada siapapun demi keamanan infrastruktur bisnis Anda. 😎", user.Name, otp)
+	message := fmt.Sprintf("Halo Bos %s!\n\nKode OTP Verifikasi Akun ARZURA POS Anda adalah: *%s*\n\nKode ini rahasia dan berlaku selama 3 menit. Jangan bagikan kode ini kepada siapapun demi keamanan infrastruktur bisnis Anda. 😎", user.Name, otp)
 	utils.SendSystemWhatsApp(phoneClean, message)
 	c.JSON(http.StatusOK, gin.H{"message": "Kode OTP berhasil dikirim ke WhatsApp Anda! Silakan cek chat masuk.", "phone": phoneClean})
 }
@@ -394,7 +444,10 @@ func ResetPassword(c *gin.Context) {
 		return
 	}
 	identifierClean := input.Email
-	if !strings.Contains(identifierClean, "@") {
+	query := src.DB
+	if strings.Contains(identifierClean, "@") {
+		query = query.Where("email = ?", strings.ToLower(strings.TrimSpace(identifierClean)))
+	} else {
 		identifierClean = strings.Replace(identifierClean, "+", "", 1)
 		if strings.HasPrefix(identifierClean, "0") {
 			identifierClean = "62" + identifierClean[1:]
@@ -402,28 +455,58 @@ func ResetPassword(c *gin.Context) {
 		if strings.HasPrefix(identifierClean, "8") {
 			identifierClean = "62" + identifierClean
 		}
+		query = query.Where("no_hp = ?", identifierClean)
 	}
+
 	var user models.User
-	if err := src.DB.Where("(email = ? OR no_hp = ?) AND otp_code = ?", identifierClean, identifierClean, input.Token).First(&user).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Kode OTP tidak valid atau salah!"})
+	if err := query.First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Identitas pengguna tidak ditemukan"})
 		return
 	}
+
+	// 🚀 FIX SECURITY: Blokir brute-force OTP pada gerbang ResetPassword
+	if user.LockedUntil != nil && time.Now().Before(*user.LockedUntil) {
+		diff := time.Until(*user.LockedUntil)
+		c.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("Akses terkunci! Silakan coba kembali dalam %d menit.", int(diff.Minutes()))})
+		return
+	}
+
 	if time.Now().After(user.OTPExpired) {
-		src.DB.Model(&user).Update("otp_code", "")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Kode OTP sudah kedaluwarsa, silakan minta kode baru"})
 		return
 	}
+
+	if user.OTPCode == "" || user.OTPCode != input.Token {
+		newAttempts := user.OTPAttempts + 1
+		updates := map[string]interface{}{"otp_attempts": newAttempts}
+		if newAttempts >= 5 {
+			updates["locked_until"] = time.Now().Add(time.Hour * 2) // Kunci 2 jam jika brute-force token reset sandi
+			src.DB.Model(&user).Updates(updates)
+			c.JSON(http.StatusForbidden, gin.H{"error": "Terlalu banyak kegagalan verifikasi! Akses pemulihan ditangguhkan selama 2 jam."})
+			return
+		}
+		src.DB.Model(&user).Updates(updates)
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Kode verifikasi OTP tidak cocok! Sisa percobaan: %d kali.", 5-newAttempts)})
+		return
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses keamanan password"})
 		return
 	}
-	user.Password = string(hashedPassword)
-	user.OTPCode = ""
-	if err := src.DB.Save(&user).Error; err != nil {
+	
+	// Sukses memperbarui data, reset counter percobaan ke nol
+	if err := src.DB.Model(&user).Updates(map[string]interface{}{
+		"password":     string(hashedPassword),
+		"otp_code":     "",
+		"otp_attempts": 0,
+		"locked_until": nil,
+	}).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan password baru ke database"})
 		return
 	}
+	
 	c.JSON(http.StatusOK, gin.H{"message": "Password berhasil diperbarui secara otomatis. Silakan login kembali."})
 }
 
