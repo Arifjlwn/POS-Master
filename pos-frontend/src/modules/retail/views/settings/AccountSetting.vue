@@ -1,11 +1,12 @@
 <script setup>
 import Swal from 'sweetalert2';
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import api from '../../../../api.js';
 import Sidebar from '../../components/Sidebar.vue';
 import AccountProfile from '../../components/settings/account/AccountProfile.vue';
 import AccountSecurity from '../../components/settings/account/AccountSecurity.vue';
 import { useAccount } from '../../composables/useAccount.js';
+
 
 const { isLoading, isSaving, activeTab, role, profileForm, passwordForm, fotoPreview, handleFileChange, saveProfile, updatePassword } = useAccount();
 
@@ -22,17 +23,20 @@ const tabs = [
 	},
 ];
 
-// ==========================================
-// STATE KHUSUS BILLING SAAS
-// ==========================================
-const subPlan = ref('Basic');
-const subStatus = ref('');
+
+// STATE KHUSUS BILLING SAAS (Gunakan lowercase secara konsisten untuk state id)
+const subPlan = ref('basic'); 
+const subStatus = ref('inactive');
 const subEnd = ref('');
 const isBillingLoading = ref(true);
 const showUpgradeModal = ref(false);
 const isExpired = ref(false);
 const loadingPayment = ref(false);
 const quotaTerminal = ref(1);
+
+// Computed properti untuk mempermudah pengecekan plan secara aman di template HTML
+const currentPlanNormalized = computed(() => subPlan.value?.toLowerCase() || 'basic');
+
 
 // ==========================================
 // SINKRONISASI OTOMATIS (ANTI MANUAL)
@@ -43,13 +47,12 @@ const sinkronisasiStatusBerlangganan = async () => {
 		const res = await api.get('/retail/store/settings');
 		const storeData = res.data.data;
 
-		subPlan.value = storeData.subscription_plan || 'Basic';
+		// Normalisasi langsung ke lowercase untuk menghindari bug miscocok string kapital
+		subPlan.value = (storeData.subscription_plan || 'basic').toLowerCase();
 		subStatus.value = storeData.subscription_status || 'inactive';
 		quotaTerminal.value = storeData.quota_terminal || 1;
 
-		if (storeData.subscription_plan) {
-			localStorage.setItem('subscriptionPlan', storeData.subscription_plan.toLowerCase());
-		}
+		localStorage.setItem('subscriptionPlan', subPlan.value);
 
 		if (storeData.subscription_end) {
 			const dateObj = new Date(storeData.subscription_end);
@@ -59,10 +62,9 @@ const sinkronisasiStatusBerlangganan = async () => {
 				year: 'numeric',
 			});
 
+			// Proteksi ganda: kedaluwarsa jika status dari backend mati ATAU tanggal lewat
 			const today = new Date();
-			const diffDays = Math.ceil((dateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-			if (diffDays > 0 && subStatus.value === 'active') {
+			if (dateObj.getTime() > today.getTime() && subStatus.value === 'active') {
 				isExpired.value = false;
 			} else {
 				isExpired.value = true;
@@ -73,9 +75,8 @@ const sinkronisasiStatusBerlangganan = async () => {
 		}
 
 		window.dispatchEvent(new Event('store-updated'));
-		window.dispatchEvent(new Event('storage'));
 	} catch (error) {
-		if (error.response && (error.response.status === 403 || error.response.status === 402)) {
+		if (error.response && [402, 403].includes(error.response.status)) {
 			isExpired.value = true;
 			subStatus.value = 'inactive';
 			return;
@@ -86,21 +87,29 @@ const sinkronisasiStatusBerlangganan = async () => {
 	}
 };
 
+
 onMounted(async () => {
+	// Pemuatan Script Midtrans dengan fallback validasi key
 	if (!document.getElementById('midtrans-script-owner')) {
+		const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY;
+		if (!clientKey) {
+			console.error('Midtrans Client Key tidak ditemukan di environment variable!');
+		}
+		
 		const midtransEnv = import.meta.env.VITE_MIDTRANS_ENV || 'sandbox';
-		const snapUrl = midtransEnv === 'production' ? 'https://app.midtrans.com/snap/snap.js' : 'https://app.sandbox.midtrans.com/snap/snap.js';
+		const snapUrl = midtransEnv === 'production' 
+			? 'https://app.midtrans.com/snap/snap.js' 
+			: 'https://app.sandbox.midtrans.com/snap/snap.js';
 
 		const script = document.createElement('script');
 		script.id = 'midtrans-script-owner';
 		script.src = snapUrl;
-		script.setAttribute('data-client-key', import.meta.env.VITE_MIDTRANS_CLIENT_KEY);
+		script.setAttribute('data-client-key', clientKey || '');
 		document.head.appendChild(script);
 	}
 
 	await sinkronisasiStatusBerlangganan();
 });
-
 const handleUpgrade = async (planName) => {
 	showUpgradeModal.value = false;
 
@@ -108,9 +117,7 @@ const handleUpgrade = async (planName) => {
 		title: 'Menyiapkan Tagihan...',
 		text: 'Mohon tunggu sebentar',
 		allowOutsideClick: false,
-		didOpen: () => {
-			Swal.showLoading();
-		},
+		didOpen: () => Swal.showLoading(),
 	});
 
 	try {
@@ -121,45 +128,49 @@ const handleUpgrade = async (planName) => {
 		const snapToken = res.data.token;
 		Swal.close();
 
+		if (!window.snap) {
+			throw new Error('Midtrans SDK gagal dimuat. Silakan refresh halaman.');
+		}
+
 		window.snap.pay(snapToken, {
 			onSuccess: async function (result) {
 				Swal.fire({
 					title: 'Memverifikasi Pembayaran...',
-					text: 'Menghubungkan ke server finansial, mohon jangan tutup halaman ini.',
+					text: 'Menghubungkan ke server untuk aktivasi paket, mohon tunggu.',
 					icon: 'info',
 					allowOutsideClick: false,
-					didOpen: () => {
-						Swal.showLoading();
-					},
+					didOpen: () => Swal.showLoading(),
 				});
 
-				await new Promise((resolve) => setTimeout(resolve, 2000));
+				// Beri jeda 3 detik agar webhook backend & midtrans selesai berjabat tangan
+				await new Promise((resolve) => setTimeout(resolve, 3000));
+				
+				// Fetch ulang data terbaru dari server alih-alih hard-reload instant
+				await sinkronisasiStatusBerlangganan();
 
 				Swal.close();
 				Swal.fire({
 					title: 'Pembayaran Sukses!',
 					text: `Selamat! Toko Anda kini telah aktif menggunakan paket ${planName.toUpperCase()}.`,
 					icon: 'success',
-					timer: 2500,
-					showConfirmButton: false,
-				}).then(() => {
-					window.location.reload();
+					timer: 3000,
+					showConfirmButton: true,
 				});
 			},
-			onPending: function (result) {
-				Swal.fire('Menunggu Pembayaran', 'Silakan selesaikan pembayaran Anda.', 'info');
+			onPending: function () {
+				Swal.fire('Menunggu Pembayaran', 'Silakan selesaikan invoice di aplikasi/e-wallet Anda.', 'info');
 			},
-			onError: function (result) {
-				Swal.fire('Pembayaran Gagal', 'Terjadi kesalahan saat memproses pembayaran.', 'error');
+			onError: function () {
+				Swal.fire('Pembayaran Gagal', 'Terjadi kendala sistem transaksi. Silakan coba lagi.', 'error');
 			},
 			onClose: function () {
 				if (isExpired.value) {
-					Swal.fire('Pembayaran Tertunda', 'Silakan selesaikan invoice Anda kapan saja untuk membuka gembok toko.', 'warning');
+					Swal.fire('Pembayaran Ditunda', 'Selesaikan invoice Anda untuk membuka gembok akses fitur toko.', 'warning');
 				}
 			},
 		});
 	} catch (error) {
-		Swal.fire('Gagal!', 'Server sedang sibuk atau data tidak valid, coba lagi nanti.', 'error');
+		Swal.fire('Gagal!', error.message || 'Server sedang sibuk, gagal memproses upgrade.', 'error');
 	}
 };
 
@@ -475,7 +486,7 @@ const beliLisensiTambahan = async () => {
 								</li>
 							</ul>
 
-							<button v-if="subPlan?.toLowerCase() === 'basic'" disabled class="w-full py-3.5 bg-slate-100 text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest cursor-not-allowed">Paket Saat Ini</button>
+							<button v-if="currentPlanNormalized === 'basic'" disabled class="w-full py-3.5 bg-slate-100 text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest cursor-not-allowed">Paket Saat Ini</button>
 
 							<button v-else @click="handleUpgrade('Basic')" class="w-full py-3.5 bg-slate-800 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-slate-700 transition-all active:scale-95">Upgrade Basic</button>
 						</div>
@@ -566,7 +577,7 @@ const beliLisensiTambahan = async () => {
 								</li>
 							</ul>
 
-							<button v-if="['Premium', 'premium'].includes(subPlan?.toLowerCase())" disabled class="w-full py-3.5 bg-slate-800 text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest cursor-not-allowed">Paket Saat Ini</button>
+							<button v-if="currentPlanNormalized === 'premium'" disabled class="w-full py-3.5 bg-slate-800 text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest cursor-not-allowed">Paket Saat Ini</button>
 
 							<button v-else @click="handleUpgrade('Premium')" class="w-full py-3.5 bg-amber-500 text-slate-900 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-amber-500/20 hover:bg-amber-400 transition-all active:scale-95">Upgrade Premium</button>
 						</div>
