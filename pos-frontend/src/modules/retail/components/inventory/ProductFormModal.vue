@@ -207,19 +207,48 @@ const enableNestedUom = () => {
 							</div>
 						</div>
 					</div>
-					<div class="p-5 border rounded-[28px] transition-all duration-300 flex flex-col justify-between h-full" :class="form.has_satuan_besar ? 'bg-slate-100/80 border-transparent' : 'bg-white border-slate-200'">
-						<div>
-							<label class="text-[9px] font-black uppercase tracking-widest mb-3 block text-center" :class="form.has_satuan_besar ? 'text-indigo-500' : 'text-slate-400'">Harga Modal Dasar ({{ form.satuan_dasar }})</label>
-						</div>
-						<div class="relative w-full my-auto">
-							<span class="absolute inset-y-0 left-0 pl-5 flex items-center text-sm font-black" :class="form.has_satuan_besar ? 'text-indigo-400' : 'text-slate-400'">Rp</span>
-							<input :value="formatNumber(form.cost_price)" disabled type="text" :class="form.has_satuan_besar ? 'text-indigo-600 bg-slate-200/40 cursor-not-allowed border-transparent shadow-none' : 'text-slate-800 bg-white border-slate-200 focus:border-blue-600 outline-none shadow-inner'" class="w-full pl-12 pr-4 py-5 rounded-2xl text-3xl font-black text-center border-2 transition-all" />
-						</div>
-						<div class="mt-4 flex items-center justify-center">
-							<span v-if="form.has_satuan_besar" class="text-[8px] font-black text-indigo-500 uppercase tracking-widest italic">* Terkunci dari kalkulator grosir</span>
-							<span v-else class="text-[8px] font-black text-transparent select-none uppercase tracking-widest italic">* Filler</span>
-						</div>
-					</div>
+					<div 
+    class="p-5 border rounded-[28px] transition-all duration-300 flex flex-col justify-between h-full" 
+    :class="form.has_satuan_besar ? 'bg-slate-100/80 border-transparent' : 'bg-white border-slate-200'"
+>
+    <div>
+        <label 
+            class="text-[9px] font-black uppercase tracking-widest mb-3 block text-center" 
+            :class="form.has_satuan_besar ? 'text-indigo-500' : 'text-slate-400'"
+        >
+            Harga Modal Dasar ({{ form.satuan_dasar }})
+        </label>
+    </div>
+    
+    <div class="relative w-full my-auto pointer-events-auto">
+        <span 
+            class="absolute inset-y-0 left-0 pl-5 flex items-center text-sm font-black" 
+            :class="form.has_satuan_besar ? 'text-indigo-400' : 'text-slate-400'"
+        >
+            Rp
+        </span>
+        
+        <input 
+            :value="formatNumber(form.cost_price)" 
+            @input="handleInputForm('cost_price', $event)"
+            :disabled="form.has_satuan_besar" 
+            type="text" 
+            inputmode="numeric"
+            placeholder="0"
+            :class="form.has_satuan_besar ? 'text-indigo-600 bg-slate-200/40 cursor-not-allowed border-transparent shadow-none' : 'text-slate-800 bg-white border-slate-200 focus:border-blue-600 outline-none shadow-inner'" 
+            class="w-full pl-12 pr-4 py-5 rounded-2xl text-3xl font-black text-center border-2 transition-all" 
+        />
+    </div>
+    
+    <div class="mt-4 flex items-center justify-center">
+        <span v-if="form.has_satuan_besar" class="text-[8px] font-black text-indigo-500 uppercase tracking-widest italic">
+            * Terkunci dari kalkulator grosir
+        </span>
+        <span v-else class="text-[8px] font-black text-emerald-500 uppercase tracking-widest italic">
+            * Silakan input manual modal eceran
+        </span>
+    </div>
+</div>
 					<div class="p-5 bg-blue-50 border border-blue-100 rounded-[28px] shadow-sm flex flex-col justify-between h-full">
 						<label class="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-3 block text-center">Patokan Harga Jual Eceran</label>
 						<div class="flex flex-col gap-2 my-auto">
