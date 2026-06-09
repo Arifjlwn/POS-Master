@@ -1,6 +1,6 @@
 <script setup>
 import Swal from 'sweetalert2';
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../../../../api.js';
 import { usePos } from '../../composables/usePos.js';
@@ -139,8 +139,14 @@ const handleInitialCheckout = async () => {
 				window.snap.pay(payRes.data.token, {
 					onSuccess: () => {
 						isProcessingCheckout.value = false;
-						Swal.fire('Berhasil', 'Pembayaran QRIS Midtrans Diterima!', 'success');
-						triggerCheckoutFlow();
+						Swal.fire({
+							title: 'Berhasil',
+							text: 'Pembayaran QRIS Midtrans Diterima!',
+							icon: 'success',
+							didClose: () => {
+								triggerCheckoutFlow();
+							},
+						});
 					},
 					onPending: () => {
 						Swal.fire('Menunggu', 'Pelanggan sedang melakukan scan saldo.', 'info');
@@ -159,7 +165,7 @@ const handleInitialCheckout = async () => {
 				isProcessingCheckout.value = false;
 			}
 		} else {
-			showQrisModal.value = true; // Buka Modal Gambar QRIS Manual 
+			showQrisModal.value = true; // Buka Modal Gambar QRIS Manual
 		}
 	} else {
 		triggerCheckoutFlow();
@@ -221,6 +227,26 @@ const printClosing = () => {
 };
 const finishClosing = () => router.push('/retail/pos/riwayat');
 const goToRiwayat = () => router.push('/retail/pos/riwayat');
+
+watch([showHeldModal, showScanner, showQrisModal, showWaModal, showClosingModal], (newValues) => {
+	// Jika salah satu dari modal bernilai true (terbuka)
+	const isAnyModalOpen = newValues.some((val) => val === true);
+
+	if (isAnyModalOpen) {
+		// Paksa elemen yang sedang aktif/fokus saat ini untuk lepas fokus
+		if (document.activeElement && typeof document.activeElement.blur === 'function') {
+			document.activeElement.blur();
+		}
+	} else {
+		// Ketika SEMUA modal ditutup, kembalikan kursor fokus secara aman ke input utama pencarian produk kasir
+		setTimeout(() => {
+			const inputProduk = document.querySelector('input[placeholder*="Cari Nama Produk"]');
+			if (inputProduk) {
+				inputProduk.focus();
+			}
+		}, 100); // Beri delay sedikit agar transisi aria-hidden selesai dilepas oleh browser
+	}
+});
 </script>
 
 <template>
@@ -317,7 +343,26 @@ const goToRiwayat = () => router.push('/retail/pos/riwayat');
 		<WaPromptModal :show="showWaModal" :totalBelanja="totalBelanja" @submit="handleWaSubmit" @skip="handleWaSkip" @close="showWaModal = false" />
 		<ReceiptModal :show="showReceipt" :invoiceData="lastTransaction" :storeData="currentSession?.store || currentSession?.Store" :cashierName="currentUser?.name ? currentUser.name.split(' ')[0] : 'KASIR'" :stationNumber="currentSession?.station_number || '01'" @close="showReceipt = false" />
 
-		<ClosingModal :show="showClosingModal" :showReceiptClosing="showReceiptClosing" :pecahan="pecahan" :totalUangFisik="totalUangFisik" :lastClosingData="lastClosingData" :currentSession="currentSession" :currentUser="currentUser" :storeLogo="storeLogo" :storeData="storeData" @close="showClosingModal = false" @process-closing="handleClosing" @print-closing="printClosing" @finish-closing="showReceiptClosing = false" />
+		<ClosingModal
+			:show="showClosingModal"
+			:showReceiptClosing="showReceiptClosing"
+			:pecahan="pecahan"
+			:totalUangFisik="totalUangFisik"
+			:lastClosingData="lastClosingData"
+			:currentSession="currentSession"
+			:currentUser="currentUser"
+			:storeLogo="storeLogo"
+			:storeData="storeData"
+			@close="showClosingModal = false"
+			@process-closing="handleClosing"
+			@print-closing="printClosing"
+			@finish-closing="
+				() => {
+					showReceiptClosing = false;
+					currentSession = null;
+					router.push('/retail/pos/riwayat');
+				}
+			" />
 	</div>
 </template>
 

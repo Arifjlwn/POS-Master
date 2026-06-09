@@ -22,8 +22,8 @@ import (
 type CartItem struct {
 	ProductID uint    `json:"product_id" binding:"required"`
 	Kuantitas int     `json:"kuantitas" binding:"required,gt=0"`
-	UomLabel  string  `json:"uom_label"` 
-	HargaUom  float64 `json:"harga_uom"` 
+	UomLabel  string  `json:"uom_label"`
+	HargaUom  float64 `json:"harga_uom"`
 }
 
 type TransactionInput struct {
@@ -37,8 +37,22 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	userIDRaw, _ := c.Get("user_id")
 	var storeID, userID uint
-	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
-	switch v := userIDRaw.(type) { case float64: userID = uint(v); case uint: userID = v; case int: userID = uint(v) }
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
+	}
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	case int:
+		userID = uint(v)
+	}
 
 	var input TransactionInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -52,7 +66,9 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 		for i, n := len(str)-1, 0; i >= 0; i-- {
 			result = string(str[i]) + result
 			n++
-			if n%3 == 0 && i > 0 { result = "." + result }
+			if n%3 == 0 && i > 0 {
+				result = "." + result
+			}
 		}
 		return "Rp " + result
 	}
@@ -74,15 +90,21 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 
 		tipeBisnis := "RETAIL"
 		statusPesanan := "SELESAI"
-		if store.BusinessType == "Jasa - Laundry" { tipeBisnis = "LAUNDRY"; statusPesanan = "ANTRI" }
-		if store.BusinessType == "Kuliner - F&B" { tipeBisnis = "FNB"; statusPesanan = "PROSES" }
+		if store.BusinessType == "Jasa - Laundry" {
+			tipeBisnis = "LAUNDRY"
+			statusPesanan = "ANTRI"
+		}
+		if store.BusinessType == "Kuliner - F&B" {
+			tipeBisnis = "FNB"
+			statusPesanan = "PROSES"
+		}
 
 		var subTotal float64
 		var details []models.TransactionDetail
 
 		for _, item := range input.Items {
 			var product models.Product
-			
+
 			// 🛡️ LOCK ROW CONCURRENCY
 			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&product, "id = ? AND store_id = ?", item.ProductID, storeID).Error; err != nil {
 				return fmt.Errorf("produk ID %d tidak ditemukan di rak toko", item.ProductID)
@@ -92,7 +114,7 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 				return fmt.Errorf("stok %s habis ! Sisa fisik: %d", product.NamaProduk, product.Stok)
 			}
 
-			// Potong stok produk aman  
+			// Potong stok produk aman
 			product.Stok -= item.Kuantitas
 			if err := tx.Save(&product).Error; err != nil {
 				return err
@@ -101,7 +123,7 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 			// 🛡️ ANTI TWEAKING HARGA FRONTEND
 			cleanLabel := strings.ToUpper(item.UomLabel)
 			var hargaSatuanResmi float64 = product.HargaJual
-			
+
 			if cleanLabel != "" {
 				if product.SatuanBesar != "" && strings.Contains(cleanLabel, strings.ToUpper(product.SatuanBesar)) {
 					hargaSatuanResmi = product.HargaJualBesar
@@ -112,7 +134,9 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 
 			qtyOriginal := 1
 			fmt.Sscanf(item.UomLabel, "%d", &qtyOriginal)
-			if qtyOriginal <= 0 { qtyOriginal = 1 }
+			if qtyOriginal <= 0 {
+				qtyOriginal = 1
+			}
 
 			itemSubTotal := float64(qtyOriginal) * hargaSatuanResmi
 			subTotal += itemSubTotal
@@ -122,16 +146,16 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 			// 🛡️ SAFE POINTER DEREFERENCE: Solusi jitu biar ga crash kalau SKU produk di database null !
 			skuSnapshot := ""
 			if product.SKU != nil {
-				skuSnapshot = *product.SKU // Ambil nilai string asli di balik pointer 
+				skuSnapshot = *product.SKU // Ambil nilai string asli di balik pointer
 			}
 
 			// Masukkan ke detail item transaksi
 			details = append(details, models.TransactionDetail{
 				ProductID:          product.ID,
-				NamaProdukSnapshot: product.NamaProduk, 
-				SKUProductSnapshot: skuSnapshot,        // FIX: Masuk berupa string bersih 100% aman !
-				HargaSatuan:        hargaSatuanResmi,   
-				Kuantitas:          item.Kuantitas,     
+				NamaProdukSnapshot: product.NamaProduk,
+				SKUProductSnapshot: skuSnapshot, // FIX: Masuk berupa string bersih 100% aman !
+				HargaSatuan:        hargaSatuanResmi,
+				Kuantitas:          item.Kuantitas,
 				ItemType:           "PRODUCT",
 				DetailNotes:        item.UomLabel,
 				SubTotal:           itemSubTotal,
@@ -146,7 +170,7 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 		if input.NominalBayar < roundedTotal {
 			return fmt.Errorf("uang kas kurang! Total wajib bayar: %s", formatRupiah(roundedTotal))
 		}
-		
+
 		kembalian := input.NominalBayar - roundedTotal
 		noInvoice := fmt.Sprintf("INV-%s", time.Now().Format("20060102150405"))
 
@@ -165,7 +189,7 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 			TipeBisnis:    tipeBisnis,
 			StatusPesanan: statusPesanan,
 			NominalBayar:  input.NominalBayar,
-			Kembalian:     kembalian, 
+			Kembalian:     kembalian,
 			Details:       details,
 		}
 
@@ -209,10 +233,10 @@ Halo Bosku! Terima kasih sudah berbelanja. Berikut rincian kuitansi digital Anda
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":    "Transaksi sukses ! Dokumen kuitansi siap dicetak.",
-		"invoice":    savedTransaction.NoInvoice, 
-		"no_invoice": savedTransaction.NoInvoice, 
-		"tagihan":    savedTransaction.TotalHarga, 
-		"kembali":    savedTransaction.Kembalian,  
+		"invoice":    savedTransaction.NoInvoice,
+		"no_invoice": savedTransaction.NoInvoice,
+		"tagihan":    savedTransaction.TotalHarga,
+		"kembali":    savedTransaction.Kembalian,
 	})
 }
 
@@ -223,25 +247,43 @@ Halo Bosku! Terima kasih sudah berbelanja. Berikut rincian kuitansi digital Anda
 func (h *RetailHandler) GetTransactions(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	switch v := storeIDRaw.(type) { 
-	case float64: storeID = uint(v); 
-	case uint: storeID = v; 
-	case int: storeID = uint(v) 
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
 	}
 
 	tanggal := c.Query("tanggal")
-	if tanggal == "" { tanggal = time.Now().Format("2006-01-02") }
-
-	// Gunakan time.Local atau location target ruko biar sinkron jamnya bray
-	parsedDate, err := time.ParseInLocation("2006-01-02", tanggal, time.Local)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Format rujukan tanggal tidak valid bray!"})
-		return
+	if tanggal == "" {
+		tanggal = time.Now().Format("2006-01-02")
 	}
 
-	// 🚀 FIX BOUNDARY: Set batas waktu tepat dari detik pertama sampai detik terakhir hari itu!
-	startOfDay := time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 0, 0, 0, 0, parsedDate.Location())
-	endOfDay := time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 23, 59, 59, 999999999, parsedDate.Location())
+	var startOfDay, endOfDay time.Time
+
+	// 🚀 DETEKSI OTOMATIS: Apakah inputnya Bulanan (YYYY-MM) atau Harian (YYYY-MM-DD)
+	if len(tanggal) == 7 { // Format: 2026-06 (Bulanan)
+		parsedMonth, err := time.ParseInLocation("2006-01", tanggal, time.Local)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Format bulanan tidak valid!"})
+			return
+		}
+		// Batas awal: Tanggal 1 jam 00:00:00
+		startOfDay = time.Date(parsedMonth.Year(), parsedMonth.Month(), 1, 0, 0, 0, 0, parsedMonth.Location())
+		// Batas akhir: Tanggal 1 bulan berikutnya dikurangi 1 detik (Otomatis dapat tanggal terakhir bulan ini)
+		endOfDay = startOfDay.AddDate(0, 1, 0).Add(-time.Second)
+
+	} else { // Format: 2026-06-09 (Harian)
+		parsedDate, err := time.ParseInLocation("2006-01-02", tanggal, time.Local)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Format rujukan tanggal tidak valid bray!"})
+			return
+		}
+		startOfDay = time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 0, 0, 0, 0, parsedDate.Location())
+		endOfDay = time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 23, 59, 59, 999999999, parsedDate.Location())
+	}
 
 	transactions, err := h.Repo.GetTransactionsByRange(storeID, startOfDay, endOfDay)
 	if err != nil {
@@ -250,32 +292,49 @@ func (h *RetailHandler) GetTransactions(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Daftar riwayat log transaksi berhasil ditarik!", 
-		"data": transactions,
+		"message": "Daftar riwayat log transaksi berhasil ditarik!",
+		"data":    transactions,
 	})
 }
 
 func (h *RetailHandler) GetDailyClosing(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	switch v := storeIDRaw.(type) { 
-	case float64: storeID = uint(v); 
-	case uint: storeID = v; 
-	case int: storeID = uint(v) 
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
 	}
 
 	tanggal := c.Query("tanggal")
-	if tanggal == "" { tanggal = time.Now().Format("2006-01-02") }
-
-	parsedDate, err := time.ParseInLocation("2006-01-02", tanggal, time.Local)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Format tanggal rujukan audit closing tidak valid"})
-		return
+	if tanggal == "" {
+		tanggal = time.Now().Format("2006-01-02")
 	}
 
-	// 🚀 FIX BOUNDARY: Rekapitulasi setoran modal closing shift dikunci di hari yang sama!
-	startOfDay := time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 0, 0, 0, 0, parsedDate.Location())
-	endOfDay := time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 23, 59, 59, 999999999, parsedDate.Location())
+	var startOfDay, endOfDay time.Time
+
+	// 🚀 DETEKSI OTOMATIS BULANAN ATAU HARIAN UNTUK AUDIT CLOSING
+	if len(tanggal) == 7 { // Format: 2026-06 (Bulanan)
+		parsedMonth, err := time.ParseInLocation("2006-01", tanggal, time.Local)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Format bulan audit tidak valid"})
+			return
+		}
+		startOfDay = time.Date(parsedMonth.Year(), parsedMonth.Month(), 1, 0, 0, 0, 0, parsedMonth.Location())
+		endOfDay = startOfDay.AddDate(0, 1, 0).Add(-time.Second)
+
+	} else { // Format: 2026-06-09 (Harian)
+		parsedDate, err := time.ParseInLocation("2006-01-02", tanggal, time.Local)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Format tanggal rujukan audit closing tidak valid"})
+			return
+		}
+		startOfDay = time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 0, 0, 0, 0, parsedDate.Location())
+		endOfDay = time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 23, 59, 59, 999999999, parsedDate.Location())
+	}
 
 	closings, err := h.Repo.GetClosingByRange(storeID, startOfDay, endOfDay)
 	if err != nil {
@@ -284,7 +343,7 @@ func (h *RetailHandler) GetDailyClosing(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Berkas data rekapitulasi closing berhasil dikumpulkan!", 
-		"data": closings,
+		"message": "Berkas data rekapitulasi closing berhasil dikumpulkan!",
+		"data":    closings,
 	})
 }

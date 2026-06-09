@@ -1,12 +1,11 @@
 <script setup>
 import Swal from 'sweetalert2';
-import { onMounted, ref, computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import api from '../../../../api.js';
 import Sidebar from '../../components/Sidebar.vue';
 import AccountProfile from '../../components/settings/account/AccountProfile.vue';
 import AccountSecurity from '../../components/settings/account/AccountSecurity.vue';
 import { useAccount } from '../../composables/useAccount.js';
-
 
 const { isLoading, isSaving, activeTab, role, profileForm, passwordForm, fotoPreview, handleFileChange, saveProfile, updatePassword } = useAccount();
 
@@ -23,9 +22,8 @@ const tabs = [
 	},
 ];
 
-
 // STATE KHUSUS BILLING SAAS (Gunakan lowercase secara konsisten untuk state id)
-const subPlan = ref('basic'); 
+const subPlan = ref('basic');
 const subStatus = ref('inactive');
 const subEnd = ref('');
 const isBillingLoading = ref(true);
@@ -36,7 +34,6 @@ const quotaTerminal = ref(1);
 
 // Computed properti untuk mempermudah pengecekan plan secara aman di template HTML
 const currentPlanNormalized = computed(() => subPlan.value?.toLowerCase() || 'basic');
-
 
 // ==========================================
 // SINKRONISASI OTOMATIS (ANTI MANUAL)
@@ -87,7 +84,6 @@ const sinkronisasiStatusBerlangganan = async () => {
 	}
 };
 
-
 onMounted(async () => {
 	// Pemuatan Script Midtrans dengan fallback validasi key
 	if (!document.getElementById('midtrans-script-owner')) {
@@ -95,11 +91,9 @@ onMounted(async () => {
 		if (!clientKey) {
 			console.error('Midtrans Client Key tidak ditemukan di environment variable!');
 		}
-		
+
 		const midtransEnv = import.meta.env.VITE_MIDTRANS_ENV || 'sandbox';
-		const snapUrl = midtransEnv === 'production' 
-			? 'https://app.midtrans.com/snap/snap.js' 
-			: 'https://app.sandbox.midtrans.com/snap/snap.js';
+		const snapUrl = midtransEnv === 'production' ? 'https://app.midtrans.com/snap/snap.js' : 'https://app.sandbox.midtrans.com/snap/snap.js';
 
 		const script = document.createElement('script');
 		script.id = 'midtrans-script-owner';
@@ -144,7 +138,7 @@ const handleUpgrade = async (planName) => {
 
 				// Beri jeda 3 detik agar webhook backend & midtrans selesai berjabat tangan
 				await new Promise((resolve) => setTimeout(resolve, 3000));
-				
+
 				// Fetch ulang data terbaru dari server alih-alih hard-reload instant
 				await sinkronisasiStatusBerlangganan();
 
@@ -303,7 +297,7 @@ const beliLisensiTambahan = async () => {
 						{{ tab.label }}
 					</button>
 
-					<button v-if="role === 'owner'" @click="activeTab = 'billing'" :class="['flex items-center gap-3 p-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap mt-4 border-t border-slate-200 pt-4', activeTab === 'billing' ? 'bg-white text-amber-600 shadow-sm border border-slate-200' : 'text-amber-500 hover:bg-amber-50']">
+					<button v-if="role === 'owner'" @click="activeTab = 'billing'" :class="['flex items-center gap-3 p-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap', activeTab === 'billing' ? 'bg-white text-amber-600 shadow-sm border border-slate-200' : 'text-amber-500 hover:bg-amber-50']">
 						<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
 							<path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
 						</svg>

@@ -440,7 +440,8 @@ func (r *retailRepo) GetSalesTotalAndTax(sessionID string) (float64, float64, er
 		Gross float64
 		Tax   float64
 	}
-	err := r.db.Table("transactions").Select("SUM(total_harga) as gross, SUM(pajak) as tax").Where("session_id = ?", sessionID).Scan(&res).Error
+	// 🛠️ Fix:
+	err := r.db.Table("transactions").Select("COALESCE(SUM(total_harga), 0) as gross, COALESCE(SUM(pajak), 0) as tax").Where("session_id = ?", sessionID).Scan(&res).Error
 	return res.Gross, res.Tax, err
 }
 
@@ -459,6 +460,6 @@ func (r *retailRepo) GetTransactionsByRange(storeID uint, start time.Time, end t
 }
 func (r *retailRepo) GetClosingByRange(storeID uint, startOfDay, endOfDay time.Time) ([]models.ShiftClosing, error) {
 	var closings []models.ShiftClosing
-	err := r.db.Preload("User").Preload("Session").Preload("Store").Where("store_id = ? AND created_at >= ? AND created_at < ?", storeID, startOfDay, endOfDay).Order("created_at DESC").Find(&closings).Error
+	err := r.db.Preload("User").Preload("Session").Preload("Store").Where("store_id = ? AND created_at BETWEEN ? AND ?", storeID, startOfDay, endOfDay).Order("created_at DESC").Find(&closings).Error
 	return closings, err
 }
