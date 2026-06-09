@@ -309,7 +309,7 @@ func (h *RetailHandler) TestWhatsApp(c *gin.Context) {
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
-	payload := strings.NewReader(fmt.Sprintf("target=%s&message=NEXA POS: Integrasi berhasil!", body.Target))
+	payload := strings.NewReader(fmt.Sprintf("target=%s&message=ARZURA POS: Integrasi berhasil!", body.Target))
 	req, _ := http.NewRequest("POST", "https://api.fonnte.com/send", payload)
 	req.Header.Add("Authorization", store.WaToken)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")

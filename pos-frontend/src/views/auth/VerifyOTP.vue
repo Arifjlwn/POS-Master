@@ -17,7 +17,7 @@ const isLoading = ref(false);
 // --- LOGIKA TIMER & RESEND OTP ---
 const timeLeft = ref(0);
 let timerInterval = null;
-const storageKey = computed(() => `nexa_otp_expiry_${email || phone}`);
+const storageKey = computed(() => `arzura_otp_expiry_${email || phone}`);
 
 const startTimer = (isResend = false) => {
 	clearInterval(timerInterval);

@@ -300,7 +300,7 @@ const submit = async () => {
 			const kat = form.value.kategori_bisnis;
 			const det = (form.value.detail_bisnis || '').toLowerCase();
 
-			// 🚀 FIX: Hard reload juga untuk bypass router yang suka nge-cache state Axios 
+			// 🚀 FIX: Hard reload juga untuk bypass router yang suka nge-cache state Axios
 			if (kat === 'Retail' || kat === 'Lainnya') window.location.href = '/retail/dashboard';
 			else if (kat === 'F&B') window.location.href = '/fnb/dashboard';
 			else if (kat === 'Jasa') {
@@ -522,7 +522,7 @@ const submit = async () => {
 				</form>
 			</div>
 		</div>
-		<p class="mt-10 mb-6 text-center text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">NEXA POS Operations &copy; 2026</p>
+		<p class="mt-10 mb-6 text-center text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">ARZURA POS Operations &copy; 2026</p>
 	</div>
 </template>
 
