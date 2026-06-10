@@ -34,7 +34,7 @@ func (h *RetailHandler) GetDashboardReport(c *gin.Context) {
 	now := time.Now()
 	location := now.Location()
 
-	// 1. Kalibrasi Waktu Mulai (00:00:00) bray
+	// 1. Kalibrasi Waktu Mulai (00:00:00)
 	start, errStart := time.ParseInLocation("2006-01-02", startDateStr, location)
 	if startDateStr == "" || errStart != nil {
 		start = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, location)
@@ -42,7 +42,7 @@ func (h *RetailHandler) GetDashboardReport(c *gin.Context) {
 		start = time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, location)
 	}
 
-	// 2. 🚀 FIX TIME WINDOW TRAP: Kunci tepat di jam 23:59:59 hari itu juga bray! Anti-lewat hari!
+	// 2. 🚀 FIX TIME WINDOW TRAP: Kunci tepat di jam 23:59:59 hari itu juga ! Anti-lewat hari!
 	end, errEnd := time.ParseInLocation("2006-01-02", endDateStr, location)
 	if endDateStr == "" || errEnd != nil {
 		end = time.Date(start.Year(), start.Month(), start.Day(), 23, 59, 59, 999999999, location)
@@ -52,7 +52,7 @@ func (h *RetailHandler) GetDashboardReport(c *gin.Context) {
 
 	var report struct {
 		TotalOmzet         float64 `json:"total_omzet"`
-		TotalLabaGross     float64 `json:"total_laba_gross"` // Kita perjelas ini laba kotor penjualan bray
+		TotalLabaGross     float64 `json:"total_laba_gross"` // Kita perjelas ini laba kotor penjualan
 		TotalLabaNetto     float64 `json:"total_laba_netto"` // 🚀 INDIKATOR SAKTI: Laba bersih riil Owner!
 		JumlahTransaksi    int64   `json:"jumlah_transaksi"`
 		StrukPerHari       float64 `json:"struk_per_hari"`
@@ -73,7 +73,7 @@ func (h *RetailHandler) GetDashboardReport(c *gin.Context) {
 	report.TotalOmzet = omzet
 	report.TotalProdukTerjual = qty
 
-	// Tarik profit kotor awal penjualan bray
+	// Tarik profit kotor awal penjualan
 	labaGross, _ := h.Repo.GetDashboardLaba(storeID, start, end)
 	report.TotalLabaGross = labaGross
 
@@ -81,34 +81,34 @@ func (h *RetailHandler) GetDashboardReport(c *gin.Context) {
 	db := h.Repo.GetDB()
 	db.Model(&models.Transaction{}).Where("store_id = ? AND created_at BETWEEN ? AND ?", storeID, start, end).Count(&report.JumlahTransaksi)
 
-	// Hitung rata-rata nilai belanja per struk bray
+	// Hitung rata-rata nilai belanja per struk
 	if report.JumlahTransaksi > 0 {
 		report.AvgTransaksi = report.TotalOmzet / float64(report.JumlahTransaksi)
 	}
 
 	// Hitung pembagi rata-rata transaksi harian
-	jumlahHari := int(end.Sub(start).Hours()/24) + 1 // +1 biar hari yang sama dihitung 1 hari penuh bray
+	jumlahHari := int(end.Sub(start).Hours()/24) + 1 // +1 biar hari yang sama dihitung 1 hari penuh
 	if jumlahHari <= 0 {
 		jumlahHari = 1
 	}
 	report.StrukPerHari = float64(report.JumlahTransaksi) / float64(jumlahHari)
 
-	// Tarik rangkuman pembuangan waste & retur rusak bray
+	// Tarik rangkuman pembuangan waste & retur rusak
 	returQty, returLoss, _ := h.Repo.GetDashboardReturSummary(storeID, start, end)
 	report.TotalReturQty = returQty
 	report.TotalReturLoss = returLoss
 
-	// Tarik kerugian awal audit laci (SO) bray
+	// Tarik kerugian awal audit laci (SO)
 	soQty, soLoss, _ := h.Repo.GetDashboardSOSummary(storeID, start, end)
 	report.TotalSOQty = soQty
 	report.TotalSOLoss = soLoss
 
-	// Tarik klaim temuan barang bray
+	// Tarik klaim temuan barang
 	klaimQty, klaimValue, _ := h.Repo.GetDashboardKlaimSummary(storeID, start, end)
 	report.TotalKlaimQty = klaimQty
 	report.TotalKlaimValue = klaimValue
 
-	// Hitung selisih bersih kebocoran barang audit bray bray
+	// Hitung selisih bersih kebocoran barang audit
 	report.NetSOQty = soQty - klaimQty
 	if report.NetSOQty < 0 {
 		report.NetSOQty = 0
@@ -133,9 +133,9 @@ func (h *RetailHandler) GetDashboardReport(c *gin.Context) {
 		ReturLoss float64 `json:"retur_loss"`
 	}
 
-	// Sikat data grafik penjualan harian agregat bray
+	// Sikat data grafik penjualan harian agregat
 	grafikPenjualan, err := h.Repo.GetAggregatedDailySales(storeID, start, end)
-	
+
 	if err != nil || len(grafikPenjualan) == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"data": gin.H{

@@ -278,7 +278,7 @@ func (h *RetailHandler) GetTransactions(c *gin.Context) {
 	} else { // Format: 2026-06-09 (Harian)
 		parsedDate, err := time.ParseInLocation("2006-01-02", tanggal, time.Local)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Format rujukan tanggal tidak valid bray!"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Format rujukan tanggal tidak valid !"})
 			return
 		}
 		startOfDay = time.Date(parsedDate.Year(), parsedDate.Month(), parsedDate.Day(), 0, 0, 0, 0, parsedDate.Location())

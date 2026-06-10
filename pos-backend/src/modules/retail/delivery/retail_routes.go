@@ -1,7 +1,7 @@
 package delivery
 
 import (
-	"pos-backend/src/core/middlewares"
+	"pos-backend/middlewares"
 
 	"github.com/gin-gonic/gin"
 )
@@ -12,7 +12,7 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 	// 🟢 FITUR GERBANG UTAMA (BYPASS BILLING CHECK FOR PAYMENT GATEWAY)
 	// =====================================
 
-	// 🚀 FIX MUTLAK: Cabut RequireSaaSLevel dari rute upgrade pembayaran bray! Toko inactive WAJIB bisa ngakses rute ini buat dapet Snap Token Midtrans!
+	// 🚀 FIX MUTLAK: Cabut RequireSaaSLevel dari rute upgrade pembayaran ! Toko inactive WAJIB bisa ngakses rute ini buat dapet Snap Token Midtrans!
 	rg.POST("/subscription/upgrade", h.CreateUpgradePayment)
 
 	// =====================================
@@ -79,14 +79,14 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 	rg.GET("/stock-opname/last-minus", middlewares.RequireSaaSLevel(3), h.GetLastSOMinusItems)
 	rg.GET("/stock-opname/history", middlewares.RequireSaaSLevel(3), h.GetStockOpnameHistory)
 
-	// 🛡️ FIX MULTIPLE CRITICAL: Ubah PATCH -> POST & sesuaikan path urutan agar klop dengan Axios Vue bray!
+	// 🛡️ FIX MULTIPLE CRITICAL: Ubah PATCH -> POST & sesuaikan path urutan agar klop dengan Axios Vue !
 	rg.POST("/stock-opname/approve/:id", middlewares.RequireSaaSLevel(3), h.ApproveStockOpname)
 
 	// Klaim Penemuan Barang Nyempil (Adjustment)
 	rg.POST("/stock-adjustment/request", middlewares.RequireSaaSLevel(3), h.SubmitKlaimBarang)
 	rg.GET("/stock-adjustment/history", middlewares.RequireSaaSLevel(3), h.GetStockAdjustmentHistory)
 
-	// 🛡️ FIX MULTIPLE CRITICAL: Ubah PATCH -> POST & sesuaikan path urutan approval klaim bray bray!
+	// 🛡️ FIX MULTIPLE CRITICAL: Ubah PATCH -> POST & sesuaikan path urutan approval klaim  !
 	rg.POST("/stock-adjustment/approve/:id", middlewares.RequireSaaSLevel(3), h.ApproveStockAdjustment)
 
 	// Retur Barang

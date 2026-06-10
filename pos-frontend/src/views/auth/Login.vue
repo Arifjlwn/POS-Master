@@ -11,7 +11,7 @@ const password = ref('');
 const showPassword = ref(false);
 const errorMessage = ref('');
 const isLoading = ref(false);
-const isErrorShake = ref(false); // 🚀 TAMBAH: State pemicu efek getar premium bray!
+const isErrorShake = ref(false); // 🚀 TAMBAH: State pemicu efek getar premium !
 
 const goHome = () => {
 	router.push('/');
@@ -107,7 +107,7 @@ const handleLogin = async () => {
 		const msg = error.response?.data?.error || error.message || 'Gagal login, silakan coba lagi.';
 		errorMessage.value = msg;
 
-		// 🚀 PICU EFEK GETAR VISUAL: Card login bakal bergetar ngasih sinyal salah sandi bray
+		// 🚀 PICU EFEK GETAR VISUAL: Card login bakal bergetar ngasih sinyal salah sandi
 		isErrorShake.value = true;
 		setTimeout(() => {
 			isErrorShake.value = false;

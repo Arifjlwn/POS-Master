@@ -39,19 +39,19 @@ onMounted(async () => {
 	}
 });
 
-// Urutkan toko berdasarkan ID bawaan bray
+// Urutkan toko berdasarkan ID bawaan
 const sortedStores = computed(() => {
 	return [...stores.value].sort((a, b) => a.id - b.id);
 });
 
 // Menentukan kondisi apakah user sedang melakukan "Ekspansi" (jika sudah punya toko aktif)
 const isExpansionMode = computed(() => {
-	// 🚀 FILTER CERDAS: Hanya dianggap ekspansi kalau sudah punya toko yang statusnya 'active' bray!
+	// 🚀 FILTER CERDAS: Hanya dianggap ekspansi kalau sudah punya toko yang statusnya 'active' !
 	return stores.value.some((store) => store.subscription_status === 'active' || store.subscription_status === 'ACTIVE');
 });
 
 const selectBranch = async (store) => {
-	// 🚀 1. INTERCEPTOR TOKO PENDING (Penyelamat Transaksi Tertunda bray!)
+	// 🚀 1. INTERCEPTOR TOKO PENDING (Penyelamat Transaksi Tertunda !)
 	if (store.subscription_status === 'pending' || store.subscription_status === 'PENDING') {
 		Swal.fire({
 			title: 'Pembayaran Tertunda',
@@ -65,15 +65,15 @@ const selectBranch = async (store) => {
 			customClass: { popup: 'rounded-[32px]' },
 		}).then((result) => {
 			if (result.isConfirmed) {
-				// Simpan data cadangan ke localStorage agar halaman setup-toko tahu paket apa yang mau dibayar bray
+				// Simpan data cadangan ke localStorage agar halaman setup-toko tahu paket apa yang mau dibayar
 				localStorage.setItem('pendingIndustry', store.industry || 'retail');
 				localStorage.setItem('pendingPlan', store.subscription_plan || 'basic');
 
-				// Lempar balik ke setup toko dengan membawa parameter ID Toko lama yang pending tadi bray!
+				// Lempar balik ke setup toko dengan membawa parameter ID Toko lama yang pending tadi !
 				router.push(`/setup-toko?is_expansion=true&resume_store_id=${store.id}`);
 			}
 		});
-		return; // Blokir eksekusi agar dia tidak menembak login kasir bray!
+		return; // Blokir eksekusi agar dia tidak menembak login kasir !
 	}
 
 	// 🚀 2. SELEKSI AKSES KASIR NORMAL (Jika status sudah 'active')
@@ -163,7 +163,7 @@ const cleanLogoUrl = (url) => {
 };
 
 const getStoreLabel = (store, index) => {
-	// 🚀 JIKA PENDING: Berikan informasi tegas mendeteksi status belum diaktivasi bray!
+	// 🚀 JIKA PENDING: Berikan informasi tegas mendeteksi status belum diaktivasi !
 	if (store.subscription_status === 'pending' || store.subscription_status === 'PENDING') {
 		return 'MENUNGGU PEMBAYARAN';
 	}

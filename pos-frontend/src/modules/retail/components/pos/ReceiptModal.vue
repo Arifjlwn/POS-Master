@@ -273,7 +273,7 @@ const triggerPrint = () => {
 		margin: 0 auto !important;
 
 		/* 🚀 FIX CRITICAL MARGIN ATAS: 
-           - Padding atas dikunci mati ke 0mm biar konten langsung nempel ke bibir printer bray!
+           - Padding atas dikunci mati ke 0mm biar konten langsung nempel ke bibir printer !
            - Padding kanan-kiri 4mm (safe zone scale 100%)
            - Padding bawah 5mm (penahan dorongan titik putih html) */
 		padding: 0mm 4mm 5mm 4mm !important;

@@ -5,9 +5,9 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
-	"regexp"
 
 	"pos-backend/models"
 	"pos-backend/src/modules/retail/domain"
@@ -24,7 +24,7 @@ import (
 
 type SOItemInput struct {
 	ProductID uint   `json:"product_id" binding:"required"`
-	ActualQty int    `json:"actual_qty" binding:"min=0"` 
+	ActualQty int    `json:"actual_qty" binding:"min=0"`
 	Alasan    string `json:"alasan"`
 }
 
@@ -48,10 +48,24 @@ func (h *RetailHandler) CreateStockOpname(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	userIDRaw, _ := c.Get("user_id")
 	userRoleRaw, _ := c.Get("role")
-	
+
 	var storeID, userID uint
-	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
-	switch v := userIDRaw.(type) { case float64: userID = uint(v); case uint: userID = v; case int: userID = uint(v) }
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
+	}
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	case int:
+		userID = uint(v)
+	}
 	userRole := strings.ToLower(userRoleRaw.(string))
 
 	var input StockOpnameInput
@@ -60,10 +74,10 @@ func (h *RetailHandler) CreateStockOpname(c *gin.Context) {
 		return
 	}
 
-	// 🌐 FIX TIMEZONE: Pakai Asia/Jakarta biar sinkron sama kasir toko bray
+	// 🌐 FIX TIMEZONE: Pakai Asia/Jakarta biar sinkron sama kasir toko
 	loc, _ := time.LoadLocation("Asia/Jakarta")
 	now := time.Now().In(loc)
-	
+
 	if h.Repo.CheckStockOpnameThisMonth(storeID, int(now.Month()), now.Year()) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Sistem Terkunci! Audit Stock Opname hanya bisa dilakukan 1x dalam bulan berjalan."})
 		return
@@ -77,7 +91,7 @@ func (h *RetailHandler) CreateStockOpname(c *gin.Context) {
 	db := h.Repo.GetDB()
 	err := db.Transaction(func(tx *gorm.DB) error {
 		so := domain.StockOpname{
-			PublicID:  utils.GenerateULID(), 
+			PublicID:  utils.GenerateULID(),
 			StoreID:   storeID,
 			UserID:    userID,
 			Notes:     input.Notes,
@@ -90,7 +104,7 @@ func (h *RetailHandler) CreateStockOpname(c *gin.Context) {
 
 		for _, item := range input.Items {
 			var product models.Product
-			
+
 			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&product, "id = ? AND store_id = ?", item.ProductID, storeID).Error; err != nil {
 				return fmt.Errorf("produk ID %d gagal disisir di database master", item.ProductID)
 			}
@@ -100,11 +114,11 @@ func (h *RetailHandler) CreateStockOpname(c *gin.Context) {
 			nilaiKalkulasiUang := float64(calculatedSelisih) * product.HargaModal
 
 			detail := domain.StockOpnameDetail{
-				OpnameID:  so.ID, 
+				OpnameID:  so.ID,
 				ProductID: item.ProductID,
-				SystemQty: calculatedSystemQty, 
+				SystemQty: calculatedSystemQty,
 				ActualQty: item.ActualQty,
-				Selisih:   calculatedSelisih,   
+				Selisih:   calculatedSelisih,
 				NilaiUang: nilaiKalkulasiUang,
 				Alasan:    item.Alasan,
 			}
@@ -126,7 +140,7 @@ func (h *RetailHandler) CreateStockOpname(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses pengajuan SO: " + err.Error()})
 		return
 	}
-	
+
 	msg := "Berkas berkuitansi Stock Opname berhasil diteruskan ke laptop Owner!"
 	if status == "APPROVED" {
 		msg = "Audit Stock Opname berhasil dieksekusi, stok master cabang diperbarui!"
@@ -156,7 +170,7 @@ func (h *RetailHandler) ApproveStockOpname(c *gin.Context) {
 	}
 	defer fileSrc.Close()
 
-	// 🚀 FIX PATH EXTENSION: Kunci nama file dengan format .pdf bray
+	// 🚀 FIX PATH EXTENSION: Kunci nama file dengan format .pdf
 	remotePath := fmt.Sprintf("audit/so_%s_bar.pdf", opnameID)
 	urlResult, errUpload := utils.UploadToSupabase(fileSrc, file.Filename, "application/pdf", bucketName, remotePath)
 	if errUpload != nil {
@@ -167,8 +181,8 @@ func (h *RetailHandler) ApproveStockOpname(c *gin.Context) {
 	db := h.Repo.GetDB()
 	err = db.Transaction(func(tx *gorm.DB) error {
 		var so domain.StockOpname
-		
-		// 🚀 FIX LOOKUP ENGINE: Cek tipe data parameter biar GORM ga salah parsing integer vs string ULID bray
+
+		// 🚀 FIX LOOKUP ENGINE: Cek tipe data parameter biar GORM ga salah parsing integer vs string ULID
 		var checkErr error
 		if regexp.MustCompile(`^[0-9]+$`).MatchString(opnameID) {
 			checkErr = tx.Preload("Details").Clauses(clause.Locking{Strength: "UPDATE"}).First(&so, "id = ?", opnameID).Error
@@ -179,12 +193,12 @@ func (h *RetailHandler) ApproveStockOpname(c *gin.Context) {
 		if checkErr != nil {
 			return fmt.Errorf("berkas ID SO tidak ditemukan di database master")
 		}
-		
+
 		if so.Status == "APPROVED" {
 			return nil
 		}
 
-		// Gunakan model updates bray agar sinkron dengan struktur properti domain/retail_stock_opname.go
+		// Gunakan model updates  agar sinkron dengan struktur properti domain/retail_stock_opname.go
 		if err := tx.Model(&so).Updates(map[string]interface{}{"status": "APPROVED", "bukti_bar": urlResult}).Error; err != nil {
 			return err
 		}
@@ -221,7 +235,14 @@ type AuditCompareResult struct {
 func (h *RetailHandler) GetStockOpnameHistory(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
+	}
 
 	db := h.Repo.GetDB()
 	var soHistory []domain.StockOpname
@@ -252,7 +273,14 @@ func (h *RetailHandler) GetStockOpnameHistory(c *gin.Context) {
 func (h *RetailHandler) GetLastSOStatus(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
+	}
 
 	var lastSO domain.StockOpname
 	db := h.Repo.GetDB()
@@ -270,7 +298,14 @@ func (h *RetailHandler) GetLastSOStatus(c *gin.Context) {
 func (h *RetailHandler) GetLastSOMinusItems(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
+	}
 
 	db := h.Repo.GetDB()
 	var lastSO domain.StockOpname
@@ -292,8 +327,22 @@ func (h *RetailHandler) SubmitKlaimBarang(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	userIDRaw, _ := c.Get("user_id")
 	var storeID, userID uint
-	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
-	switch v := userIDRaw.(type) { case float64: userID = uint(v); case uint: userID = v; case int: userID = uint(v) }
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
+	}
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	case int:
+		userID = uint(v)
+	}
 
 	var req KlaimRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -310,7 +359,7 @@ func (h *RetailHandler) SubmitKlaimBarang(c *gin.Context) {
 
 	err := db.Transaction(func(tx *gorm.DB) error {
 		adj := domain.StockAdjustment{
-			PublicID:  utils.GenerateULID(), 
+			PublicID:  utils.GenerateULID(),
 			StoreID:   storeID,
 			UserID:    userID,
 			Notes:     req.Notes,
@@ -331,11 +380,11 @@ func (h *RetailHandler) SubmitKlaimBarang(c *gin.Context) {
 			var totalClaimedBefore int64
 			err = tx.Model(&domain.StockAdjustmentDetail{}).
 				Joins("JOIN retail_stock_adjustments ON retail_stock_adjustments.id = retail_stock_adjustment_details.adjustment_id").
-				Where("retail_stock_adjustments.store_id = ? AND retail_stock_adjustments.created_at >= ? AND retail_stock_adjustment_details.product_id = ?", 
+				Where("retail_stock_adjustments.store_id = ? AND retail_stock_adjustments.created_at >= ? AND retail_stock_adjustment_details.product_id = ?",
 					storeID, lastSO.CreatedAt, item.ProductID).
 				Select("COALESCE(SUM(retail_stock_adjustment_details.qty), 0)").
 				Row().Scan(&totalClaimedBefore)
-			
+
 			if err != nil {
 				return fmt.Errorf("gagal memvalidasi histori limit klaim produk ID %d", item.ProductID)
 			}
@@ -344,12 +393,12 @@ func (h *RetailHandler) SubmitKlaimBarang(c *gin.Context) {
 			sisaKuotaKlaim := allowedMaxLimit - int(totalClaimedBefore)
 
 			if item.Qty > sisaKuotaKlaim {
-				return fmt.Errorf("klaim ditolak! Produk ID %d melebihi batas sisa kuota kehilangan (Sisa Kuota: %d PCS, Sudah Diklaim Sebelumnya: %d PCS)", 
+				return fmt.Errorf("klaim ditolak! Produk ID %d melebihi batas sisa kuota kehilangan (Sisa Kuota: %d PCS, Sudah Diklaim Sebelumnya: %d PCS)",
 					item.ProductID, sisaKuotaKlaim, totalClaimedBefore)
 			}
 
 			adjItem := domain.StockAdjustmentDetail{
-				AdjustmentID: adj.ID, 
+				AdjustmentID: adj.ID,
 				ProductID:    item.ProductID,
 				Qty:          item.Qty,
 				Alasan:       item.Alasan,
@@ -371,7 +420,14 @@ func (h *RetailHandler) SubmitKlaimBarang(c *gin.Context) {
 func (h *RetailHandler) GetStockAdjustmentHistory(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
+	}
 
 	var history []domain.StockAdjustment
 	db := h.Repo.GetDB()
@@ -405,7 +461,7 @@ func (h *RetailHandler) ApproveStockAdjustment(c *gin.Context) {
 	}
 	defer fileSrc.Close()
 
-	// 🚀 FIX PATH EXTENSION: Kunci nama file dengan format .pdf bray
+	// 🚀 FIX PATH EXTENSION: Kunci nama file dengan format .pdf
 	remotePath := fmt.Sprintf("audit/claim_%s_bar.pdf", adjustmentID)
 	urlResult, errUpload := utils.UploadToSupabase(fileSrc, file.Filename, "application/pdf", bucketName, remotePath)
 	if errUpload != nil {
@@ -416,8 +472,8 @@ func (h *RetailHandler) ApproveStockAdjustment(c *gin.Context) {
 	db := h.Repo.GetDB()
 	err = db.Transaction(func(tx *gorm.DB) error {
 		var adjustment domain.StockAdjustment
-		
-		// 🚀 FIX LOOKUP ENGINE: Cegah eror mismatch data ID integer dari parameter URL bray bray bray
+
+		// 🚀 FIX LOOKUP ENGINE: Cegah eror mismatch data ID integer dari parameter URL
 		var checkErr error
 		if regexp.MustCompile(`^[0-9]+$`).MatchString(adjustmentID) {
 			checkErr = tx.Preload("Details").Clauses(clause.Locking{Strength: "UPDATE"}).First(&adjustment, "id = ?", adjustmentID).Error
@@ -428,12 +484,12 @@ func (h *RetailHandler) ApproveStockAdjustment(c *gin.Context) {
 		if checkErr != nil {
 			return fmt.Errorf("berkas kode ID Klaim tidak valid di database master")
 		}
-		
+
 		if adjustment.Status == "APPROVED" {
 			return nil
 		}
 
-		// Update kolom status dan bukti_bar sesuai blueprint domain bray
+		// Update kolom status dan bukti_bar sesuai blueprint domain
 		if err := tx.Model(&adjustment).Updates(map[string]interface{}{"status": "APPROVED", "bukti_bar": urlResult}).Error; err != nil {
 			return err
 		}

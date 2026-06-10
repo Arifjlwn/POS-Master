@@ -8,7 +8,7 @@ const route = useRoute();
 const router = useRouter(); // 🚀 Definisi router instance
 const isExpansion = route.query.is_expansion === 'true';
 
-// 🚀 FONDASI UTAMA: Deklarasikan state penanda resume pembayaran toko pending bray
+// 🚀 FONDASI UTAMA: Deklarasikan state penanda resume pembayaran toko pending
 const isResumingPayment = ref(false);
 
 const pendingIndustry = localStorage.getItem('pendingIndustry') || 'retail';
@@ -115,7 +115,7 @@ watch(
 );
 
 onMounted(async () => {
-	// 1. Injeksi SDK Midtrans bawaan lu bray
+	// 1. Injeksi SDK Midtrans bawaan lu
 	if (!document.getElementById('midtrans-script-owner')) {
 		const midtransEnv = import.meta.env.VITE_MIDTRANS_ENV || 'sandbox';
 		const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY;
@@ -128,7 +128,7 @@ onMounted(async () => {
 		document.head.appendChild(script);
 	}
 
-	// 2. Load region data bawaan lu bray
+	// 2. Load region data bawaan lu
 	loadProvinsi();
 
 	// 3. Set Kategori Bisnis awal dari local storage
@@ -137,7 +137,7 @@ onMounted(async () => {
 	else if (pendingIndustry === 'jasa') form.value.kategori_bisnis = 'Jasa';
 	else form.value.kategori_bisnis = 'Retail';
 
-	// 🚀 4. RESUME CONTROLLER TRIGGER: Deteksi kedatangan user bawa utang invoice toko bray!
+	// 🚀 4. RESUME CONTROLLER TRIGGER: Deteksi kedatangan user bawa utang invoice toko !
 	const resumeStoreId = route.query.resume_store_id;
 	if (resumeStoreId) {
 		isResumingPayment.value = true; // Gembok layar form utama
@@ -149,14 +149,14 @@ const handleResumePendingStore = async (storeId) => {
 	try {
 		Swal.fire({
 			title: 'Menghubungkan Server...',
-			text: 'Membuka gerbang billing pembayaran, mohon tunggu sebentar bray.',
+			text: 'Membuka gerbang billing pembayaran, mohon tunggu sebentar .',
 			allowOutsideClick: false,
 			didOpen: () => {
 				Swal.showLoading();
 			},
 		});
 
-		// Tembak endpoint re-trigger payment terpusat lu di Go bray
+		// Tembak endpoint re-trigger payment terpusat lu di Go
 		const res = await api.post('/re-trigger-payment', { store_id: Number(storeId) });
 		Swal.close();
 
@@ -165,7 +165,7 @@ const handleResumePendingStore = async (storeId) => {
 		}
 
 		// 🚀 BOOM: Paksa Modal Snap Midtrans Meledak Keluar di Layar User!
-		// 🚀 PERBARUI BLOK SDK SNAP DI DALAM FUNGSI handleResumePendingStore (SETUPTOKO.VUE) LU BRAY!
+		// 🚀 PERBARUI BLOK SDK SNAP DI DALAM FUNGSI handleResumePendingStore (SETUPTOKO.VUE) LU !
 		window.snap.pay(res.data.snap_token, {
 			onSuccess: function (result) {
 				Swal.fire({
@@ -179,13 +179,13 @@ const handleResumePendingStore = async (storeId) => {
 					localStorage.removeItem('pendingIndustry');
 					localStorage.removeItem('pendingPlan');
 
-					// Sukses aktif? Paksa hapus cache biar data toko ter-update jadi active bray!
+					// Sukses aktif? Paksa hapus cache biar data toko ter-update jadi active !
 					localStorage.removeItem('temp_stores');
 					window.location.href = '/select-store';
 				});
 			},
 			onPending: function (result) {
-				Swal.fire('Menunggu Pembayaran', 'Segera selesaikan transaksi invoice Anda bray.', 'info').then(() => {
+				Swal.fire('Menunggu Pembayaran', 'Segera selesaikan transaksi invoice Anda .', 'info').then(() => {
 					window.location.href = '/select-store';
 				});
 			},
@@ -203,7 +203,7 @@ const handleResumePendingStore = async (storeId) => {
 					confirmButtonColor: '#4f46e5',
 					customClass: { popup: 'rounded-[32px]' },
 				}).then(() => {
-					window.location.href = '/select-store'; // ◄ SEKARANG DI-LOCK KE PILIH CABANG BRAY!
+					window.location.href = '/select-store'; // ◄ SEKARANG DI-LOCK KE PILIH CABANG !
 				});
 			},
 		});
@@ -261,17 +261,17 @@ const bukaSnapMidtrans = (snapToken) => {
 				allowOutsideClick: false,
 				customClass: { popup: 'rounded-[32px]' },
 			}).then(() => {
-				// HAPUS CACHE LAMA BIAR FRONTEND DIPAKSA RELOAD DATA FRESH DARI DB BRAY!
+				// HAPUS CACHE LAMA BIAR FRONTEND DIPAKSA RELOAD DATA FRESH DARI DB !
 				localStorage.removeItem('temp_stores');
 
 				localStorage.removeItem('pendingIndustry');
 				localStorage.removeItem('pendingPlan');
-				window.location.href = '/select-store'; // ◄ Arahkan ke select-store biar dia nge-load ulang ruko aktifnya bray!
+				window.location.href = '/select-store'; // ◄ Arahkan ke select-store biar dia nge-load ulang ruko aktifnya !
 			});
 		},
 		onPending: function (result) {
 			Swal.fire('Menunggu Pembayaran', 'Segera selesaikan transaksi Anda sebelum invoice kedaluwarsa.', 'info').then(() => {
-				// Pending bayar? Balikkan ke select-store biar ruko pending-nya kelihatan bray!
+				// Pending bayar? Balikkan ke select-store biar ruko pending-nya kelihatan !
 				window.location.href = '/select-store';
 			});
 		},
@@ -281,7 +281,7 @@ const bukaSnapMidtrans = (snapToken) => {
 			});
 		},
 		onClose: function () {
-			// 🚀 FIX MUTLAK: Begitu disilang olehnya, putar balik haluan ke halaman Pilih Gerai bray!
+			// 🚀 FIX MUTLAK: Begitu disilang olehnya, putar balik haluan ke halaman Pilih Gerai !
 			Swal.fire({
 				title: 'Aktivasi Ditunda',
 				text: 'Konfigurasi Toko Anda tersimpan aman. Selesaikan aktivasi kapan pun melalui halaman Pilih Toko.',
@@ -333,19 +333,19 @@ const submit = async () => {
 			localStorage.setItem('role', 'owner');
 
 			// ====================================================================
-			// 🚀 INI DIA SUNTIKAN SAKTI NYA BRAY! (Inject Toko Baru ke Cache Lokal)
+			// 🚀 INI DIA SUNTIKAN SAKTI NYA ! (Inject Toko Baru ke Cache Lokal)
 			// ====================================================================
-			// 1. Ambil list ruko lama yang ada di local storage dolo bray
+			// 1. Ambil list ruko lama yang ada di local storage dolo
 			const oldStoresRaw = localStorage.getItem('temp_stores');
 			let currentStores = oldStoresRaw ? JSON.parse(oldStoresRaw) : [];
 
-			// 2. Bikin objek ruko baru tiruan sesuai data yang barusan diinput user bray
+			// 2. Bikin objek ruko baru tiruan sesuai data yang barusan diinput user
 			const newStoreObj = {
 				id: response.data.store_id,
 				nama_toko: form.value.nama_toko,
 				industry: currentPendingIndustry,
 				subscription_plan: currentPendingPlan,
-				subscription_status: response.data.subscription_status || 'pending', // Gembok pending biar merah bray!
+				subscription_status: response.data.subscription_status || 'pending', // Gembok pending biar merah !
 				kota: form.value.kota || 'Lokasi Belum Diatur',
 			};
 
@@ -402,7 +402,7 @@ const submit = async () => {
 
 			await Swal.fire({
 				icon: 'success',
-				title: 'Infrastruktur Ready bray!',
+				title: 'Infrastruktur Ready !',
 				text: 'Selamat menikmati fasilitas Free Trial selama 14 hari.',
 				confirmButtonColor: '#4f46e5',
 				customClass: { popup: 'rounded-[32px]' },
@@ -440,7 +440,7 @@ const submit = async () => {
 		<div class="absolute -top-24 -left-24 w-[30rem] h-[30rem] bg-indigo-200/40 rounded-full blur-3xl pointer-events-none"></div>
 		<div class="absolute -bottom-24 -right-24 w-[30rem] h-[30rem] bg-blue-200/40 rounded-full blur-3xl pointer-events-none"></div>
 
-		<!-- 🚀 1. TAMPILAN RESUME PAYMENT (Bila user memuat utang toko pending bray) -->
+		<!-- 🚀 1. TAMPILAN RESUME PAYMENT (Bila user memuat utang toko pending ) -->
 		<div v-if="isResumingPayment" class="sm:mx-auto sm:w-full sm:max-w-xl px-4 relative z-10 animate-fade-in-up">
 			<div class="bg-white p-8 md:p-12 text-center shadow-2xl rounded-[40px] border border-slate-100/50 flex flex-col items-center">
 				<div class="w-14 h-14 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-6"></div>

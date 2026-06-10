@@ -311,7 +311,7 @@ func (r *retailRepo) GetDailySalesReport(storeID uint, tgl time.Time, tglEnd tim
 func (r *retailRepo) GetAggregatedDailySales(storeID uint, start time.Time, end time.Time) ([]map[string]interface{}, error) {
 	var result []map[string]interface{}
 
-	// Kita paksa Postgres convert date_val pake TO_CHAR agar output tanggalnya string bersih "YYYY-MM-DD" bray!
+	// Kita paksa Postgres convert date_val pake TO_CHAR agar output tanggalnya string bersih "YYYY-MM-DD" !
 	query := `
 WITH dates AS (
     SELECT generate_series(
@@ -374,12 +374,12 @@ LEFT JOIN return_data r
 ORDER BY d.date_val ASC;
 `
 
-	// 🚀 FIX CRITICAL BOUNDARY: Jangan kurangi 'end' dengan 24 jam bray!
+	// 🚀 FIX CRITICAL BOUNDARY: Jangan kurangi 'end' dengan 24 jam !
 	// Karena 'end' dari handler udah dikunci di jam 23:59:59 pada hari terakhir yang dipilih owner.
 	err := r.db.Raw(
 		query,
 		start, // Generator Tanggal Mulai
-		end,   // Generator Tanggal Akhir (Tetap utuh hari terakhir bray!)
+		end,   // Generator Tanggal Akhir (Tetap utuh hari terakhir !)
 
 		storeID,
 		start,

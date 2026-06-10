@@ -29,8 +29,17 @@ func ConnectDatabase() {
 	}
 
 	err = database.AutoMigrate(
-		// 🌐 CORE GLOBAL (Pondasi Utama & SDM - Urutan Wajib Di-lock Duluan )
-		&models.Store{}, &models.User{}, &models.CashierSession{}, &models.Product{}, &models.Customer{}, &models.Attendance{}, &models.Schedule{}, &models.ShiftClosing{}, &models.Transaction{},
+		// 🌐 CORE GLOBAL (Pondasi Utama & SDM - Urutan Wajib Di-lock Duluan)
+		&models.Store{}, 
+		&models.User{}, 
+		&models.AuditLog{}, // 🚀 SUNTIK REKAM JEJAK DIGITAL ADMIN DI SINI !
+		&models.CashierSession{}, 
+		&models.Product{}, 
+		&models.Customer{}, 
+		&models.Attendance{}, 
+		&models.Schedule{}, 
+		&models.ShiftClosing{}, 
+		&models.Transaction{},
 
 		// 🛍️ RETAIL & INVENTORY
 		&models.TransactionDetail{}, &retailDomain.StockOpname{}, &retailDomain.StockOpnameDetail{}, &retailDomain.StockAdjustment{}, &retailDomain.StockAdjustmentDetail{}, &retailDomain.ProductReturn{}, &retailDomain.Purchase{}, &retailDomain.PurchaseDetail{},

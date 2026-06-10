@@ -243,7 +243,7 @@ func (h *RetailHandler) CloseSession(c *gin.Context) {
 		ClosedAt: now,
 
 		// 2. Ambil Data Arus Kas dari Sesi Kasir
-		ModalAwal: session.ModalAwal, // <-- Pindahin ke sini bray!
+		ModalAwal: session.ModalAwal, // <-- Pindahin ke sini !
 
 		// 3. Rekap Penjualan & Pajak dari Hasil Query Repository
 		NetSales:     netSales,

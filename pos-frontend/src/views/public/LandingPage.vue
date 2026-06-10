@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-// 🚀 IMPORT KOMPONEN TERPADU BARU LU BRAY
+// 🚀 IMPORT KOMPONEN TERPADU BARU LU 
 import PricingPlan from '../../modules/retail/components/PricingPlan.vue';
 
 const router = useRouter();

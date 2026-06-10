@@ -57,17 +57,17 @@ func Register(c *gin.Context) {
 	email := strings.ToLower(strings.TrimSpace(input.Email))
 	cleanPhone := utils.FormatPhoneNumber(input.NoHP)
 
-	// 1. Cek apakah email atau nomor WA sudah pernah di-input sebelumnya bray
+	// 1. Cek apakah email atau nomor WA sudah pernah di-input sebelumnya 
 	if err := src.DB.Where("LOWER(email) = ? OR no_hp = ?", email, cleanPhone).First(&existingUser).Error; err == nil {
 
 		// 🔒 JALUR A: Jika akun sudah terverifikasi murni (Aktif), langsung blokir keras!
 		if existingUser.IsVerified {
-			c.JSON(http.StatusConflict, gin.H{"error": "Email atau Nomor WhatsApp sudah terdaftar aktif di sistem bray!"})
+			c.JSON(http.StatusConflict, gin.H{"error": "Email atau Nomor WhatsApp sudah terdaftar aktif di sistem !"})
 			return
 		}
 
 		// 🔓 JALUR B: Jika akun masih pending (IsVerified == false, efek klik batal)
-		// Kita lakukan OVERWRITE / UPDATE data lamanya biar ga memicu error duplicate key bray bantai!
+		// Kita lakukan OVERWRITE / UPDATE data lamanya biar ga memicu error duplicate key  bantai!
 		hashedPassword, errHash := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 		if errHash != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengamankan sandi akun"})
@@ -85,16 +85,16 @@ func Register(c *gin.Context) {
 		}).Error
 
 		if errUpdate != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui konfigurasi data pendaftaran tertunda bray"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui konfigurasi data pendaftaran tertunda "})
 			return
 		}
 
-		// Lempar status 200 OK, suruh frontend lari ke halaman Pilih OTP lagi bray!
-		c.JSON(http.StatusOK, gin.H{"message": "Melanjutkan aktivasi akun Anda yang tertunda bray.", "email": email, "phone": cleanPhone})
+		// Lempar status 200 OK, suruh frontend lari ke halaman Pilih OTP lagi !
+		c.JSON(http.StatusOK, gin.H{"message": "Melanjutkan aktivasi akun Anda yang tertunda.", "email": email, "phone": cleanPhone})
 		return
 	}
 
-	// 2. JALUR C: Pendaftaran Murni Baru (Belum pernah terdata sama sekali di DB bray)
+	// 2. JALUR C: Pendaftaran Murni Baru (Belum pernah terdata sama sekali di DB )
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengamankan sandi akun"})
@@ -345,10 +345,10 @@ func GetMe(c *gin.Context) {
 	// 🚀 STEP PENYELAMAT: Query list seluruh toko milik owner ini dari database
 	var listStores []models.Store
 	if user.Role == "owner" {
-		// Kalau dia owner, tarik semua toko yang owner_id-nya adalah dia bray
+		// Kalau dia owner, tarik semua toko yang owner_id-nya adalah dia 
 		src.DB.Where("owner_id = ?", user.ID).Find(&listStores)
 	} else {
-		// Kalau staf/kasir, masukin aja ruko tempat dia bekerja biar gak kosong bray
+		// Kalau staf/kasir, masukin aja ruko tempat dia bekerja biar gak kosong 
 		if user.StoreID != nil {
 			src.DB.Where("id = ?", *user.StoreID).Find(&listStores)
 		}
@@ -373,7 +373,7 @@ func GetMe(c *gin.Context) {
 		"subscription_plan": user.Store.SubscriptionPlan,
 		"fitur_aktif":       user.Store.FiturAktif,
 
-		// 🔒 SEKAT SAKTI: Ini yang ditunggu-tunggu sama SelectStore.vue lu bray!
+		// 🔒 SEKAT SAKTI: Ini yang ditunggu-tunggu sama SelectStore.vue lu !
 		"stores": listStores,
 	})
 }

@@ -28,7 +28,7 @@ api.interceptors.response.use(
 	(error) => {
 		const originalRequest = error.config;
 
-		// Cek jika response ada dan statusnya 401 Unauthorized bray
+		// Cek jika response ada dan statusnya 401 Unauthorized
 		if (error.response && error.response.status === 401) {
 			if (originalRequest.url && originalRequest.url.includes('/login')) {
 				return Promise.reject(error);

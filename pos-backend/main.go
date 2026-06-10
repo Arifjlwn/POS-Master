@@ -10,7 +10,8 @@ import (
 	"pos-backend/controllers/auth"
 	"pos-backend/controllers/admin"
 	src "pos-backend/src/core/config"
-	"pos-backend/src/core/middlewares"
+	"pos-backend/middlewares"
+	"pos-backend/utils"
 
 	fnbDelivery "pos-backend/src/modules/fnb/delivery"
 	fnbRepository "pos-backend/src/modules/fnb/repository"
@@ -33,6 +34,7 @@ func main() {
 
 	// 1. KONEKSI & INSTANSIASI LAYER (Dependency Injection Terpusat)
 	src.ConnectDatabase()
+	utils.SeedSuperAdmin(src.DB)
 
 	// Inisialisasi Modul Retail
 	retailRepo := retailRepository.NewRetailRepo(src.DB)
@@ -109,7 +111,16 @@ func main() {
 	// Webhook Gateway Midtrans (Harus divalidasi Signature Key-nya di dalam handler untuk mencegah pemalsuan status bayar)
 	r.POST("/api/retail/midtrans/webhook", retailHandler.MidtransWebhook)
 
-	r.POST("/api/admin/login", admin.LoginAdminHandler)
+	adminCtrl := &admin.AdminController{DB: src.DB}
+	
+	r.POST("/api/admin/login", middlewares.AdminLoginRateLimiter(), auth.Login)
+
+    adminRoutes := r.Group("/api/admin")
+    adminRoutes.Use(middlewares.RequireAuth)       
+    adminRoutes.Use(middlewares.RequireSuperAdmin()) 
+    {
+        adminRoutes.GET("/dashboard-stats", adminCtrl.GetTelemetryStats)
+    }
 
 	// ==========================================
 	// -- RUTE TERPROTEKSI (MIDDLEWARE GATEWAY) --
