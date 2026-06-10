@@ -21,7 +21,7 @@ const onQrisSelect = (e) => {
 const webhookUrl = computed(() => {
 	const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
 	// Bersihkan slash ganda jika ada
-	return `${baseUrl}/api/retail/midtrans/webhook`.replace(/([^:]\/)\/+/g, '$1');
+	return `${baseUrl}/retail/midtrans/webhook`.replace(/([^:]\/)\/+/g, '$1');
 });
 
 const copyWebhook = () => {
@@ -125,7 +125,7 @@ const copyWebhook = () => {
 						Salin
 					</button>
 				</div>
-				<p class="text-[9px] font-bold text-slate-400 mt-2">Buka Dashboard Midtrans &rarr; Settings &rarr; Configuration &rarr; Payment Notification URL. Lalu paste URL di atas.</p>
+				<p class="text-[9px] font-bold text-slate-400 mt-2">Buka Dashboard Midtrans &rarr; Settings &rarr; Payment &rarr; Notification URL &rarr; Lalu paste URL di atas.</p>
 			</div>
 		</div>
 	</div>

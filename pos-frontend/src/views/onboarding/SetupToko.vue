@@ -165,29 +165,45 @@ const handleResumePendingStore = async (storeId) => {
 		}
 
 		// 🚀 BOOM: Paksa Modal Snap Midtrans Meledak Keluar di Layar User!
+		// 🚀 PERBARUI BLOK SDK SNAP DI DALAM FUNGSI handleResumePendingStore (SETUPTOKO.VUE) LU BRAY!
 		window.snap.pay(res.data.snap_token, {
 			onSuccess: function (result) {
-				Swal.fire({ icon: 'success', title: 'Pembayaran Berhasil', text: 'Gerai cabang Anda resmi diaktifkan global!', timer: 2000, showConfirmButton: false });
-				localStorage.removeItem('pendingIndustry');
-				localStorage.removeItem('pendingPlan');
-				window.location.href = '/retail/account';
+				Swal.fire({
+					icon: 'success',
+					title: 'Pembayaran Berhasil',
+					text: 'Gerai cabang Anda resmi diaktifkan global!',
+					timer: 2000,
+					showConfirmButton: false,
+					customClass: { popup: 'rounded-[32px]' },
+				}).then(() => {
+					localStorage.removeItem('pendingIndustry');
+					localStorage.removeItem('pendingPlan');
+
+					// Sukses aktif? Paksa hapus cache biar data toko ter-update jadi active bray!
+					localStorage.removeItem('temp_stores');
+					window.location.href = '/select-store';
+				});
 			},
 			onPending: function (result) {
-				window.location.href = '/retail/account';
+				Swal.fire('Menunggu Pembayaran', 'Segera selesaikan transaksi invoice Anda bray.', 'info').then(() => {
+					window.location.href = '/select-store';
+				});
 			},
 			onError: function (result) {
 				Swal.fire('Gagal', 'Sistem pembayaran mendeteksi anomali perbankan.', 'error').then(() => {
-					window.location.href = '/retail/account';
+					window.location.href = '/select-store';
 				});
 			},
 			onClose: function () {
+				// 🚀 FIX ABSOLUT: Begitu disilang saat resume billing, tendang balik ke Select Store!
 				Swal.fire({
 					title: 'Aktivasi Tertunda',
-					text: 'Tenang bray, konfigurasi gerai tersimpan aman. Lu bisa selesaikan pembayaran kapan pun lewat menu Pilih Gerai.',
+					text: 'Tenang , konfigurasi toko tersimpan aman. Lu bisa selesaikan pembayaran kapan pun lewat menu Pilih Toko.',
 					icon: 'warning',
 					confirmButtonColor: '#4f46e5',
+					customClass: { popup: 'rounded-[32px]' },
 				}).then(() => {
-					window.location.href = '/retail/account';
+					window.location.href = '/select-store'; // ◄ SEKARANG DI-LOCK KE PILIH CABANG BRAY!
 				});
 			},
 		});

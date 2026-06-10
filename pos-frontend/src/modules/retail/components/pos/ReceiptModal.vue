@@ -193,9 +193,9 @@ const triggerPrint = () => {
 					<span>SUBTOTAL:</span>
 					<span>{{ formatRupiah(subTotalDisplay) }}</span>
 				</div>
-				<div v-if="totalPajak > 0" class="flex justify-between font-bold text-[9px] mb-0.5 font-mono uppercase italic">
+				<div v-if="totalPajak >= 0" class="flex justify-between font-bold text-[9px] mb-0.5 font-mono uppercase italic">
 					<span>PAJAK:</span>
-					<span>{{ formatRupiah(totalPajak) }}</span>
+					<span>{{ formatRupiah(totalPajak) }} %</span>
 				</div>
 				<div class="flex justify-between font-black text-[10px] mb-1.5 font-mono uppercase italic border-t border-black pt-1 mt-1">
 					<span>TOTAL BELANJA:</span>
@@ -210,7 +210,7 @@ const triggerPrint = () => {
 
 				<div class="flex justify-between font-black font-mono text-[9px] uppercase italic text-black">
 					<span>KEMBALI:</span>
-					<span>{{ kembalianDisplay > 0 ? formatRupiah(kembalianDisplay) : '0 (PAS)' }}</span>
+					<span>{{ kembalianDisplay > 0 ? formatRupiah(kembalianDisplay) : '0' }}</span>
 				</div>
 
 				<div class="text-center mt-4 font-black font-mono text-[9px] border border-black p-1.5 uppercase leading-tight whitespace-pre-line">

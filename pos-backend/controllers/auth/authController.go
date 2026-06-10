@@ -57,18 +57,50 @@ func Register(c *gin.Context) {
 	email := strings.ToLower(strings.TrimSpace(input.Email))
 	cleanPhone := utils.FormatPhoneNumber(input.NoHP)
 
+	// 1. Cek apakah email atau nomor WA sudah pernah di-input sebelumnya bray
 	if err := src.DB.Where("LOWER(email) = ? OR no_hp = ?", email, cleanPhone).First(&existingUser).Error; err == nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "Email atau Nomor WhatsApp sudah terdaftar di sistem!"})
+
+		// 🔒 JALUR A: Jika akun sudah terverifikasi murni (Aktif), langsung blokir keras!
+		if existingUser.IsVerified {
+			c.JSON(http.StatusConflict, gin.H{"error": "Email atau Nomor WhatsApp sudah terdaftar aktif di sistem bray!"})
+			return
+		}
+
+		// 🔓 JALUR B: Jika akun masih pending (IsVerified == false, efek klik batal)
+		// Kita lakukan OVERWRITE / UPDATE data lamanya biar ga memicu error duplicate key bray bantai!
+		hashedPassword, errHash := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+		if errHash != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengamankan sandi akun"})
+			return
+		}
+
+		errUpdate := src.DB.Model(&existingUser).Updates(map[string]interface{}{
+			"name":          input.Name,
+			"password":      string(hashedPassword),
+			"tempat_lahir":  input.TempatLahir,
+			"tanggal_lahir": input.TanggalLahir,
+			"otp_code":      "",  // Pastikan tetep bersih kosong sebelum dipilih
+			"otp_attempts":  0,   // Reset hitungan gagal
+			"locked_until":  nil, // Bebaskan gembok brute-force kalau ada
+		}).Error
+
+		if errUpdate != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui konfigurasi data pendaftaran tertunda bray"})
+			return
+		}
+
+		// Lempar status 200 OK, suruh frontend lari ke halaman Pilih OTP lagi bray!
+		c.JSON(http.StatusOK, gin.H{"message": "Melanjutkan aktivasi akun Anda yang tertunda bray.", "email": email, "phone": cleanPhone})
 		return
 	}
+
+	// 2. JALUR C: Pendaftaran Murni Baru (Belum pernah terdata sama sekali di DB bray)
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengamankan sandi akun"})
 		return
 	}
 
-	// 🚀 FIX ALUR: Registrasi tidak langsung men-generate OTP aktif atau mengirim email secara paksa.
-	// Status IsVerified: false, membiarkan user memilih jalurnya sendiri di frontend halaman SelectVerify.
 	user := models.User{
 		PublicID:     utils.GenerateULID(),
 		Name:         input.Name,
