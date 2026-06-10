@@ -113,6 +113,7 @@ const handlePilihPaket = (payload) => {
 					<button @click="scrollToSection('industri')" class="text-left text-xs font-black uppercase tracking-widest text-slate-600 py-3 px-3 rounded-xl hover:bg-slate-50 transition-colors">Solusi Industri</button>
 					<button @click="scrollToSection('features')" class="text-left text-xs font-black uppercase tracking-widest text-slate-600 py-3 px-3 rounded-xl hover:bg-slate-50 transition-colors">Teknologi Utama</button>
 					<button @click="scrollToSection('pricing')" class="text-left text-xs font-black uppercase tracking-widest text-slate-600 py-3 px-3 rounded-xl hover:bg-slate-50 transition-colors">Daftar Harga</button>
+					<router-link to="/login"" class="text-left text-xs font-black uppercase tracking-widest text-slate-600 py-3 px-3 rounded-xl hover:bg-slate-50 transition-colors">Login</router-link>
 				</div>
 			</transition>
 		</nav>
