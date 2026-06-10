@@ -56,7 +56,7 @@ func Register(c *gin.Context) {
 	var existingUser models.User
 	email := strings.ToLower(strings.TrimSpace(input.Email))
 	cleanPhone := utils.FormatPhoneNumber(input.NoHP)
-	
+
 	if err := src.DB.Where("LOWER(email) = ? OR no_hp = ?", email, cleanPhone).First(&existingUser).Error; err == nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "Email atau Nomor WhatsApp sudah terdaftar di sistem!"})
 		return
@@ -76,13 +76,13 @@ func Register(c *gin.Context) {
 		Password:     string(hashedPassword),
 		Role:         "owner",
 		IsVerified:   false,
-		OTPCode:      "", 
+		OTPCode:      "",
 		OTPExpired:   time.Now(),
 		TempatLahir:  input.TempatLahir,
 		TanggalLahir: input.TanggalLahir,
 		NoHP:         cleanPhone,
 	}
-	
+
 	if err := src.DB.Create(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat infrastruktur tenant"})
 		return
@@ -129,10 +129,10 @@ func VerifyOTP(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Format parameter data tidak valid"})
 		return
 	}
-	
+
 	var user models.User
 	cleanIdentifier := strings.ToLower(strings.TrimSpace(input.Email))
-	
+
 	// FIX QUERY: Presisi pencarian data berdasarkan tipe input identitas
 	query := src.DB
 	if strings.Contains(cleanIdentifier, "@") {
@@ -145,7 +145,7 @@ func VerifyOTP(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Identitas pengguna tidak ditemukan"})
 		return
 	}
-	
+
 	if user.LockedUntil != nil && user.LockedUntil.Year() == 2099 {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Akun dibekukan permanen. Hubungi IT Operations pusat."})
 		return
@@ -159,7 +159,7 @@ func VerifyOTP(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Kode OTP telah kedaluwarsa!"})
 		return
 	}
-	
+
 	if user.OTPCode == "" || user.OTPCode != input.OTP {
 		newAttempts := user.OTPAttempts + 1
 		updates := map[string]interface{}{"otp_attempts": newAttempts}
@@ -179,7 +179,7 @@ func VerifyOTP(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Kode OTP tidak cocok! Sisa percobaan sebelum dikunci: %d kali.", 4-newAttempts%4)})
 		return
 	}
-	
+
 	updates := map[string]interface{}{"is_verified": true, "otp_attempts": 0, "locked_until": nil, "otp_code": ""}
 	src.DB.Model(&user).Updates(updates)
 	c.JSON(http.StatusOK, gin.H{"message": "Verifikasi identitas sukses!"})
@@ -303,12 +303,47 @@ func SelectStore(c *gin.Context) {
 func GetMe(c *gin.Context) {
 	userIDRaw, _ := c.Get("user_id")
 	userID := uint(userIDRaw.(float64))
+
 	var user models.User
 	if err := src.DB.Preload("Store").First(&user, userID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User tidak ditemukan!"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"user_id": user.ID, "public_id": user.PublicID, "name": user.Name, "no_hp": user.NoHP, "nik": user.NIK, "role": user.Role, "is_verified": user.IsVerified, "foto_url": user.FotoURL, "biometric_url": user.BiometricURL, "tempat_lahir": user.TempatLahir, "tanggal_lahir": user.TanggalLahir, "store_name": user.Store.NamaToko, "store_logo": user.Store.LogoURL, "business_type": user.Store.BusinessType, "subscription_plan": user.Store.SubscriptionPlan, "fitur_aktif": user.Store.FiturAktif})
+
+	// 🚀 STEP PENYELAMAT: Query list seluruh toko milik owner ini dari database
+	var listStores []models.Store
+	if user.Role == "owner" {
+		// Kalau dia owner, tarik semua toko yang owner_id-nya adalah dia bray
+		src.DB.Where("owner_id = ?", user.ID).Find(&listStores)
+	} else {
+		// Kalau staf/kasir, masukin aja ruko tempat dia bekerja biar gak kosong bray
+		if user.StoreID != nil {
+			src.DB.Where("id = ?", *user.StoreID).Find(&listStores)
+		}
+	}
+
+	// Balikin semua field asli milik lu, tapi kita selipin array "stores" di paling bawah!
+	c.JSON(http.StatusOK, gin.H{
+		"user_id":           user.ID,
+		"public_id":         user.PublicID,
+		"name":              user.Name,
+		"no_hp":             user.NoHP,
+		"nik":               user.NIK,
+		"role":              user.Role,
+		"is_verified":       user.IsVerified,
+		"foto_url":          user.FotoURL,
+		"biometric_url":     user.BiometricURL,
+		"tempat_lahir":      user.TempatLahir,
+		"tanggal_lahir":     user.TanggalLahir,
+		"store_name":        user.Store.NamaToko,
+		"store_logo":        user.Store.LogoURL,
+		"business_type":     user.Store.BusinessType,
+		"subscription_plan": user.Store.SubscriptionPlan,
+		"fitur_aktif":       user.Store.FiturAktif,
+
+		// 🔒 SEKAT SAKTI: Ini yang ditunggu-tunggu sama SelectStore.vue lu bray!
+		"stores": listStores,
+	})
 }
 
 func UpdateProfile(c *gin.Context) {
@@ -328,7 +363,7 @@ func UpdateProfile(c *gin.Context) {
 	if tanggalLahir := c.PostForm("tanggal_lahir"); tanggalLahir != "" {
 		user.TanggalLahir = tanggalLahir
 	}
-	
+
 	bucketName := os.Getenv("SUPABASE_BUCKET_NAME")
 	if fileHeader, err := c.FormFile("foto"); err == nil {
 		if fileHeader.Size > 5*1024*1024 {
@@ -495,7 +530,7 @@ func ResetPassword(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memproses keamanan password"})
 		return
 	}
-	
+
 	// Sukses memperbarui data, reset counter percobaan ke nol
 	if err := src.DB.Model(&user).Updates(map[string]interface{}{
 		"password":     string(hashedPassword),
@@ -506,7 +541,7 @@ func ResetPassword(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan password baru ke database"})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{"message": "Password berhasil diperbarui secara otomatis. Silakan login kembali."})
 }
 

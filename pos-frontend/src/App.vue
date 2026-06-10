@@ -1,7 +1,7 @@
 <template>
 	<router-view></router-view>
 
-	<div v-auto-animate>
+	<!-- <div v-auto-animate>
 		<div v-if="showInstallModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] p-4">
 			<div class="relative bg-white p-6 rounded-2xl max-w-sm w-full text-center shadow-2xl border border-gray-100">
 				<button @click="closeAndDeferModal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition" aria-label="Tutup">
@@ -24,7 +24,7 @@
 				</div>
 			</div>
 		</div>
-	</div>
+	</div> -->
 </template>
 
 <script setup>

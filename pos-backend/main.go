@@ -47,7 +47,6 @@ func main() {
 	fnbOrderRepo := fnbRepository.NewOrderRepo(src.DB)
 	fnbOrderHandler := fnbDelivery.NewOrderHandler(fnbOrderRepo)
 
-
 	// 2. KONFIGURASI ENGINE WEB SERVER
 	r := gin.Default()
 
@@ -61,13 +60,15 @@ func main() {
 
 			allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 			// FIX SECURITY: Jika di Production ENV kosong, TOLAK akses demi keamanan data penyewa (Tenant)
-			if allowedOrigins == "" { 
+			if allowedOrigins == "" {
 				log.Println("CRITICAL ERROR: ALLOWED_ORIGINS tidak terdeteksi di lingkungan Production!")
-				return false 
-			} 
-			
+				return false
+			}
+
 			for _, allowed := range strings.Split(allowedOrigins, ",") {
-				if origin == strings.TrimSpace(allowed) { return true }
+				if origin == strings.TrimSpace(allowed) {
+					return true
+				}
 			}
 			return false
 		},
@@ -91,11 +92,10 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": "sukses", "message": "Halo Bos! Server Go Berhasil Menyala !"})
 	})
 
-
 	// ==========================================
 	// -- RUTE API SAAS PUBLIC (GLOBAL & AUTH) --
 	// ==========================================
-	
+
 	r.POST("/api/register", auth.Register)
 	r.POST("/api/verify-otp", auth.VerifyOTP)
 	r.POST("/api/login", auth.Login)
@@ -104,14 +104,15 @@ func main() {
 	r.POST("/api/reset-password", auth.ResetPassword)
 	r.POST("/api/auth/check-account", auth.CheckAccount)
 
+	r.POST("/api/re-trigger-payment", auth.ReTriggerPaymentHandler)
+
 	// Webhook Gateway Midtrans (Harus divalidasi Signature Key-nya di dalam handler untuk mencegah pemalsuan status bayar)
 	r.POST("/api/retail/midtrans/webhook", retailHandler.MidtransWebhook)
-
 
 	// ==========================================
 	// -- RUTE TERPROTEKSI (MIDDLEWARE GATEWAY) --
 	// ==========================================
-	
+
 	api := r.Group("/api")
 	api.Use(middlewares.RequireAuth)
 	{
@@ -144,7 +145,9 @@ func main() {
 	}
 
 	port := os.Getenv("PORT")
-	if port == "" { port = "8080" }
+	if port == "" {
+		port = "8080"
+	}
 
 	log.Println("Server berjalan di port: " + port)
 	r.Run("0.0.0.0:" + port)

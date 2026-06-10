@@ -78,14 +78,14 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 	rg.GET("/stock-opname/last-status", middlewares.RequireSaaSLevel(3), h.GetLastSOStatus)
 	rg.GET("/stock-opname/last-minus", middlewares.RequireSaaSLevel(3), h.GetLastSOMinusItems)
 	rg.GET("/stock-opname/history", middlewares.RequireSaaSLevel(3), h.GetStockOpnameHistory)
-	
+
 	// 🛡️ FIX MULTIPLE CRITICAL: Ubah PATCH -> POST & sesuaikan path urutan agar klop dengan Axios Vue bray!
 	rg.POST("/stock-opname/approve/:id", middlewares.RequireSaaSLevel(3), h.ApproveStockOpname)
 
 	// Klaim Penemuan Barang Nyempil (Adjustment)
 	rg.POST("/stock-adjustment/request", middlewares.RequireSaaSLevel(3), h.SubmitKlaimBarang)
 	rg.GET("/stock-adjustment/history", middlewares.RequireSaaSLevel(3), h.GetStockAdjustmentHistory)
-	
+
 	// 🛡️ FIX MULTIPLE CRITICAL: Ubah PATCH -> POST & sesuaikan path urutan approval klaim bray bray!
 	rg.POST("/stock-adjustment/approve/:id", middlewares.RequireSaaSLevel(3), h.ApproveStockAdjustment)
 

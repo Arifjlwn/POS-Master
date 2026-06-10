@@ -508,3 +508,4 @@ func (h *RetailHandler) CreatePosMidtransOrder(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"token": snapResp.Token, "order_id": orderID})
 }
+
