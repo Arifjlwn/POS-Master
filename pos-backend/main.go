@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"pos-backend/controllers/auth"
+	"pos-backend/controllers/admin"
 	src "pos-backend/src/core/config"
 	"pos-backend/src/core/middlewares"
 
@@ -100,14 +101,15 @@ func main() {
 	r.POST("/api/verify-otp", auth.VerifyOTP)
 	r.POST("/api/login", auth.Login)
 	r.POST("/api/auth/send-otp-wa", auth.SendOTPWhatsApp)
-	r.POST("/api/auth/send-otp-email", auth.SendOTPEmailEndpoint) // 🚀 FIX: Endpoint baru email OTP sinkron
+	r.POST("/api/auth/send-otp-email", auth.SendOTPEmailEndpoint)
 	r.POST("/api/reset-password", auth.ResetPassword)
 	r.POST("/api/auth/check-account", auth.CheckAccount)
-
 	r.POST("/api/re-trigger-payment", auth.ReTriggerPaymentHandler)
 
 	// Webhook Gateway Midtrans (Harus divalidasi Signature Key-nya di dalam handler untuk mencegah pemalsuan status bayar)
 	r.POST("/api/retail/midtrans/webhook", retailHandler.MidtransWebhook)
+
+	r.POST("/api/admin/login", admin.LoginAdminHandler)
 
 	// ==========================================
 	// -- RUTE TERPROTEKSI (MIDDLEWARE GATEWAY) --
