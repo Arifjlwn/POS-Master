@@ -141,7 +141,7 @@ const triggerPrint = () => {
 		<div class="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] shadow-2xl w-full max-w-sm flex flex-col max-h-[90vh] border-[6px] md:border-[8px] border-slate-800 print:border-none print:shadow-none print:max-h-none print:max-w-none print:rounded-none print:m-0 print:p-0">
 			<div class="overflow-y-auto custom-scrollbar bg-white p-2 mx-auto print:overflow-visible print:mx-0 print:px-3 print:py-2 select-none" id="print-area">
 				<div class="text-center mb-4 font-mono leading-none">
-					<div v-if="storeData?.logo_url && storeData.logo_url !== ''" class="mb-2">
+					<div v-if="storeData?.logo_url && storeData.logo_url !== ''">
 						<img :src="storeData.logo_url.startsWith('http://') || storeData.logo_url.startsWith('https://') ? storeData.logo_url : API_BASE_URL + storeData.logo_url" class="w-16 h-16 object-contain mx-auto grayscale contrast-200 brightness-90" alt="Logo Toko" />
 					</div>
 
@@ -216,6 +216,11 @@ const triggerPrint = () => {
 				<div class="text-center mt-4 font-black font-mono text-[9px] border border-black p-1.5 uppercase leading-tight whitespace-pre-line">
 					{{ storeData?.receipt_footer || storeData?.ReceiptFooter || 'TERIMA KASIH ATAS KUNJUNGAN ANDA!' }}
 				</div>
+
+				<div class="hidden print:block font-mono text-[9px] leading-none select-none text-white">
+					<br />
+					&nbsp; .
+				</div>
 			</div>
 
 			<div class="mt-4 md:mt-6 flex flex-col gap-2 md:gap-3 shrink-0 print:hidden">
@@ -227,18 +232,59 @@ const triggerPrint = () => {
 </template>
 
 <style scoped>
-/* FIX CSS THERMAL: Mengunci lebar container dinamis murni saat simulasi dan eksekusi printer ! */
 #print-area {
 	width: v-bind("storeData?.printer_width || storeData?.PrinterWidth || '58mm'") !important;
 	max-width: 100% !important;
 }
 
+.custom-scrollbar::-webkit-scrollbar {
+	width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+	background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+	background: #cbd5e1;
+	border-radius: 10px;
+}
+
+/* ==========================================
+   🖨️ PREMIUM MULTI-TENANT DYNAMIC PRINT ENGINE 
+   ========================================== */
 @media print {
+	@page {
+		/* 🚀 FORCE ATAS DEMPET: Bersihkan margin halaman virtual browser tanpa toleransi */
+		margin: 0mm 0mm 0mm 0mm !important;
+		size: v-bind("storeData?.printer_width || storeData?.PrinterWidth || '58mm'") auto !important;
+	}
+
+	html,
+	body {
+		background: #ffffff !important;
+		margin: 0 !important;
+		padding: 0 !important;
+		height: auto !important;
+		max-height: none !important;
+		box-sizing: border-box !important;
+	}
+
 	#print-area {
 		width: v-bind("storeData?.printer_width || storeData?.PrinterWidth || '58mm'") !important;
 		margin: 0 auto !important;
-		padding: 0 !important;
-		background: white !important;
+
+		/* 🚀 FIX CRITICAL MARGIN ATAS: 
+           - Padding atas dikunci mati ke 0mm biar konten langsung nempel ke bibir printer bray!
+           - Padding kanan-kiri 4mm (safe zone scale 100%)
+           - Padding bawah 5mm (penahan dorongan titik putih html) */
+		padding: 0mm 4mm 5mm 4mm !important;
+
+		box-sizing: border-box !important;
+		background: #ffffff !important;
+		display: block !important;
+	}
+
+	#print-area * {
+		box-sizing: border-box !important;
 	}
 }
 </style>
