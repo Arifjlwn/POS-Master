@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"pos-backend/controllers/auth"
 	"pos-backend/controllers/admin"
-	src "pos-backend/src/core/config"
+	"pos-backend/controllers/auth"
 	"pos-backend/middlewares"
+	src "pos-backend/src/core/config"
 	"pos-backend/utils"
 
 	fnbDelivery "pos-backend/src/modules/fnb/delivery"
@@ -56,13 +56,11 @@ func main() {
 	// CORS Tight Guard dinamis berbasis ENV untuk mengunci eksploitasi di Production
 	r.Use(cors.New(cors.Config{
 		AllowOriginFunc: func(origin string) bool {
-			// Jika mode development, buka gerbang untuk memudahkan pengujian via HP/Lokal
 			if os.Getenv("APP_ENV") == "development" {
 				return true
 			}
 
 			allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
-			// FIX SECURITY: Jika di Production ENV kosong, TOLAK akses demi keamanan data penyewa (Tenant)
 			if allowedOrigins == "" {
 				log.Println("CRITICAL ERROR: ALLOWED_ORIGINS tidak terdeteksi di lingkungan Production!")
 				return false
@@ -85,7 +83,7 @@ func main() {
 	r.Static("/uploads", "./uploads")
 	r.Static("/public", "./public")
 
-	// Payload Size Global Limiter (Max 5 MB upload protection) - Mencegah DOS dari upload file raksasa
+	// Payload Size Global Limiter (Max 5 MB upload protection)
 	r.Use(func(c *gin.Context) {
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 5*1024*1024)
 		c.Next()
@@ -98,7 +96,6 @@ func main() {
 	// ==========================================
 	// -- RUTE API SAAS PUBLIC (GLOBAL & AUTH) --
 	// ==========================================
-
 	r.POST("/api/register", auth.Register)
 	r.POST("/api/verify-otp", auth.VerifyOTP)
 	r.POST("/api/login", auth.Login)
@@ -108,35 +105,45 @@ func main() {
 	r.POST("/api/auth/check-account", auth.CheckAccount)
 	r.POST("/api/re-trigger-payment", auth.ReTriggerPaymentHandler)
 
-	// Webhook Gateway Midtrans (Harus divalidasi Signature Key-nya di dalam handler untuk mencegah pemalsuan status bayar)
+	// Webhook Gateway Midtrans
 	r.POST("/api/retail/midtrans/webhook", retailHandler.MidtransWebhook)
 
+	// ==========================================
+	// --       🚀 GERBANG UTAMA ADMIN         --
+	// ==========================================
 	adminCtrl := &admin.AdminController{DB: src.DB}
-	
-	r.POST("/api/admin/login", middlewares.AdminLoginRateLimiter(), auth.Login)
 
-    adminRoutes := r.Group("/api/admin")
-    adminRoutes.Use(middlewares.RequireAuth)       
-    adminRoutes.Use(middlewares.RequireSuperAdmin()) 
-    {
-        adminRoutes.GET("/dashboard-stats", adminCtrl.GetTelemetryStats)
-    }
+	// Gerbang Otorisasi Masuk dengan Rate Limiter Keamanan
+	r.POST("/api/admin/login", middlewares.AdminLoginRateLimiter(), adminCtrl.AdminLogin)
 
-	// ==========================================
-	// -- RUTE TERPROTEKSI (MIDDLEWARE GATEWAY) --
-	// ==========================================
-
-	api := r.Group("/api")
-	api.Use(middlewares.RequireAuth)
+	// Kelompok Rute Terproteksi Khusus Super Admin
+	adminRoutes := r.Group("/api/admin")
+	adminRoutes.Use(middlewares.RequireAuth)
+	adminRoutes.Use(middlewares.RequireSuperAdmin())
 	{
-		api.GET("/me", auth.GetMe)
-		api.PUT("/profile", auth.UpdateProfile)
-		api.PUT("/password", auth.UpdatePassword)
-		api.POST("/auth/select-store", auth.SelectStore)
-		api.POST("/setup", auth.SetupTokoBaru)
+		// 📊 Prioritas #1: Telemetri Dashboard Stats Monitor
+		adminRoutes.GET("/dashboard-stats", adminCtrl.GetTelemetryStats)
+
+		// 🏪 FIX: Samakan rute menjadi /stores agar sinkron dengan Axios Vue 3!
+		adminRoutes.GET("/stores", adminCtrl.GetAllTenants)
+		adminRoutes.PUT("/stores/:id/suspend", adminCtrl.SuspendTenant)
+		adminRoutes.PUT("/stores/:id/activate", adminCtrl.ActivateTenant)
+	}
+
+	// ==========================================
+	// -- RUTE TERPROTEKSI MERCHANT (STORE-LEVEL)--
+	// ==========================================
+	apiGroup := r.Group("/api")
+	apiGroup.Use(middlewares.RequireAuth)
+	{
+		apiGroup.GET("/me", auth.GetMe)
+		apiGroup.PUT("/profile", auth.UpdateProfile)
+		apiGroup.PUT("/password", auth.UpdatePassword)
+		apiGroup.POST("/auth/select-store", auth.SelectStore)
+		apiGroup.POST("/setup", auth.SetupTokoBaru)
 
 		// 🛒 Modul Bisnis: RETAIL MULTI-TENANT
-		retailAPI := api.Group("/retail")
+		retailAPI := apiGroup.Group("/retail")
 		{
 			retailDelivery.RegisterRetailInventoryRoutes(retailAPI, retailHandler)
 			retailAPI.POST("/pos/checkout", retailHandler.CreateTransaction)
@@ -145,13 +152,13 @@ func main() {
 		}
 
 		// 🧺 Modul Bisnis: LAUNDRY ECOSYSTEM
-		laundryAPI := api.Group("/laundry")
+		laundryAPI := apiGroup.Group("/laundry")
 		{
 			laundryDelivery.RegisterLaundryRoutes(laundryAPI, laundryHandler)
 		}
 
 		// 🍔 Modul Bisnis: FOOD & BEVERAGES (FnB)
-		fnbAPI := api.Group("/fnb")
+		fnbAPI := apiGroup.Group("/fnb")
 		{
 			fnbDelivery.RegisterFnBRoutes(fnbAPI, fnbMenuHandler, fnbOrderHandler)
 		}

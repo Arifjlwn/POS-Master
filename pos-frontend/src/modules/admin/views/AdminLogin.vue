@@ -1,7 +1,7 @@
 <script setup>
+import Swal from 'sweetalert2';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import Swal from 'sweetalert2';
 import api from '../../../api.js';
 
 const router = useRouter();
@@ -10,31 +10,31 @@ const password = ref('');
 const isLoading = ref(false);
 
 const handleAdminLogin = async () => {
-    if (!email.value || !password.value) return;
-    
-    isLoading.value = true;
-    try {
-        // 🚀 KITA SAMAKAN KUNCI ENKRIPSINYA SAMA SPEK STRUCT BACKEND BRAY!
-        const res = await api.post('/admin/login', {
-            identifier: email.value, // ◄ Ganti 'email' jadi 'identifier' biar sinkron 100%!
-            password: password.value
-        });
-        
-        // Simpan token kedaulatan kasta tertinggi bray
-        localStorage.setItem('token', res.data.token);
-        localStorage.setItem('role', res.data.role);
-        localStorage.setItem('name', res.data.name);
+	if (!email.value || !password.value) return;
 
-        Swal.fire({
-            icon: 'success',
-            title: 'Akses Diberikan bray!',
-            text: 'Membuka sistem telemetri Mission Control...',
-            timer: 1500,
-            showConfirmButton: false,
-            customClass: { popup: 'rounded-[24px]' }
-        }).then(() => {
-            router.push('/admin/dashboard');
-        });
+	isLoading.value = true;
+	try {
+		// 🚀 FIX: Ubah 'identifier' menjadi 'email' agar sinkron dengan struct GIN Go!
+		const res = await api.post('/admin/login', {
+			email: email.value,
+			password: password.value,
+		});
+
+		// Simpan token kedaulatan kasta tertinggi
+		localStorage.setItem('token', res.data.token);
+		localStorage.setItem('role', res.data.user.role);
+		localStorage.setItem('name', res.data.user.name);
+
+		Swal.fire({
+			icon: 'success',
+			title: 'Akses Diberikan!',
+			text: 'Membuka sistem telemetri Mission Control...',
+			timer: 1500,
+			showConfirmButton: false,
+			customClass: { popup: 'rounded-[24px]' },
+		}).then(() => {
+			router.push('/admin/dashboard');
+		});
 	} catch (err) {
 		Swal.fire({
 			icon: 'error',
@@ -58,7 +58,7 @@ const handleAdminLogin = async () => {
 			<div class="text-center mb-8">
 				<span class="px-3 py-1 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-[10px] font-black uppercase tracking-widest">Pusat Otoritas Tertinggi</span>
 				<h1 class="text-2xl font-black text-white tracking-tight mt-3">ARZURA POS FOUNDER</h1>
-				<p class="text-slate-400 text-xs font-medium mt-1">Silakan verifikasi kunci enkripsi admin Anda .</p>
+				<p class="text-slate-400 text-xs font-medium mt-1">Silakan verifikasi kunci enkripsi admin Anda.</p>
 			</div>
 
 			<form @submit.prevent="handleAdminLogin" class="space-y-5">

@@ -235,6 +235,11 @@ const triggerPrint = () => {
 					<div class="w-2/3 mx-auto border-t border-black pt-1 font-black">{{ currentUser?.name || 'KASIR OPERATOR' }}</div>
 					<div class="text-[8px] mt-1 tracking-widest">( K A S I R )</div>
 				</div>
+
+				<div class="hidden print:block font-mono text-[9px] leading-none select-none text-white">
+					<br />
+					&nbsp; .
+				</div>
 			</div>
 
 			<div class="mt-4 md:mt-6 flex flex-col gap-2 md:gap-3 shrink-0 print:hidden">

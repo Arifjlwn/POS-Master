@@ -1,64 +1,117 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { onMounted, onUnmounted, provide, ref } from 'vue';
+import api from '../../../../api.js'; // Sesuaikan relative path ke api.js lu bray
 import Sidebar from './Sidebar.vue';
 import TopNavbar from './TopNavbar.vue';
 
-// 🚀 KONFIGURASI AWAL: Sidebar diatur tertutup (false) secara default untuk semua resolusi layar
+// 🚀 STATE REALTIME INFRASTRUKTUR GLOBAL
+const telemetryData = ref({
+	stats: {
+		total_stores: 0,
+		active_stores: 0,
+		suspended_stores: 0,
+	},
+	server_health: {
+		cpu_usage: 0,
+		ram_usage: 0,
+		db_status: 'Connecting...',
+		latency: '0ms',
+	},
+	recent_activities: [],
+});
+
 const isSidebarOpen = ref(false);
+const isLoadingTelemetry = ref(false);
+let globalTelemetryInterval = null;
+
+// Fungsi terpusat menarik data dari Go Backend (Murni Realtime)
+const fetchGlobalTelemetry = async (showSilently = false) => {
+	if (!showSilently) isLoadingTelemetry.value = true;
+	try {
+		const res = await api.get('/admin/dashboard-stats');
+		if (res.data?.status === 'sukses') {
+			telemetryData.value = {
+				stats: res.data.data || {},
+				server_health: res.data.server_health || {},
+				recent_activities: res.data.recent_activities || [],
+			};
+		}
+	} catch (err) {
+		console.error('Gagal menarik sinkronisasi telemetri global:', err);
+	} finally {
+		if (!showSilently) isLoadingTelemetry.value = false;
+	}
+};
+
+// 🚀 JURUS PROVIDE: Menyebarkan data realtime ke semua anak halaman (MissionControl dll)
+provide('globalTelemetry', {
+	telemetryData,
+	isLoadingTelemetry,
+	refreshTelemetry: () => fetchGlobalTelemetry(false),
+});
 
 // Fungsi memantau perubahan ukuran layar guna menjaga konsistensi UI
 const handleResize = () => {
-    if (window.innerWidth < 1024) {
-        isSidebarOpen.value = false;
-    }
+	if (window.innerWidth < 1024) {
+		isSidebarOpen.value = false;
+	}
 };
 
-onMounted(() => window.addEventListener('resize', handleResize));
-onUnmounted(() => window.removeEventListener('resize', handleResize));
+onMounted(() => {
+	window.addEventListener('resize', handleResize);
 
-// Fungsi menutup sidebar secara aman pada perangkat mobile
+	// Eksekusi trigger telemetri kasta tertinggi
+	fetchGlobalTelemetry(false);
+	globalTelemetryInterval = setInterval(() => {
+		fetchGlobalTelemetry(true); // Silent polling tiap 10 detik
+	}, 10000);
+});
+
+onUnmounted(() => {
+	window.removeEventListener('resize', handleResize);
+	if (globalTelemetryInterval) clearInterval(globalTelemetryInterval);
+});
+
 const handleCloseSidebar = () => {
-    if (window.innerWidth < 1024) {
-        isSidebarOpen.value = false;
-    }
+	if (window.innerWidth < 1024) {
+		isSidebarOpen.value = false;
+	}
 };
 
-// Fungsi mengubah status buka/tutup sidebar dari TopNavbar
 const toggleSidebar = () => {
-    isSidebarOpen.value = !isSidebarOpen.value;
+	isSidebarOpen.value = !isSidebarOpen.value;
 };
 </script>
 
 <template>
-    <div class="min-h-screen bg-[#0B0F19] text-slate-300 font-sans flex overflow-hidden selection:bg-indigo-500/30">
-        
-        <Sidebar :isOpen="isSidebarOpen" @close="handleCloseSidebar" />
+	<div class="min-h-screen bg-[#0B0F19] text-slate-300 font-sans flex overflow-hidden selection:bg-indigo-500/30">
+		<Sidebar :isOpen="isSidebarOpen" @close="handleCloseSidebar" />
 
-        <div class="flex-1 flex flex-col h-screen overflow-hidden relative">
-            
-            <TopNavbar @toggle-sidebar="toggleSidebar" />
+		<div class="flex-1 flex flex-col h-screen overflow-hidden relative">
+			<TopNavbar @toggle-sidebar="toggleSidebar" :db-status="telemetryData.server_health.db_status" :latency="telemetryData.server_health.latency" />
 
-            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-[#0B0F19] p-4 lg:p-8">
-                <router-view v-slot="{ Component }">
-                    <transition name="fade" mode="out-in">
-                        <component :is="Component" />
-                    </transition>
-                </router-view>
-            </main>
-
-        </div>
-    </div>
+			<main class="flex-1 overflow-x-hidden overflow-y-auto bg-[#0B0F19] p-4 lg:p-8">
+				<router-view v-slot="{ Component }">
+					<transition name="fade" mode="out-in">
+						<component :is="Component" />
+					</transition>
+				</router-view>
+			</main>
+		</div>
+	</div>
 </template>
 
 <style>
 /* Animasi transisi perpindahan halaman */
 .fade-enter-active,
 .fade-leave-active {
-    transition: opacity 0.2s ease, transform 0.2s ease;
+	transition:
+		opacity 0.2s ease,
+		transform 0.2s ease;
 }
 .fade-enter-from,
 .fade-leave-to {
-    opacity: 0;
-    transform: translateY(10px);
+	opacity: 0;
+	transform: translateY(10px);
 }
 </style>

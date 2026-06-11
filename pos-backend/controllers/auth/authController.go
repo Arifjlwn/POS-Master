@@ -7,11 +7,12 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"strings"
+	"time"
+
 	"pos-backend/models"
 	src "pos-backend/src/core/config"
 	"pos-backend/utils"
-	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -67,7 +68,6 @@ func Register(c *gin.Context) {
 		}
 
 		// 🔓 JALUR B: Jika akun masih pending (IsVerified == false, efek klik batal)
-		// Kita lakukan OVERWRITE / UPDATE data lamanya biar ga memicu error duplicate key  bantai!
 		hashedPassword, errHash := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 		if errHash != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengamankan sandi akun"})
@@ -89,7 +89,6 @@ func Register(c *gin.Context) {
 			return
 		}
 
-		// Lempar status 200 OK, suruh frontend lari ke halaman Pilih OTP lagi !
 		c.JSON(http.StatusOK, gin.H{"message": "Melanjutkan aktivasi akun Anda yang tertunda.", "email": email, "phone": cleanPhone})
 		return
 	}
@@ -120,6 +119,9 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	// 🚀 SUNTIKAN SENSOR LOG: Pendaftaran Akun Baru Berhasil Dibuat
+	utils.RecordSystemLog(c, "Registrasi Akun Baru", user.PublicID, "Pengguna baru mendaftar di platform: "+user.Name)
+
 	c.JSON(http.StatusCreated, gin.H{"message": "Pendaftaran berhasil! Silakan tentukan metode aktivasi akun Anda.", "email": input.Email, "phone": cleanPhone})
 }
 
@@ -145,9 +147,7 @@ func SendOTPEmailEndpoint(c *gin.Context) {
 		return
 	}
 
-	// Menjalankan pengiriman email pihak ketiga secara asynchronous agar response API tetap instan
 	go utils.SendOTPEmail(emailClean, otp)
-
 	c.JSON(http.StatusOK, gin.H{"message": "Kode OTP sukses dikirim ke Email Anda! Silakan cek kotak masuk atau spam.", "email": emailClean})
 }
 
@@ -165,7 +165,6 @@ func VerifyOTP(c *gin.Context) {
 	var user models.User
 	cleanIdentifier := strings.ToLower(strings.TrimSpace(input.Email))
 
-	// FIX QUERY: Presisi pencarian data berdasarkan tipe input identitas
 	query := src.DB
 	if strings.Contains(cleanIdentifier, "@") {
 		query = query.Where("email = ?", cleanIdentifier)
@@ -342,19 +341,15 @@ func GetMe(c *gin.Context) {
 		return
 	}
 
-	// 🚀 STEP PENYELAMAT: Query list seluruh toko milik owner ini dari database
 	var listStores []models.Store
 	if user.Role == "owner" {
-		// Kalau dia owner, tarik semua toko yang owner_id-nya adalah dia 
 		src.DB.Where("owner_id = ?", user.ID).Find(&listStores)
 	} else {
-		// Kalau staf/kasir, masukin aja ruko tempat dia bekerja biar gak kosong 
 		if user.StoreID != nil {
 			src.DB.Where("id = ?", *user.StoreID).Find(&listStores)
 		}
 	}
 
-	// Balikin semua field asli milik lu, tapi kita selipin array "stores" di paling bawah!
 	c.JSON(http.StatusOK, gin.H{
 		"user_id":           user.ID,
 		"public_id":         user.PublicID,
@@ -372,9 +367,7 @@ func GetMe(c *gin.Context) {
 		"business_type":     user.Store.BusinessType,
 		"subscription_plan": user.Store.SubscriptionPlan,
 		"fitur_aktif":       user.Store.FiturAktif,
-
-		// 🔒 SEKAT SAKTI: Ini yang ditunggu-tunggu sama SelectStore.vue lu !
-		"stores": listStores,
+		"stores":            listStores,
 	})
 }
 
@@ -547,7 +540,7 @@ func ResetPassword(c *gin.Context) {
 		newAttempts := user.OTPAttempts + 1
 		updates := map[string]interface{}{"otp_attempts": newAttempts}
 		if newAttempts >= 5 {
-			updates["locked_until"] = time.Now().Add(time.Hour * 2) // Kunci 2 jam jika brute-force token reset sandi
+			updates["locked_until"] = time.Now().Add(time.Hour * 2) 
 			src.DB.Model(&user).Updates(updates)
 			c.JSON(http.StatusForbidden, gin.H{"error": "Terlalu banyak kegagalan verifikasi! Akses pemulihan ditangguhkan selama 2 jam."})
 			return
@@ -563,7 +556,6 @@ func ResetPassword(c *gin.Context) {
 		return
 	}
 
-	// Sukses memperbarui data, reset counter percobaan ke nol
 	if err := src.DB.Model(&user).Updates(map[string]interface{}{
 		"password":     string(hashedPassword),
 		"otp_code":     "",
@@ -573,6 +565,9 @@ func ResetPassword(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan password baru ke database"})
 		return
 	}
+
+	// 🚀 SUNTIKAN SENSOR LOG: Pemulihan Keamanan Berhasil
+	utils.RecordSystemLog(c, "Pemulihan Keamanan", user.PublicID, "Reset sandi berhasil untuk akun: "+user.Name)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Password berhasil diperbarui secara otomatis. Silakan login kembali."})
 }

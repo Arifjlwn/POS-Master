@@ -70,7 +70,7 @@ func SetupTokoBaru(c *gin.Context) {
 	switch subPlan {
 	case "trial":
 		subStatus = "active"
-		subEnd = time.Now().AddDate(0, 0, 14) // 14 Hari Uji Coba Gratis 
+		subEnd = time.Now().AddDate(0, 0, 14) // 14 Hari Uji Coba Gratis
 		fiturAktif = `["kasir", "absensi", "export_excel", "multi_gudang", "ai_analyst", "whatsapp"]`
 
 	case "pro":
@@ -79,11 +79,11 @@ func SetupTokoBaru(c *gin.Context) {
 		fiturAktif = `["kasir", "absensi", "export_excel"]`
 
 	case "premium":
-		subStatus = "pending" // 🔒 Gembok 'pending' sebelum settlement Midtrans
+		subStatus = "pending"
 		subEnd = time.Now()
 		fiturAktif = `["kasir", "absensi", "export_excel", "multi_gudang", "whatsapp"]`
 
-	default: // Fallback ke paket "basic" jika kosong atau tidak cocok 
+	default:
 		subPlan = "basic"
 		subStatus = "pending"
 		subEnd = time.Now()
@@ -141,19 +141,22 @@ func SetupTokoBaru(c *gin.Context) {
 		return
 	}
 
+	// 🚀 SUNTIKAN SENSOR LOG: Pendaftaran Tenant/Toko Baru Berhasil
+	// RecordSystemLog (Sistem Publik) mencatat ada infrastruktur ruko baru yang berdiri di ekosistem lu!
+	utils.RecordSystemLog(c, "Registrasi Tenant Baru", newStore.PublicID, fmt.Sprintf("Toko bergabung: %s | Paket: %s | Mode: %s", newStore.NamaToko, strings.ToUpper(subPlan), subStatus))
+
 	c.JSON(http.StatusOK, gin.H{
 		"message":             "Konfigurasi sistem siap! Selamat datang di platform POS SaaS.",
 		"store_id":            newStore.ID,
 		"token":               tokenString,
 		"store_name":          newStore.NamaToko,
 		"subscription_plan":   newStore.SubscriptionPlan,
-		"subscription_status": newStore.SubscriptionStatus, // Kirim balik ke Vue buat validasi routing frontend
+		"subscription_status": newStore.SubscriptionStatus,
 		"data":                gin.H{"nama_toko": newStore.NamaToko, "business_type": newStore.BusinessType},
 	})
 }
 
 func ReTriggerPaymentHandler(c *gin.Context) {
-	// 1. Ambil payload JSON data store_id dari Vue
 	var input struct {
 		StoreID uint `json:"store_id" binding:"required"`
 	}
@@ -162,14 +165,12 @@ func ReTriggerPaymentHandler(c *gin.Context) {
 		return
 	}
 
-	// 2. Query data ruko/toko dari DB PostgreSQL
 	var store models.Store
 	if err := src.DB.First(&store, input.StoreID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Infrastruktur data toko tidak ditemukan"})
 		return
 	}
 
-	// 3. Hitung harga/nominal invoice berdasarkan tipe plan toko tersebut
 	var finalPrice int64 = 0
 	targetPlan := strings.ToLower(strings.TrimSpace(store.SubscriptionPlan))
 
@@ -185,40 +186,36 @@ func ReTriggerPaymentHandler(c *gin.Context) {
 		return
 	}
 
-	// 4. Inisialisasi Environment Gateway Midtrans 
-	// Variabel 'env' lu panggil di sini untuk menentukan core routing server Midtrans!
 	var env midtrans.EnvironmentType = midtrans.Sandbox
 	if os.Getenv("APP_ENV") == "production" {
 		env = midtrans.Production
 	}
 
-	// Suntik kredensial server key ke SDK Midtrans Go global instance 
 	midtrans.ServerKey = os.Getenv("MIDTRANS_SERVER_KEY")
 	midtrans.Environment = env
 
-	// 5. Racik kode Order ID unik ber-prefix "UPGRADE" agar otomatis lolos sensor Webhook lu !
 	planCode := strings.ReplaceAll(strings.ToUpper(targetPlan), " ", "")
 	orderID := fmt.Sprintf("UPGRADE-TOKO-%d-%s-%d", store.ID, planCode, time.Now().Unix())
 
-	// 6. Buat payload Request Snap untuk dikirim ke API Midtrans
 	req := &snap.Request{
 		TransactionDetails: midtrans.TransactionDetails{OrderID: orderID, GrossAmt: finalPrice},
 		Items:              &[]midtrans.ItemDetails{{ID: "SUB-" + planCode, Price: finalPrice, Qty: 1, Name: "Aktivasi Langganan " + store.SubscriptionPlan}},
 	}
 
-	// 7. Tembak server Midtrans buat nge-generate snapToken riil !
 	snapResp, errSnap := snap.CreateTransaction(req)
 	if errSnap != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal bernegosiasi ulang dengan Midtrans Gateway"})
 		return
 	}
 
-	// 8. Return response sukses 200 OK ke SetupToko.vue lu !
+	// 🚀 SUNTIKAN SENSOR LOG: Inisiasi Ulang Tagihan Midtrans
+	utils.RecordSystemLog(c, "Inisiasi Ulang Tagihan", store.PublicID, fmt.Sprintf("Ruko %s memicu ulang pembayaran paket %s (Rp%d)", store.NamaToko, planCode, finalPrice))
+
 	c.JSON(http.StatusOK, gin.H{
 		"message":    "Sesi billing pembayaran berhasil di-restore!",
 		"store_id":   store.ID,
 		"store_name": store.NamaToko,
-		"snap_token": snapResp.Token, // ◄ Token ril siap meledakkan modal di Vue lu !
+		"snap_token": snapResp.Token,
 		"order_id":   orderID,
 	})
 }
