@@ -9,8 +9,18 @@ import (
 
 // RecordAdminAction otomatis menangkap IP & browser admin untuk dicatat ke database
 func RecordAdminAction(c *gin.Context, action string, targetULID string, details string) error {
-	userIDRaw, _ := c.Get("user_id")
-	userID := uint(userIDRaw.(float64))
+	userIDRaw, exists := c.Get("user_id")
+
+	var userID uint = 0 // Default 0 kalau ternyata datanya nil (misal saat login)
+
+	// 🚀 SAFE GUARDING: Cek dulu valus-nya ada apa kagak, jangan langsung dihantam float64!
+	if exists && userIDRaw != nil {
+		if val, ok := userIDRaw.(float64); ok {
+			userID = uint(val)
+		} else if valInt, ok := userIDRaw.(uint); ok {
+			userID = valInt
+		}
+	}
 
 	emailRaw, _ := c.Get("email")
 	userEmail := "unknown_admin"

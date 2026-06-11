@@ -16,7 +16,7 @@ func InitSubscriptionCronJob() {
 	// 1. Eksekusi sapu bersih sekali saat server Go baru aja di-restart/dinyalain
 	executeAutoSuspend()
 
-	// 2. Buat alarm Ticker. Di sini gua set jalan SETIAP 1 JAM. 
+	// 2. Buat alarm Ticker. Di sini gua set jalan SETIAP 1 JAM.
 	// (Kalau lu mau ngetes cepet, ganti aja jadi '1 * time.Minute' bray)
 	ticker := time.NewTicker(1 * time.Hour)
 
