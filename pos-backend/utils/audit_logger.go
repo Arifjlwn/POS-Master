@@ -44,3 +44,18 @@ func RecordSystemLog(c *gin.Context, action string, targetULID string, details s
 
 	return src.DB.Create(&logData).Error
 }
+
+// RecordWorkerLog mencatat aktivitas dari background process tanpa butuh context web (Gin)
+func RecordWorkerLog(action string, targetULID string, details string) error {
+	logData := models.AuditLog{
+		UserID:         0,
+		UserEmail:      "SYSTEM_CRON", // ◄ Menandakan ini dieksekusi oleh Robot Auto-Pilot!
+		Action:         action,
+		TargetPublicID: targetULID,
+		Details:        details,
+		IPAddress:      "127.0.0.1",        // IP Localhost server
+		UserAgent:      "ARZURA_WORKER_V1", // Identitas Robot lu bray
+	}
+
+	return src.DB.Create(&logData).Error
+}

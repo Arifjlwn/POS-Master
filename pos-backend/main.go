@@ -35,6 +35,7 @@ func main() {
 	// 1. KONEKSI & INSTANSIASI LAYER (Dependency Injection Terpusat)
 	src.ConnectDatabase()
 	utils.SeedSuperAdmin(src.DB)
+	utils.InitSubscriptionCronJob()
 
 	// Inisialisasi Modul Retail
 	retailRepo := retailRepository.NewRetailRepo(src.DB)
