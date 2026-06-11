@@ -1,6 +1,6 @@
 <script setup>
 import Swal from 'sweetalert2';
-import { onMounted, ref, computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import api from '../../../api.js'; // Sesuaikan relative path ke api.js lu bray
 
 // Import sub-komponen kedaulatan kita
