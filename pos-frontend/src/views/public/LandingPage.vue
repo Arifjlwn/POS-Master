@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-// 🚀 IMPORT KOMPONEN TERPADU BARU LU 
+// 🚀 IMPORT KOMPONEN TERPADU BARU LU
 import PricingPlan from '../../modules/retail/components/PricingPlan.vue';
 
 const router = useRouter();
@@ -113,7 +113,7 @@ const handlePilihPaket = (payload) => {
 					<button @click="scrollToSection('industri')" class="text-left text-xs font-black uppercase tracking-widest text-slate-600 py-3 px-3 rounded-xl hover:bg-slate-50 transition-colors">Solusi Industri</button>
 					<button @click="scrollToSection('features')" class="text-left text-xs font-black uppercase tracking-widest text-slate-600 py-3 px-3 rounded-xl hover:bg-slate-50 transition-colors">Teknologi Utama</button>
 					<button @click="scrollToSection('pricing')" class="text-left text-xs font-black uppercase tracking-widest text-slate-600 py-3 px-3 rounded-xl hover:bg-slate-50 transition-colors">Daftar Harga</button>
-					<router-link to="/login"" class="text-left text-xs font-black uppercase tracking-widest text-slate-600 py-3 px-3 rounded-xl hover:bg-slate-50 transition-colors">Login</router-link>
+					<router-link to="/login" class="text-left text-xs font-black uppercase tracking-widest text-slate-600 py-3 px-3 rounded-xl hover:bg-slate-50 transition-colors">Login</router-link>
 				</div>
 			</transition>
 		</nav>
