@@ -144,7 +144,7 @@ onMounted(() => {
 
 				<select v-model="sortBy" class="w-full pl-11 pr-10 py-3.5 bg-[#131B2E] border border-slate-800 rounded-2xl text-white text-xs font-black uppercase tracking-wider focus:outline-none focus:border-indigo-500 transition-all cursor-pointer appearance-none shadow-xl">
 					<option value="latest" class="bg-[#131B2E]">Toko Terbaru</option>
-					<option value="soonest_expiry" class="bg-[#131B2E]">Masa Aktif Segera Habis</option>
+					<option value="soonest_expiry" class="bg-[#131B2E]">Masa Aktif Segera Habiss</option>
 					<option value="longest_expiry" class="bg-[#131B2E]">Masa Aktif Terlama</option>
 				</select>
 
