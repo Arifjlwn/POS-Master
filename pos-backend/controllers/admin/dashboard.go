@@ -47,22 +47,24 @@ func (d *DashboardController) GetTelemetryStats(c *gin.Context) {
 
 	// --- PART 3: LIVE ENGINE MATRIX (MODE ALL TIME) ---
 	var totalSalesAllTime float64
-	var activeCashiersCount int64
+    var activeCashiersCount int64
 
-	errTrans := d.DB.Model(&models.Transaction{}).
-		Select("COALESCE(SUM(total_harga), 0)").
-		Row().Scan(&totalSalesAllTime)
+    errTrans := d.DB.Model(&models.Transaction{}).
+        Select("COALESCE(SUM(total_harga), 0)").
+        Row().Scan(&totalSalesAllTime)
 
-	if errTrans != nil {
-		fmt.Println("❌ [DEBUG ERROR] Gagal Hitung Total Harga Transaksi:", errTrans)
-	}
+    if errTrans != nil {
+        fmt.Println("[DEBUG ERROR] Gagal Hitung Total Harga Transaksi:", errTrans)
+    }
 
-	errSession := d.DB.Model(&models.CashierSession{}).Where("LOWER(status) = ?", "open").Count(&activeCashiersCount)
-	if errSession != nil {
-		fmt.Println("❌ [DEBUG ERROR] Gagal Hitung Sesi Kasir:", errSession)
-	}
+    // TAMBAHKAN .Error DI UJUNG CHAINING BRAY
+    errSession := d.DB.Model(&models.CashierSession{}).Where("LOWER(status) = ?", "open").Count(&activeCashiersCount).Error
+    
+    if errSession != nil {
+        fmt.Println("[DEBUG ERROR] Gagal Hitung Sesi Kasir:", errSession)
+    }
 
-	totalTransactions := fmt.Sprintf("Rp %s", utils.FormatRupiah(int64(totalSalesAllTime)))
+    totalTransactions := fmt.Sprintf("Rp %s", utils.FormatRupiah(int64(totalSalesAllTime)))
 
 	// --- PART 4: 🗺️ LIVE TENANT MAP NODES (MURNI DARI DATABASE) ---
 	type LiveMapNode struct {

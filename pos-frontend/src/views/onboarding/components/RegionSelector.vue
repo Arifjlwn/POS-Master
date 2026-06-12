@@ -24,34 +24,43 @@ let marker = null;
 
 // Inisialisasi Peta Awal (Default pusat Jakarta / Indonesia)
 const initMap = () => {
-	if (!mapContainer.value) return;
+    if (!mapContainer.value) return;
 
-	const initLat = parseFloat(props.form.latitude) && parseFloat(props.form.latitude) !== 0 ? parseFloat(props.form.latitude) : -6.2;
-	const initLng = parseFloat(props.form.longitude) && parseFloat(props.form.longitude) !== 0 ? parseFloat(props.form.longitude) : 106.816666;
+    // 🚀 FIX: Ubah dari props.form menjadi props.formData bray! Kasih fallback aman jika undefined
+    const initLat = props.formData && parseFloat(props.formData.latitude) && parseFloat(props.formData.latitude) !== 0 
+        ? parseFloat(props.formData.latitude) 
+        : -6.224168;
+        
+    const initLng = props.formData && parseFloat(props.formData.longitude) && parseFloat(props.formData.longitude) !== 0 
+        ? parseFloat(props.formData.longitude) 
+        : 106.864388;
 
-	map = L.map(mapContainer.value, {
-		center: [initLat, initLng],
-		zoom: 14,
-		zoomControl: false,
-	});
+    map = L.map(mapContainer.value, {
+        center: [initLat, initLng],
+        zoom: 14,
+        zoomControl: false,
+    });
 
-	// Tambah tombol zoom di kanan bawah biar rapi
-	L.control.zoom({ position: 'bottomright' }).addTo(map);
+    // Tambah tombol zoom di kanan bawah biar rapi
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-	// Pake tile layer OpenStreetMap gratisan kasta tertinggi
-	L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-		attribution: '&copy; OpenStreetMap contributors',
-	}).addTo(map);
+    // Pake tile layer OpenStreetMap gratisan kasta tertinggi
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+    }).addTo(map);
 
-	// Bikin Marker yang bisa digeser-geser (draggable: true)
-	marker = L.marker([initLat, initLng], { draggable: true }).addTo(map);
+    // Bikin Marker yang bisa digeser-geser (draggable: true)
+    marker = L.marker([initLat, initLng], { draggable: true }).addTo(map);
 
-	// Event pas marker selesai digeser manual sama owner
-	marker.on('dragend', function (event) {
-		const position = marker.getLatLng();
-		props.formData.latitude = position.lat;
-		props.formData.longitude = position.lng;
-	});
+    // Event pas marker selesai digeser manual sama owner
+    marker.on('dragend', function (event) {
+        const position = marker.getLatLng();
+        // Pastikan nulisnya konsisten ke formData bray bray bray!
+        if (props.formData) {
+            props.formData.latitude = position.lat;
+            props.formData.longitude = position.lng;
+        }
+    });
 };
 
 // Fungsi Geocoding sederhana memanfaatkan nominatim gratisan untuk tracking wilayah

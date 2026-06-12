@@ -40,21 +40,21 @@ const adminRoutes = [
 			},
 
 			{
-				path: 'tenants',
-				name: 'TenantManagement',
-				component: () => import('../views/ManageStore.vue'),
+				path: 'analytics',
+				name: 'Analytics',
+				component: () => import('../views/analytics.vue'),
+			},
+
+			{
+				path: 'tenant-hub',
+				name: 'AdminTenantHub',
+				component: () => import('../views/TenantManagementHub.vue'),
 			},
 
 			{
 				path: 'audit',
 				name: 'AuditLogs',
 				component: () => import('../views/AuditLogs.vue'),
-			},
-
-			{
-				path: 'subscription',
-				name: 'AdminSubscription',
-				component: () => import('../views/Subscription.vue'),
 			},
 		],
 	},

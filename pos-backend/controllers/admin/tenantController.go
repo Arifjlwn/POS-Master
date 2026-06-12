@@ -38,7 +38,7 @@ func (t *TenantController) GetAllTenants(c *gin.Context) {
 	err := t.DB.Table("stores").
 		Select(`
 			stores.id, 
-			stores.public_id, 
+			stores.public_id AS public_id, 
 			stores.nama_toko, 
 			stores.telepon, 
 			stores.business_type, 

@@ -115,6 +115,7 @@ func main() {
 	// 🚀 DI DALAM FUNCTION MAIN() LU BRAY, PAS BAGIAN INSTANSIASI CONTROLLER ADMIN:
 		adminAuthCtrl := &admin.AuthController{DB: src.DB}
 		adminDashboardCtrl := &admin.DashboardController{DB: src.DB}
+		analyticsCtrl := &admin.AnalyticsController{DB: src.DB}
 		adminTenantCtrl := &admin.TenantController{DB: src.DB}
 		adminAuditCtrl := &admin.AuditController{DB: src.DB}
 		adminSubCtrl := &admin.SubscriptionController{DB: src.DB}
@@ -124,6 +125,7 @@ func main() {
 		{
 			adminRoutes.POST("/login", adminAuthCtrl.AdminLogin)
 			adminRoutes.GET("/dashboard-stats", adminDashboardCtrl.GetTelemetryStats)
+			adminRoutes.GET("/analytics/telemetry", analyticsCtrl.GetSaaSTelemetry)
 			adminRoutes.GET("/stores", adminTenantCtrl.GetAllTenants)
 			adminRoutes.PUT("/stores/:id/suspend", adminTenantCtrl.SuspendTenant)
 			adminRoutes.PUT("/stores/:id/activate", adminTenantCtrl.ActivateTenant)
