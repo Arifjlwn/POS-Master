@@ -4,12 +4,19 @@ import api from '../../../../api.js'; // Sesuaikan relative path ke api.js lu br
 import Sidebar from './Sidebar.vue';
 import TopNavbar from './TopNavbar.vue';
 
-// 🚀 STATE REALTIME INFRASTRUKTUR GLOBAL
+// 🚀 STATE REALTIME INFRASTRUKTUR GLOBAL (STRUKTUR SIMETRIS DENGAN BACKEND & MISSION CONTROL)
 const telemetryData = ref({
-	stats: {
-		total_stores: 0,
+	data: {
 		active_stores: 0,
+		trial_stores: 0,
 		suspended_stores: 0,
+		archived_stores: 0,
+	},
+	live_stats: {
+		users_online: 0,
+		total_transactions_today: 'Rp 0',
+		active_cashiers: 0,
+		open_shifts: 0,
 	},
 	server_health: {
 		cpu_usage: 0,
@@ -18,6 +25,7 @@ const telemetryData = ref({
 		latency: '0ms',
 	},
 	recent_activities: [],
+	live_map_nodes: [], // ◄ 🗺️ TAMBAHAN SAKTI 1: Wadah kosong buat titik radar
 });
 
 const isSidebarOpen = ref(false);
@@ -29,15 +37,19 @@ const fetchGlobalTelemetry = async (showSilently = false) => {
 	if (!showSilently) isLoadingTelemetry.value = true;
 	try {
 		const res = await api.get('/admin/dashboard-stats');
+
+		// 🚀 PROSES DISTRIBUSI TELEMETRI KASTA TERTINGGI: Tangkap semua payload tanpa ada yang dibuang!
 		if (res.data?.status === 'sukses') {
 			telemetryData.value = {
-				stats: res.data.data || {},
-				server_health: res.data.server_health || {},
+				data: res.data.data || { active_stores: 0, trial_stores: 0, suspended_stores: 0, archived_stores: 0 },
+				live_stats: res.data.live_stats || { users_online: 0, total_transactions_today: 'Rp 0', active_cashiers: 0, open_shifts: 0 },
+				server_health: res.data.server_health || { cpu_usage: 0, ram_usage: 0, db_status: 'Offline', latency: '0ms' },
 				recent_activities: res.data.recent_activities || [],
+				live_map_nodes: res.data.live_map_nodes || [], // ◄ 🗺️ TAMBAHAN SAKTI 2: Tangkap data titik radarnya dari API!
 			};
 		}
 	} catch (err) {
-		console.error('Gagal menarik sinkronisasi telemetri global:', err);
+		console.error('Gagal menarik sinkronisasi telemetri global bray:', err);
 	} finally {
 		if (!showSilently) isLoadingTelemetry.value = false;
 	}
@@ -60,10 +72,12 @@ const handleResize = () => {
 onMounted(() => {
 	window.addEventListener('resize', handleResize);
 
-	// Eksekusi trigger telemetri kasta tertinggi
+	// Eksekusi trigger telemetri kasta tertinggi pertama kali
 	fetchGlobalTelemetry(false);
+
+	// Silent polling tiap 10 detik secara background bray
 	globalTelemetryInterval = setInterval(() => {
-		fetchGlobalTelemetry(true); // Silent polling tiap 10 detik
+		fetchGlobalTelemetry(true);
 	}, 10000);
 });
 
@@ -102,7 +116,7 @@ const toggleSidebar = () => {
 </template>
 
 <style>
-/* Animasi transisi perpindahan halaman */
+/* Animasi transisi perpindahan halaman bray */
 .fade-enter-active,
 .fade-leave-active {
 	transition:

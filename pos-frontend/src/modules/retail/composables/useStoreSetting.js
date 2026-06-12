@@ -18,6 +18,8 @@ export function useStoreSetting() {
 		kecamatan: '',
 		kelurahan: '',
 		kode_pos: '',
+		latitude: 0,
+		longitude: 0,
 		logo_url: null,
 		qris_image: null,
 		qris_name: '',
@@ -98,15 +100,23 @@ export function useStoreSetting() {
 		const uppercaseFields = ['nama_toko', 'alamat', 'provinsi', 'kota', 'kecamatan', 'kelurahan', 'qris_name', 'receipt_footer'];
 
 		Object.keys(form.value).forEach((key) => {
-			// Kecualikan file dari looping biasa agar bisa ditangani khusus
 			if (key !== 'logo_url' && key !== 'qris_image') {
 				let val = form.value[key];
-				if (typeof val === 'string') {
+
+				// Pengaman untuk koordinat peta bray
+				if (key === 'latitude' || key === 'longitude') {
+					val = parseFloat(val) || 0;
+				} else if (typeof val === 'string') {
 					val = uppercaseFields.includes(key) ? val.toUpperCase() : val.trim();
 				} else if (typeof val === 'boolean') {
 					val = String(val);
 				}
+
 				formData.append(key, val);
+				console.log('DATA YANG AKAN DIKIRIM KE BACKEND:');
+				for (let pair of formData.entries()) {
+					console.log(pair[0] + ': ' + pair[1]);
+				}
 			}
 		});
 

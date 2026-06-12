@@ -23,7 +23,7 @@ func RecordAdminAction(c *gin.Context, action string, targetULID string, details
 	}
 
 	emailRaw, _ := c.Get("email")
-	userEmail := "unknown_admin"
+	userEmail := "Arif Juliawan"
 	if emailRaw != nil {
 		userEmail = emailRaw.(string)
 	}
@@ -43,8 +43,8 @@ func RecordAdminAction(c *gin.Context, action string, targetULID string, details
 
 func RecordSystemLog(c *gin.Context, action string, targetULID string, details string) error {
 	logData := models.AuditLog{
-		UserID:         0,             // 0 menandakan ini dieksekusi oleh Sistem/Publik
-		UserEmail:      "SYSTEM_AUTO", // Nama user yang bakal nongol di Mission Control
+		UserID:         0,
+		UserEmail:      "SYSTEM_AUTO",
 		Action:         action,
 		TargetPublicID: targetULID,
 		Details:        details,

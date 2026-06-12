@@ -112,24 +112,24 @@ func main() {
 	// ==========================================
 	// --       🚀 GERBANG UTAMA ADMIN         --
 	// ==========================================
-	adminCtrl := &admin.AdminController{DB: src.DB}
+	// 🚀 DI DALAM FUNCTION MAIN() LU BRAY, PAS BAGIAN INSTANSIASI CONTROLLER ADMIN:
+		adminAuthCtrl := &admin.AuthController{DB: src.DB}
+		adminDashboardCtrl := &admin.DashboardController{DB: src.DB}
+		adminTenantCtrl := &admin.TenantController{DB: src.DB}
+		adminAuditCtrl := &admin.AuditController{DB: src.DB}
+		adminSubCtrl := &admin.SubscriptionController{DB: src.DB}
 
-	// Gerbang Otorisasi Masuk dengan Rate Limiter Keamanan
-	r.POST("/api/admin/login", middlewares.AdminLoginRateLimiter(), adminCtrl.AdminLogin)
-
-	// Kelompok Rute Terproteksi Khusus Super Admin
-	adminRoutes := r.Group("/api/admin")
-	adminRoutes.Use(middlewares.RequireAuth)
-	adminRoutes.Use(middlewares.RequireSuperAdmin())
-	{
-		// 📊 Prioritas #1: Telemetri Dashboard Stats Monitor
-		adminRoutes.GET("/dashboard-stats", adminCtrl.GetTelemetryStats)
-
-		// 🏪 FIX: Samakan rute menjadi /stores agar sinkron dengan Axios Vue 3!
-		adminRoutes.GET("/stores", adminCtrl.GetAllTenants)
-		adminRoutes.PUT("/stores/:id/suspend", adminCtrl.SuspendTenant)
-		adminRoutes.PUT("/stores/:id/activate", adminCtrl.ActivateTenant)
-	}
+		// Bagian Group Routing Admin Lu Tinggal Colok Sesuai Modular-nya bray:
+		adminRoutes := r.Group("/api/admin")
+		{
+			adminRoutes.POST("/login", adminAuthCtrl.AdminLogin)
+			adminRoutes.GET("/dashboard-stats", adminDashboardCtrl.GetTelemetryStats)
+			adminRoutes.GET("/stores", adminTenantCtrl.GetAllTenants)
+			adminRoutes.PUT("/stores/:id/suspend", adminTenantCtrl.SuspendTenant)
+			adminRoutes.PUT("/stores/:id/activate", adminTenantCtrl.ActivateTenant)
+			adminRoutes.GET("/audit-logs", adminAuditCtrl.GetDetailedAuditLogs)
+			adminRoutes.GET("/subscription-overview", adminSubCtrl.GetSubscriptionOverview)
+		}
 
 	// ==========================================
 	// -- RUTE TERPROTEKSI MERCHANT (STORE-LEVEL)--

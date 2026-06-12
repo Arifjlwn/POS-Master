@@ -200,6 +200,17 @@ func (h *RetailHandler) UpdateStoreSettings(c *gin.Context) {
 		store.PrinterType = v
 	}
 
+	if v, ok := c.GetPostForm("latitude"); ok {
+		if parsedLat, err := strconv.ParseFloat(v, 64); err == nil {
+			store.Latitude = parsedLat
+		}
+	}
+	if v, ok := c.GetPostForm("longitude"); ok {
+		if parsedLng, err := strconv.ParseFloat(v, 64); err == nil {
+			store.Longitude = parsedLng
+		}
+	}
+
 	// Validasi input token khusus: jangan timpa jika frontend mengirimkan kode samaran masking
 	if v, ok := c.GetPostForm("wa_token"); ok {
 		if v != "HAS_TOKEN_HIDDEN_BY_SYSTEM" {
@@ -508,4 +519,3 @@ func (h *RetailHandler) CreatePosMidtransOrder(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"token": snapResp.Token, "order_id": orderID})
 }
-

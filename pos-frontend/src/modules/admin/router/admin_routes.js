@@ -28,24 +28,33 @@ const adminRoutes = [
 			requiresAdmin: true,
 		},
 		children: [
-			// Redirect otomatis dari /admin ke /admin/dashboard
 			{
 				path: '',
 				redirect: '/admin/dashboard',
 			},
 
-			// 🚀 Halaman Telemetri Mission Control (URL: /admin/dashboard)
 			{
 				path: 'dashboard',
 				name: 'MissionControl',
 				component: () => import('../views/MissionControl.vue'),
 			},
 
-			// 💡 Nanti kalau lu mau nambahin halaman Tenant Management, Billing, dll, selipin di bawah sini !
 			{
 				path: 'tenants',
 				name: 'TenantManagement',
 				component: () => import('../views/ManageStore.vue'),
+			},
+
+			{
+				path: 'audit',
+				name: 'AuditLogs',
+				component: () => import('../views/AuditLogs.vue'),
+			},
+
+			{
+				path: 'subscription',
+				name: 'AdminSubscription',
+				component: () => import('../views/Subscription.vue'),
 			},
 		],
 	},

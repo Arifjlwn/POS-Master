@@ -40,12 +40,14 @@ type Store struct {
 	// ==========================================
 	// ALAMAT TOKO
 	// ==========================================
-	Alamat    string `gorm:"type:text" json:"alamat"`
-	Provinsi  string `gorm:"type:varchar(100)" json:"provinsi"`
-	Kota      string `gorm:"type:varchar(100)" json:"kota"`
-	Kecamatan string `gorm:"type:varchar(100)" json:"kecamatan"`
-	Kelurahan string `gorm:"type:varchar(100)" json:"kelurahan"`
-	KodePos   string `gorm:"type:varchar(10)" json:"kode_pos"`
+	Alamat    string  `gorm:"type:text" json:"alamat"`
+	Provinsi  string  `gorm:"type:varchar(100)" json:"provinsi"`
+	Kota      string  `gorm:"type:varchar(100)" json:"kota"`
+	Kecamatan string  `gorm:"type:varchar(100)" json:"kecamatan"`
+	Kelurahan string  `gorm:"type:varchar(100)" json:"kelurahan"`
+	KodePos   string  `gorm:"type:varchar(10)" json:"kode_pos"`
+	Latitude  float64 `gorm:"type:decimal(10,8)" json:"latitude"`
+	Longitude float64 `gorm:"type:decimal(11,8)" json:"longitude"`
 
 	// ==========================================
 	// BRANDING

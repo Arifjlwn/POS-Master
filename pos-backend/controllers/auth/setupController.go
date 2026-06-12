@@ -26,18 +26,21 @@ func SetupTokoBaru(c *gin.Context) {
 	}
 	userID := uint(userIDRaw.(float64))
 
+	// 🚀 SUNTIK FIELD KOORDINAT BARU KE STRUCT INPUT JSON BRAY
 	var input struct {
-		NamaToko     string `json:"nama_toko" binding:"required"`
-		Telepon      string `json:"telepon"`
-		BusinessType string `json:"business_type" binding:"required"`
-		Industry     string `json:"industry"`
-		Plan         string `json:"plan"`
-		AlamatJalan  string `json:"alamat_toko"`
-		Provinsi     string `json:"provinsi"`
-		Kota         string `json:"kota"`
-		Kecamatan    string `json:"kecamatan"`
-		Kelurahan    string `json:"kelurahan"`
-		KodePos      string `json:"kode_pos"`
+		NamaToko     string  `json:"nama_toko" binding:"required"`
+		Telepon      string  `json:"telepon"`
+		BusinessType string  `json:"business_type" binding:"required"`
+		Industry     string  `json:"industry"`
+		Plan         string  `json:"plan"`
+		AlamatJalan  string  `json:"alamat_toko"`
+		Provinsi     string  `json:"provinsi"`
+		Kota         string  `json:"kota"`
+		Kecamatan    string  `json:"kecamatan"`
+		Kelurahan    string  `json:"kelurahan"`
+		KodePos      string  `json:"kode_pos"`
+		Latitude     float64 `json:"latitude"`  // ◄ DITERIMA DARI FRONTEND
+		Longitude    float64 `json:"longitude"` // ◄ DITERIMA DARI FRONTEND
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data salah, pastikan form terisi lengkap"})
@@ -90,6 +93,7 @@ func SetupTokoBaru(c *gin.Context) {
 		fiturAktif = `["kasir"]`
 	}
 
+	// 🚀 SUNTIK KOORDINAT GPS DATA KE MODEL GORM INDONESIA
 	newStore := models.Store{
 		PublicID:           utils.GenerateULID(),
 		OwnerID:            userID,
@@ -107,6 +111,8 @@ func SetupTokoBaru(c *gin.Context) {
 		Kecamatan:          input.Kecamatan,
 		Kelurahan:          input.Kelurahan,
 		KodePos:            input.KodePos,
+		Latitude:           input.Latitude,  // ◄ DI-MAP KE DB TABEL CORES
+		Longitude:          input.Longitude, // ◄ DI-MAP KE DB TABEL CORES
 	}
 
 	errTx := src.DB.Transaction(func(tx *gorm.DB) error {
@@ -142,7 +148,6 @@ func SetupTokoBaru(c *gin.Context) {
 	}
 
 	// 🚀 SUNTIKAN SENSOR LOG: Pendaftaran Tenant/Toko Baru Berhasil
-	// RecordSystemLog (Sistem Publik) mencatat ada infrastruktur ruko baru yang berdiri di ekosistem lu!
 	utils.RecordSystemLog(c, "Registrasi Tenant Baru", newStore.PublicID, fmt.Sprintf("Toko bergabung: %s | Paket: %s | Mode: %s", newStore.NamaToko, strings.ToUpper(subPlan), subStatus))
 
 	c.JSON(http.StatusOK, gin.H{

@@ -14,7 +14,7 @@ const tabs = [
 	{ id: 'tax', label: 'Pajak & Struk', icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z' },
 ];
 
-// Eksekusi tarikan data backend saat halaman pertama kali dibuka 
+// Eksekusi tarikan data backend saat halaman pertama kali dibuka
 onMounted(() => {
 	fetchSettings();
 });
@@ -51,9 +51,9 @@ onMounted(() => {
 				</div>
 
 				<div class="flex-1 p-6 md:p-8 overflow-hidden">
-					<SettingBasicInfo v-show="activeTab === 'basic'" :form="form" :logoPreview="logoPreview" @update-file="handleFileChange" @remove-logo="removeLogo" />
-					<SettingPayment v-show="activeTab === 'payment'" :form="form" :qrisPreview="qrisPreview" @update-file="handleFileChange" @remove-qris="removeQris" />
-					<SettingReceiptTax v-show="activeTab === 'tax'" :form="form" />
+					<SettingBasicInfo v-if="activeTab === 'basic'" :form="form" :logoPreview="logoPreview" @update-file="handleFileChange" @remove-logo="removeLogo" />
+					<SettingPayment v-if="activeTab === 'payment'" :form="form" :qrisPreview="qrisPreview" @update-file="handleFileChange" @remove-qris="removeQris" />
+					<SettingReceiptTax v-if="activeTab === 'tax'" :form="form" />
 				</div>
 			</div>
 		</div>
