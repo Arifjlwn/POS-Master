@@ -42,7 +42,7 @@ const adminRoutes = [
 			{
 				path: 'analytics',
 				name: 'Analytics',
-				component: () => import('../views/analytics.vue'),
+				component: () => import('../views/Analytics.vue'),
 			},
 
 			{
