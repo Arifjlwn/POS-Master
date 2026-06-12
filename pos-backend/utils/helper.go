@@ -8,9 +8,9 @@ import (
 // ==========================================
 // 💸 FORMAT RUPIAH HELPER (ANTI-COMPILER ERROR)
 // ==========================================
-// FormatRupiah mengubah angka int64 menjadi string berformat titik ribuan indonesia bray
+// FormatRupiah mengubah angka int64 menjadi string berformat titik ribuan indonesia 
 func FormatRupiah(amount int64) string {
-	// Kalau minus, kita amankan tandanya bray
+	// Kalau minus, kita amankan tandanya 
 	isNegative := false
 	if amount < 0 {
 		isNegative = true

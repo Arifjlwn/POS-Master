@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router';
 import api from '../../../api.js';
 
 // 🚀 IMPORT CHILD COMPONENT
-import RegionSelector from './RegionSelector.vue'; // Sesuaikan path foldernya bray!
+import RegionSelector from './RegionSelector.vue'; // Sesuaikan path foldernya !
 
 const route = useRoute();
 const router = useRouter();

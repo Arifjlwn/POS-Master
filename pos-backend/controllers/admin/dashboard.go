@@ -57,7 +57,7 @@ func (d *DashboardController) GetTelemetryStats(c *gin.Context) {
         fmt.Println("[DEBUG ERROR] Gagal Hitung Total Harga Transaksi:", errTrans)
     }
 
-    // TAMBAHKAN .Error DI UJUNG CHAINING BRAY
+    // TAMBAHKAN .Error DI UJUNG CHAINING 
     errSession := d.DB.Model(&models.CashierSession{}).Where("LOWER(status) = ?", "open").Count(&activeCashiersCount).Error
     
     if errSession != nil {
@@ -129,7 +129,7 @@ func (d *DashboardController) GetTelemetryStats(c *gin.Context) {
 				Where("store_id = ? AND LOWER(status) = ?", s.ID, "open").
 				Count(&kasirAktif)
 
-			// 📍 MASUKIN DATA MURNI 100% DARI DB (Ga ada tebak-tebakan lagi bray)
+			// 📍 MASUKIN DATA MURNI 100% DARI DB (Ga ada tebak-tebakan lagi )
 			mapNodes = append(mapNodes, LiveMapNode{
 				ID:            s.ID,
 				NamaToko:      s.NamaToko,
@@ -166,6 +166,6 @@ func (d *DashboardController) GetTelemetryStats(c *gin.Context) {
 			"db_status": dbStatus,
 			"latency":   fmt.Sprintf("%dms", latency),
 		},
-		"live_map_nodes": mapNodes, // ◄ DATA PETA DIKIRIM KE VUE BRAY!
+		"live_map_nodes": mapNodes, // ◄ DATA PETA DIKIRIM KE VUE !
 	})
 }

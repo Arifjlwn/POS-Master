@@ -64,7 +64,7 @@ func RecordWorkerLog(action string, targetULID string, details string) error {
 		TargetPublicID: targetULID,
 		Details:        details,
 		IPAddress:      "127.0.0.1",        // IP Localhost server
-		UserAgent:      "ARZURA_WORKER_V1", // Identitas Robot lu bray
+		UserAgent:      "ARZURA_WORKER_V1", // Identitas Robot lu 
 	}
 
 	return src.DB.Create(&logData).Error

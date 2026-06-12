@@ -3,7 +3,7 @@ import { computed } from 'vue';
 
 const emit = defineEmits(['toggle-sidebar']);
 
-// 🚀 TERIMA PROPS REALTIME: Navbar sekarang bisa mantau kesehatan server dari dashboard pusat bray!
+// 🚀 TERIMA PROPS REALTIME: Navbar sekarang bisa mantau kesehatan server dari dashboard pusat !
 const props = defineProps({
 	dbStatus: {
 		type: String,
@@ -36,7 +36,7 @@ const avatarInitials = computed(() => {
 const isSystemHealthy = computed(() => {
 	if (props.dbStatus !== 'Online & Stabil') return 'down';
 
-	// Potong string "ms" buat ambil angka latensinya doang bray
+	// Potong string "ms" buat ambil angka latensinya doang
 	const msValue = parseInt(props.latency.replace('ms', '')) || 0;
 	if (msValue > 300) return 'overload';
 

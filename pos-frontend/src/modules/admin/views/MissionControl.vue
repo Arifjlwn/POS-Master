@@ -7,10 +7,10 @@ import ServerTelemetryCard from '../components/widgets/ServerTelemetryCard.vue';
 // 🚀 IMPORT RADAR KASTA TERTINGGI (Pengganti RecentActivityTable)
 import LiveTenantMap from '../components/widgets/LiveTenantMap.vue';
 
-// 🚀 JURUS INJECT: Ambil data realtime terpusat dari AdminLayout.vue bray!
+// 🚀 JURUS INJECT: Ambil data realtime terpusat dari AdminLayout.vue !
 const { telemetryData, isLoadingTelemetry, refreshTelemetry } = inject('globalTelemetry');
 
-// 🚀 FIX REALTIME MAPPING: Disamain persis sama struktur response JSON backend bray!
+// 🚀 FIX REALTIME MAPPING: Disamain persis sama struktur response JSON backend !
 const metrics = computed(() => {
 	// Backend ngereturn objek pembungkus utama bernama "data" untuk status ruko
 	const dataResponse = telemetryData.value?.data || {};
@@ -31,7 +31,7 @@ const metrics = computed(() => {
 	};
 });
 
-// Pemetaan data kesehatan server riil dari runtime Go bray
+// Pemetaan data kesehatan server riil dari runtime Go
 const serverHealth = computed(() => {
 	return (
 		telemetryData.value?.server_health || {

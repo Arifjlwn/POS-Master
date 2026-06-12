@@ -27,7 +27,7 @@ type LoginInput struct {
 func (a *AuthController) AdminLogin(c *gin.Context) {
 	var input LoginInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data input login tidak valid bray!"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data input login tidak valid !"})
 		return
 	}
 

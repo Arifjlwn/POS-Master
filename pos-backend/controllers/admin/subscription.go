@@ -16,7 +16,7 @@ type SubscriptionController struct {
 
 // GetSubscriptionOverview - UNIFIED ENDPOINT UNTUK MANAGEMENT HUB
 func (s *SubscriptionController) GetSubscriptionOverview(c *gin.Context) {
-	// 🚀 FLAT STRUCT SAKTI: Gabungan telemetri ruko, data owner hasil join, dan sisa hari bray
+	// 🚀 FLAT STRUCT SAKTI: Gabungan telemetri ruko, data owner hasil join, dan sisa hari 
 	type StorePlanSummary struct {
 		ID                 uint       `json:"id"`
 		PublicID           string     `json:"public_id"`
@@ -28,7 +28,7 @@ func (s *SubscriptionController) GetSubscriptionOverview(c *gin.Context) {
 		SubscriptionEnd    *time.Time `json:"subscription_end"`
 		OwnerName          string     `json:"owner_name"`
 		OwnerEmail         string     `json:"owner_email"`
-		SisaHari           int        `json:"sisa_hari"` // ◄ DI-HITUNG LIVE DI LOOP BRAY
+		SisaHari           int        `json:"sisa_hari"` // ◄ DI-HITUNG LIVE DI LOOP 
 	}
 
 	// 1. Eksekusi Flat Scan Join dari tenantController dengan performa kilat ⚡
@@ -69,7 +69,7 @@ func (s *SubscriptionController) GetSubscriptionOverview(c *gin.Context) {
 			diff := rawResults[i].SubscriptionEnd.Sub(now)
 			hari := int(diff.Hours() / 24)
 			if hari < 0 {
-				hari = 0 // Biar gak minus bray kalau udah expired
+				hari = 0 // Biar gak minus  kalau udah expired
 			}
 			rawResults[i].SisaHari = hari
 		} else {
@@ -77,7 +77,7 @@ func (s *SubscriptionController) GetSubscriptionOverview(c *gin.Context) {
 		}
 	}
 
-	// 4. Lempar data terpadu ke frontend bray!
+	// 4. Lempar data terpadu ke frontend !
 	c.JSON(http.StatusOK, gin.H{
 		"status": "sukses",
 		"counts": gin.H{

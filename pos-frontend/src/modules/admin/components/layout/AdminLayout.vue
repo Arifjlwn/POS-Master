@@ -1,6 +1,6 @@
 <script setup>
 import { onMounted, onUnmounted, provide, ref } from 'vue';
-import api from '../../../../api.js'; // Sesuaikan relative path ke api.js lu bray
+import api from '../../../../api.js'; // Sesuaikan relative path ke api.js lu
 import Sidebar from './Sidebar.vue';
 import TopNavbar from './TopNavbar.vue';
 
@@ -49,7 +49,7 @@ const fetchGlobalTelemetry = async (showSilently = false) => {
 			};
 		}
 	} catch (err) {
-		console.error('Gagal menarik sinkronisasi telemetri global bray:', err);
+		console.error('Gagal menarik sinkronisasi telemetri global :', err);
 	} finally {
 		if (!showSilently) isLoadingTelemetry.value = false;
 	}
@@ -75,7 +75,7 @@ onMounted(() => {
 	// Eksekusi trigger telemetri kasta tertinggi pertama kali
 	fetchGlobalTelemetry(false);
 
-	// Silent polling tiap 10 detik secara background bray
+	// Silent polling tiap 10 detik secara background
 	globalTelemetryInterval = setInterval(() => {
 		fetchGlobalTelemetry(true);
 	}, 10000);
@@ -116,7 +116,7 @@ const toggleSidebar = () => {
 </template>
 
 <style>
-/* Animasi transisi perpindahan halaman bray */
+/* Animasi transisi perpindahan halaman  */
 .fade-enter-active,
 .fade-leave-active {
 	transition:

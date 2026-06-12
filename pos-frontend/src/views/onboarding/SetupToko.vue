@@ -323,7 +323,7 @@ const submit = async () => {
 </template>
 
 <style>
-/* CSS global buat form components dipindah ke sini / file css terpisah bray */
+/* CSS global buat form components dipindah ke sini / file css terpisah  */
 .input-modern {
 	@apply block w-full px-5 py-4 bg-white border-2 border-slate-200 rounded-2xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none font-black text-slate-800 transition-all placeholder:text-slate-300 placeholder:font-bold shadow-sm;
 }

@@ -1,7 +1,7 @@
 <script setup>
 import Swal from 'sweetalert2';
 import { onMounted, ref, watch } from 'vue';
-import api from '../../../api.js'; // Sesuaikan relative path ke api.js lu bray
+import api from '../../../api.js'; // Sesuaikan relative path ke api.js lu
 
 const logs = ref([]);
 const isLoading = ref(false);
@@ -49,7 +49,7 @@ watch(searchQuery, () => {
 	clearTimeout(searchTimeout);
 	searchTimeout = setTimeout(() => {
 		fetchAuditLogs();
-	}, 400); // 400ms delay bray
+	}, 400); // 400ms delay
 });
 
 onMounted(() => {
@@ -158,7 +158,7 @@ onMounted(() => {
 			<svg class="w-10 h-10 text-slate-600 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
 				<path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
 			</svg>
-			<p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Tidak ada aliran jejak log audit yang terdeteksi bray.</p>
+			<p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Tidak ada aliran jejak log audit yang terdeteksi .</p>
 		</div>
 	</div>
 </template>

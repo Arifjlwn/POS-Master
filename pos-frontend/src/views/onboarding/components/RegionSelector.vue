@@ -24,43 +24,39 @@ let marker = null;
 
 // Inisialisasi Peta Awal (Default pusat Jakarta / Indonesia)
 const initMap = () => {
-    if (!mapContainer.value) return;
+	if (!mapContainer.value) return;
 
-    // 🚀 FIX: Ubah dari props.form menjadi props.formData bray! Kasih fallback aman jika undefined
-    const initLat = props.formData && parseFloat(props.formData.latitude) && parseFloat(props.formData.latitude) !== 0 
-        ? parseFloat(props.formData.latitude) 
-        : -6.224168;
-        
-    const initLng = props.formData && parseFloat(props.formData.longitude) && parseFloat(props.formData.longitude) !== 0 
-        ? parseFloat(props.formData.longitude) 
-        : 106.864388;
+	// 🚀 FIX: Ubah dari props.form menjadi props.formData ! Kasih fallback aman jika undefined
+	const initLat = props.formData && parseFloat(props.formData.latitude) && parseFloat(props.formData.latitude) !== 0 ? parseFloat(props.formData.latitude) : -6.224168;
 
-    map = L.map(mapContainer.value, {
-        center: [initLat, initLng],
-        zoom: 14,
-        zoomControl: false,
-    });
+	const initLng = props.formData && parseFloat(props.formData.longitude) && parseFloat(props.formData.longitude) !== 0 ? parseFloat(props.formData.longitude) : 106.864388;
 
-    // Tambah tombol zoom di kanan bawah biar rapi
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
+	map = L.map(mapContainer.value, {
+		center: [initLat, initLng],
+		zoom: 14,
+		zoomControl: false,
+	});
 
-    // Pake tile layer OpenStreetMap gratisan kasta tertinggi
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(map);
+	// Tambah tombol zoom di kanan bawah biar rapi
+	L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Bikin Marker yang bisa digeser-geser (draggable: true)
-    marker = L.marker([initLat, initLng], { draggable: true }).addTo(map);
+	// Pake tile layer OpenStreetMap gratisan kasta tertinggi
+	L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+		attribution: '&copy; OpenStreetMap contributors',
+	}).addTo(map);
 
-    // Event pas marker selesai digeser manual sama owner
-    marker.on('dragend', function (event) {
-        const position = marker.getLatLng();
-        // Pastikan nulisnya konsisten ke formData bray bray bray!
-        if (props.formData) {
-            props.formData.latitude = position.lat;
-            props.formData.longitude = position.lng;
-        }
-    });
+	// Bikin Marker yang bisa digeser-geser (draggable: true)
+	marker = L.marker([initLat, initLng], { draggable: true }).addTo(map);
+
+	// Event pas marker selesai digeser manual sama owner
+	marker.on('dragend', function (event) {
+		const position = marker.getLatLng();
+		// Pastikan nulisnya konsisten ke formData   !
+		if (props.formData) {
+			props.formData.latitude = position.lat;
+			props.formData.longitude = position.lng;
+		}
+	});
 };
 
 // Fungsi Geocoding sederhana memanfaatkan nominatim gratisan untuk tracking wilayah
@@ -150,7 +146,7 @@ watch(
 	(newId) => {
 		props.formData.kelurahan = listKelurahan.value.find((p) => p.id === newId)?.name || '';
 		if (newId) {
-			// Pas kelurahan dipilih, lari cari koordinat kasarnya dulu buat penempatan peta awal bray
+			// Pas kelurahan dipilih, lari cari koordinat kasarnya dulu buat penempatan peta awal
 			setTimeout(() => {
 				seachLocationByAddress();
 			}, 500);

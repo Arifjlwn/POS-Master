@@ -26,7 +26,7 @@ func SetupTokoBaru(c *gin.Context) {
 	}
 	userID := uint(userIDRaw.(float64))
 
-	// 🚀 SUNTIK FIELD KOORDINAT BARU KE STRUCT INPUT JSON BRAY
+	// 🚀 SUNTIK FIELD KOORDINAT BARU KE STRUCT INPUT JSON 
 	var input struct {
 		NamaToko     string  `json:"nama_toko" binding:"required"`
 		Telepon      string  `json:"telepon"`

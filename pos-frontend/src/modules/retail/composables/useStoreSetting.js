@@ -103,7 +103,7 @@ export function useStoreSetting() {
 			if (key !== 'logo_url' && key !== 'qris_image') {
 				let val = form.value[key];
 
-				// Pengaman untuk koordinat peta bray
+				// Pengaman untuk koordinat peta
 				if (key === 'latitude' || key === 'longitude') {
 					val = parseFloat(val) || 0;
 				} else if (typeof val === 'string') {

@@ -33,7 +33,7 @@ func (t *TenantController) GetAllTenants(c *gin.Context) {
 
 	var results []FlatStoreResponse
 
-	// 🚀 EKSEKUSI LOGIKA LU BRAY: Cek stores, terus join ke tabel users berdasarkan owner_id
+	// 🚀 EKSEKUSI LOGIKA LU : Cek stores, terus join ke tabel users berdasarkan owner_id
 	// Kita gunakan COALESCE biar kalau datanya null di database, frontend dapet string aman, bukan null pointer
 	err := t.DB.Table("stores").
 		Select(`
@@ -67,7 +67,7 @@ func (t *TenantController) GetAllTenants(c *gin.Context) {
 func (t *TenantController) SuspendTenant(c *gin.Context) {
 	storeID := c.Param("id")
 
-	// 🚀 SINKRON: Mengubah SubscriptionStatus menjadi 'suspended' sesuai field asli lu bray
+	// 🚀 SINKRON: Mengubah SubscriptionStatus menjadi 'suspended' sesuai field asli lu 
 	err := t.DB.Model(&models.Store{}).Where("id = ?", storeID).Update("subscription_status", "suspended").Error
 
 	if err != nil {

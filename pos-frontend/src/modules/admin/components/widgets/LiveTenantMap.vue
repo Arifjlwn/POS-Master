@@ -15,7 +15,7 @@ let map = null;
 let markersLayer = null;
 
 onMounted(() => {
-	// 1. Inisialisasi Peta (Center awal di titik tengah Indonesia bray)
+	// 1. Inisialisasi Peta (Center awal di titik tengah Indonesia )
 	map = L.map(mapContainer.value).setView([-2.5489, 118.0149], 5);
 
 	// 2. Suntik Tema CartoDB Dark Matter (Radar Militer Kasta Tertinggi)
@@ -53,7 +53,7 @@ const renderRadarPins = () => {
 			fillOpacity: 0.6,
 		});
 
-		// Racik HTML untuk Tooltip/Popup pas titiknya diklik bray
+		// Racik HTML untuk Tooltip/Popup pas titiknya diklik
 		const popupContent = `
             <div style="min-width: 160px; font-family: sans-serif;">
                 <h4 style="margin: 0 0 4px 0; color: #fff; font-weight: 900; font-size: 13px; text-transform: uppercase;">${node.nama_toko}</h4>
@@ -84,7 +84,7 @@ const renderRadarPins = () => {
 };
 
 onUnmounted(() => {
-	if (map) map.remove(); // Bersihin memory biar browser gak bocor bray
+	if (map) map.remove(); // Bersihin memory biar browser gak bocor
 });
 </script>
 

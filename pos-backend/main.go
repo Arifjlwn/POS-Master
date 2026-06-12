@@ -112,7 +112,7 @@ func main() {
 	// ==========================================
 	// --       🚀 GERBANG UTAMA ADMIN         --
 	// ==========================================
-	// 🚀 DI DALAM FUNCTION MAIN() LU BRAY, PAS BAGIAN INSTANSIASI CONTROLLER ADMIN:
+	// 🚀 DI DALAM FUNCTION MAIN() LU , PAS BAGIAN INSTANSIASI CONTROLLER ADMIN:
 		adminAuthCtrl := &admin.AuthController{DB: src.DB}
 		adminDashboardCtrl := &admin.DashboardController{DB: src.DB}
 		analyticsCtrl := &admin.AnalyticsController{DB: src.DB}
@@ -120,7 +120,7 @@ func main() {
 		adminAuditCtrl := &admin.AuditController{DB: src.DB}
 		adminSubCtrl := &admin.SubscriptionController{DB: src.DB}
 
-		// Bagian Group Routing Admin Lu Tinggal Colok Sesuai Modular-nya bray:
+		// Bagian Group Routing Admin Lu Tinggal Colok Sesuai Modular-nya :
 		adminRoutes := r.Group("/api/admin")
 		{
 			adminRoutes.POST("/login", adminAuthCtrl.AdminLogin)

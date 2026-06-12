@@ -17,7 +17,7 @@ func InitSubscriptionCronJob() {
 	executeAutoSuspend()
 
 	// 2. Buat alarm Ticker. Di sini gua set jalan SETIAP 1 JAM.
-	// (Kalau lu mau ngetes cepet, ganti aja jadi '1 * time.Minute' bray)
+	// (Kalau lu mau ngetes cepet, ganti aja jadi '1 * time.Minute' )
 	ticker := time.NewTicker(1 * time.Hour)
 
 	// 3. Jalankan di Goroutine agar tidak memblokir jalannya web server API Gin lu!
