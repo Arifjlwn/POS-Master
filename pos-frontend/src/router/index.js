@@ -1,10 +1,11 @@
 import Swal from 'sweetalert2';
 import { createRouter, createWebHistory } from 'vue-router';
+// 🚀 SUNTIKAN COMPOSABLE LOADING BAR KASTA TERTINGGI BRAY!
+import { useLoading } from '../composables/useLoading.js'; // Sesuaikan relative path folder composable lu Rif
 
 // import fnbRoutes from '@/modules/fnb/router/index.js'
+import adminRoutes from '../modules/admin/router/admin_routes.js';
 import retailRoutes from '../modules/retail/router/retail_routes.js';
-import adminRoutes from '../modules/admin/router/admin_routes.js'; // 🚀 SUNTIK IMPORT LOKAL MODUL ADMIN LU
-// import laundryRoutes from '@/modules/jasalayanan/laundry/router/laundry_routes.js'
 
 const baseRoutes = [
 	{
@@ -54,56 +55,45 @@ const baseRoutes = [
 		component: () => import('../views/auth/SelectStore.vue'),
 		meta: { requiresAuth: true },
 	},
-	// =====================================================================
-	// 🔒 GERBANG LOGIN PUBLIK KHUSUS SUPER ADMIN
-	// =====================================================================
 	{
 		path: '/admin/login',
 		name: 'LoginAdmin',
-		component: () => import('../modules/admin/views/AdminLogin.vue'), // ◄ Bebas tanpa requiresAuth biar bisa diakses !
+		component: () => import('../modules/admin/views/AdminLogin.vue'),
 	},
 ];
 
 const router = createRouter({
 	history: createWebHistory(import.meta.env.BASE_URL),
-	routes: [
-		...baseRoutes,
-		...adminRoutes, // 🚀 SEBAR SUNTIKAN SUB-ROUTER ADMIN DI SINI !
-		// ...fnbRoutes,
-		...retailRoutes,
-		// ...laundryRoutes
-	],
+	routes: [...baseRoutes, ...adminRoutes, ...retailRoutes],
 });
 
 // 🛡️ SATPAM GLOBAL VUE ROUTER (FOUNDER/ENTERPRISE EDITION)
 router.beforeEach((to, from) => {
+	// 🚀 ENGINE INITIALIZER: Setiap kali ada pergerakan rute, langsung nyalakan loading bar bray!
+	const { startLoading } = useLoading();
+	startLoading();
+
 	const token = localStorage.getItem('token');
 	const userRole = localStorage.getItem('role') || 'staff';
 
 	// 🚀 1. LOGIKA ANTI-MUNDUR (GUEST GUARD)
-	// Masukkan /admin/login ke daftar guest routes
 	const guestRoutes = ['/login', '/register', '/select-verify', '/verify-otp', '/admin/login'];
 
-	// Kalau dia mau balik ke landing page, TAPI niatnya buat EKSPANSI, izinkan!
 	if (to.path === '/' && to.query.action === 'expansion') {
-		// Biarkan lewat (jangan return apa-apa di block ini)
-	}
-	// Kalau dia mau ke landing page atau route guest lain tapi BUKAN ekspansi, lempar!
-	else if (token && (guestRoutes.includes(to.path) || to.path === '/')) {
-		if (userRole === 'super_admin') return '/admin/dashboard'; // 🔒 Jika founder, pasung mati ke Mission Control!
+		// Biarkan lewat
+	} else if (token && (guestRoutes.includes(to.path) || to.path === '/')) {
+		if (userRole === 'super_admin') return '/admin/dashboard';
 		if (userRole === 'owner') return '/select-store';
 		return '/retail/pos';
 	}
 
 	// 🚀 2. CEK AUTENTIKASI (HARUS LOGIN)
 	if (to.meta.requiresAuth && !token) {
-		// Cerdas: Kalau mau buka halaman /admin tanpa token, oper ke login admin , bukan login ruko biasa!
 		if (to.path.startsWith('/admin')) return '/admin/login';
 		return '/login';
 	}
 
 	// 🚀 NEW GUARD: GEBREG CELAH ROOT ADMIN!
-	// Kalau rute butuh kasta admin, tapi role-nya bukan super_admin di browser, langsung block keras !
 	if (to.meta.requiresAdmin && userRole !== 'super_admin') {
 		Swal.fire({
 			icon: 'error',
@@ -112,7 +102,7 @@ router.beforeEach((to, from) => {
 			confirmButtonColor: '#ef4444',
 			customClass: { popup: 'rounded-[32px]' },
 		});
-		return '/login'; // Tendang balik ke gerbang terluar
+		return '/login';
 	}
 
 	// 🚀 3. CEK OTORISASI JABATAN (KASIR VS OWNER)
@@ -154,6 +144,12 @@ router.beforeEach((to, from) => {
 	}
 
 	return true;
+});
+
+// 🚀 AFTER GUARD ENGINE: Pas rute sukses diverifikasi satpam, matikan loading bar secara smooth bray!
+router.afterEach(() => {
+	const { stopLoading } = useLoading();
+	stopLoading();
 });
 
 export default router;

@@ -1,4 +1,5 @@
 <template>
+	<GlobalLoader :isActive="isGlobalLoading" />
 	<router-view></router-view>
 
 	<!-- <div v-auto-animate>
@@ -29,6 +30,12 @@
 
 <script setup>
 import { onMounted, ref } from 'vue';
+// 🚀 SUNTIKAN UTILITY GLOBAL LOADER BRAY!
+import GlobalLoader from './components/GlobalLoader.vue'; // ◄ Pastiin relative path folder lu bray!
+import { useLoading } from './composables/useLoading.js';
+
+// Amankan state global loading-nya bray bray bray
+const { isGlobalLoading } = useLoading();
 
 const deferredPrompt = ref(null);
 const showInstallModal = ref(false);

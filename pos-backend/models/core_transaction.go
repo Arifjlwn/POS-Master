@@ -12,7 +12,7 @@ type Transaction struct {
 
 	SessionID uint `gorm:"not null;index" json:"session_id"`
 
-	StoreID uint `gorm:"not null;index" json:"store_id"`
+	StoreID uint  `gorm:"not null;index" json:"store_id"`
 	Store   Store `gorm:"foreignKey:StoreID" json:"store"`
 
 	UserID uint `gorm:"not null;index" json:"user_id"`
@@ -66,7 +66,7 @@ type TransactionDetail struct {
 
 	HargaSatuan float64 `gorm:"type:decimal(18,2);not null" json:"harga_satuan"`
 
-	Kuantitas int `gorm:"not null" json:"kuantitas"`
+	Kuantitas float64 `gorm:"not null" json:"kuantitas"`
 
 	ItemType string `gorm:"type:varchar(30);default:'PRODUCT';index" json:"item_type"`
 

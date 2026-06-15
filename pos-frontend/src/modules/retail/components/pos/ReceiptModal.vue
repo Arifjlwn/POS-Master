@@ -137,7 +137,7 @@ const triggerPrint = () => {
 </script>
 
 <template>
-	<div v-if="show && invoiceData" class="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-[200] p-4 backdrop-blur-sm print:static print:bg-white print:p-0 print:block">
+	<div v-if="show && invoiceData" class="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-[200] p-4 backdrop-blur-sm print:absolute print:inset-0 print:bg-white print:p-0 print:block print:z-[9999]">
 		<div class="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] shadow-2xl w-full max-w-sm flex flex-col max-h-[90vh] border-[6px] md:border-[8px] border-slate-800 print:border-none print:shadow-none print:max-h-none print:max-w-none print:rounded-none print:m-0 print:p-0">
 			<div class="overflow-y-auto custom-scrollbar bg-white p-2 mx-auto print:overflow-visible print:mx-0 print:px-3 print:py-2 select-none" id="print-area">
 				<div class="text-center mb-4 font-mono leading-none">

@@ -37,12 +37,14 @@ type StoreSettingsResponse struct {
 	FiturAktif         string     `json:"fitur_aktif"`
 	QuotaTerminal      int        `json:"quota_terminal"`
 
-	Alamat    string `json:"alamat"`
-	Provinsi  string `json:"provinsi"`
-	Kota      string `json:"kota"`
-	Kecamatan string `json:"kecamatan"`
-	Kelurahan string `json:"kelurahan"`
-	KodePos   string `json:"kode_pos"`
+	Alamat    string  `json:"alamat"`
+	Provinsi  string  `json:"provinsi"`
+	Kota      string  `json:"kota"`
+	Kecamatan string  `json:"kecamatan"`
+	Kelurahan string  `json:"kelurahan"`
+	KodePos   string  `json:"kode_pos"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 
 	LogoURL       string  `json:"logo_url"`
 	IsTaxActive   bool    `json:"is_tax_active"`
@@ -108,6 +110,8 @@ func (h *RetailHandler) GetStoreSettings(c *gin.Context) {
 		Kecamatan: store.Kecamatan,
 		Kelurahan: store.Kelurahan,
 		KodePos:   store.KodePos,
+		Latitude:  store.Latitude,
+		Longitude: store.Longitude,
 
 		LogoURL:       store.LogoURL,
 		IsTaxActive:   store.IsTaxActive,

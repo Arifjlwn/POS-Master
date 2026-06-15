@@ -39,8 +39,8 @@ func SetupTokoBaru(c *gin.Context) {
 		Kecamatan    string  `json:"kecamatan"`
 		Kelurahan    string  `json:"kelurahan"`
 		KodePos      string  `json:"kode_pos"`
-		Latitude     float64 `json:"latitude"`  // ◄ DITERIMA DARI FRONTEND
-		Longitude    float64 `json:"longitude"` // ◄ DITERIMA DARI FRONTEND
+		Latitude     float64 `json:"latitude"`
+		Longitude    float64 `json:"longitude"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Format data salah, pastikan form terisi lengkap"})

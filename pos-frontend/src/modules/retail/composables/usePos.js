@@ -49,6 +49,12 @@ export function usePos() {
 	const isMobileCartOpen = ref(false);
 	const searchQuery = ref('');
 	const searchInput = ref(null);
+	const selectedCategory = ref('');
+	const categories = computed(() => {
+		const allCats = products.value.map((p) => p.kategori).filter((cat) => cat && cat.trim() !== '');
+
+		return [...new Set(allCats)];
+	});
 	const showScanner = ref(false);
 	let html5QrCode = null;
 
@@ -108,7 +114,6 @@ export function usePos() {
 	const fetchProducts = async () => {
 		try {
 			const response = await posService.getProducts();
-			// Pastikan struktur mapping data sinkron sama penamaan field di database Go lu
 			products.value = (response.data || response).map((p) => ({
 				id: p.id,
 				sku: p.sku || `SKU-${p.id}`,
@@ -124,6 +129,9 @@ export function usePos() {
 				satuan_tengah: p.satuan_tengah || null,
 				isi_tengah_ke_dasar: p.isi_tengah_ke_dasar || 0,
 				harga_jual_tengah: p.harga_jual_tengah || p.harga_jual * (p.isi_tengah_ke_dasar || 1),
+
+				// 🚀 SUNTIKAN WAJIB BRAY: Tampung field kategori dari database Go lu!
+				kategori: p.kategori || p.category || 'General',
 			}));
 		} catch (error) {
 			console.error('Gagal memuat katalog produk:', error);
@@ -133,9 +141,17 @@ export function usePos() {
 	};
 
 	const filteredProducts = computed(() => {
-		if (!searchQuery.value) return products.value;
-		const query = searchQuery.value.toLowerCase();
-		return products.value.filter((p) => p.name.toLowerCase().includes(query) || (p.sku && p.sku.toLowerCase().includes(query)));
+		return products.value.filter((p) => {
+			// 1. Filter via input Ketikan / Scan Barcode SKU bray
+			const query = searchQuery.value ? searchQuery.value.toLowerCase() : '';
+			const matchSearch = p.name.toLowerCase().includes(query) || (p.sku && p.sku.toLowerCase().includes(query));
+
+			// 2. Filter via Klik Tab Kategori Vertikal/Horizontal di kiri layar
+			const matchCategory = !selectedCategory.value || p.kategori === selectedCategory.value;
+
+			// Produk lolos kurasi kalau memenuhi kedua syarat di atas bray bray bray!
+			return matchSearch && matchCategory;
+		});
 	});
 
 	const handleBarcodeScan = () => {
@@ -269,13 +285,31 @@ export function usePos() {
 
 	const validateQty = (item) => {
 		const existingItem = cart.value.find((i) => i.id === item.id && i.selected_uom === item.selected_uom);
-		if (existingItem && existingItem.qty < 1) existingItem.qty = 1;
+		if (!existingItem) return;
+
+		// Ubah string input jadi angka float desimal bray
+		let parsedQty = parseFloat(existingItem.qty);
+
+		// Jika bukan angka atau ngaco, balikin ke default minimal 1 atau 0.25
+		if (isNaN(parsedQty) || parsedQty <= 0) {
+			existingItem.qty = ['KG', 'GRAM', 'LITER', 'ML'].includes(item.selected_uom?.toUpperCase()) ? 0.25 : 1;
+			return;
+		}
+
+		// Set nilai aslinya yang udah bersih berbentuk angka float bray bray
+		existingItem.qty = parsedQty;
+
 		const prodMaster = products.value.find((p) => p.id === item.id);
 
-		// 🛡️ FIX: Amankan validasi ketik manual
-		if (existingItem && prodMaster && existingItem.qty * existingItem.uom_multiplier > Number(prodMaster.stock)) {
+		// Validasi Overstock (Batas limit stok gudang)
+		if (prodMaster && existingItem.qty * existingItem.uom_multiplier > Number(prodMaster.stock)) {
 			Swal.fire({ icon: 'warning', title: 'Overstock!', text: 'Angka kuantitas otomatis disesuaikan dengan limit sisa stok fisik.' });
-			existingItem.qty = Math.floor(Number(prodMaster.stock) / existingItem.uom_multiplier) || 1;
+
+			if (['KG', 'GRAM', 'LITER', 'ML'].includes(item.selected_uom?.toUpperCase())) {
+				existingItem.qty = Number(prodMaster.stock) / existingItem.uom_multiplier;
+			} else {
+				existingItem.qty = Math.floor(Number(prodMaster.stock) / existingItem.uom_multiplier) || 1;
+			}
 		}
 	};
 
@@ -325,7 +359,7 @@ export function usePos() {
 	};
 
 	// --- MATHEMATICS MATH ENGINE MATANG & AMAN IDR ---
-	const subTotalBelanja = computed(() => cart.value.reduce((total, item) => total + item.price * item.qty, 0));
+	const subTotalBelanja = computed(() => cart.value.reduce((total, item) => total + parseFloat(item.price) * parseFloat(item.qty), 0));
 	const nilaiPajak = computed(() => (!storeSettings.value || !storeSettings.value.is_tax_active ? 0 : Math.round(((storeSettings.value.pajak_percent || storeSettings.value.pajak_persen || 0) / 100) * subTotalBelanja.value)));
 	const totalBelanja = computed(() => Math.round((subTotalBelanja.value + nilaiPajak.value) / 100) * 100);
 	const kembalian = computed(() => payAmount.value - totalBelanja.value);
@@ -355,11 +389,9 @@ export function usePos() {
 		if (isProcessingCheckout.value || cart.value.length === 0) return;
 		isProcessingCheckout.value = true;
 
-		// SECURITY FIX: payload ini mengirimkan data ID barang dan kuantitas riil.
-		// Backend Go WAJIB menghitung ulang total belanjaan berdasarkan harga master DB, bukan mempercayai item.price FE!
 		const payloadItems = cart.value.map((item) => ({
 			product_id: item.id,
-			kuantitas: parseInt(item.qty * item.uom_multiplier, 10),
+			kuantitas: parseFloat(Number(item.qty * item.uom_multiplier).toFixed(2)), // Garansi aman 2 angka di belakang koma
 			uom_label: `${item.qty} ${item.selected_uom}`,
 			harga_uom: parseInt(item.price, 10),
 		}));
@@ -529,6 +561,8 @@ export function usePos() {
 		searchQuery,
 		searchInput,
 		showScanner,
+		selectedCategory,
+		categories,
 		pecahan,
 		totalUangFisik,
 		filteredProducts,

@@ -51,9 +51,9 @@ onMounted(() => {
 				</div>
 
 				<div class="flex-1 p-6 md:p-8 overflow-hidden">
-					<SettingBasicInfo v-if="activeTab === 'basic'" :form="form" :logoPreview="logoPreview" @update-file="handleFileChange" @remove-logo="removeLogo" />
-					<SettingPayment v-if="activeTab === 'payment'" :form="form" :qrisPreview="qrisPreview" @update-file="handleFileChange" @remove-qris="removeQris" />
-					<SettingReceiptTax v-if="activeTab === 'tax'" :form="form" />
+					<SettingBasicInfo v-show="activeTab === 'basic'" :form="form" :logoPreview="logoPreview" @update-file="handleFileChange" @remove-logo="removeLogo" />
+					<SettingPayment v-show="activeTab === 'payment'" :form="form" :qrisPreview="qrisPreview" @update-file="handleFileChange" @remove-qris="removeQris" />
+					<SettingReceiptTax v-show="activeTab === 'tax'" :form="form" />
 				</div>
 			</div>
 		</div>
