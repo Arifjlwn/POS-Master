@@ -9,7 +9,7 @@ const emit = defineEmits(['edit', 'delete']);
 </script>
 
 <template>
-    <div v-if="items.length === 0" class="flex flex-col items-center justify-center py-20 text-slate-400 bg-white rounded-3xl border border-slate-100 border-dashed border-2">
+    <div v-if="items.length === 0" class="flex flex-col items-center justify-center py-20 text-slate-400 bg-white rounded-3xl border-slate-100 border-dashed border-2">
         <div class="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center mb-4 border border-slate-100">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         </div>
@@ -56,7 +56,7 @@ const emit = defineEmits(['edit', 'delete']);
                     </div>
                     <div class="flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-pink-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/></svg>
-                        <h3 class="text-sm font-black text-slate-800 uppercase leading-tight line-clamp-2 pr-10 capitalize">{{ perfume.nama }}</h3>
+                        <h3 class="text-sm font-black text-slate-800 uppercase leading-tight line-clamp-2 pr-10">{{ perfume.nama }}</h3>
                     </div>
                 </div>
                 <div class="relative z-10 pt-4 border-t border-slate-100 mt-auto flex items-end justify-between">
