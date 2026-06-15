@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue';
-import SidebarLaundry from './SidebarLaundry.vue';
-import api from '../../../api.js'; 
+import SidebarLaundry from '../../components/SidebarLaundry.vue';
+import api from '../../../../../api.js'; 
 import Swal from 'sweetalert2';
 
 // --- STATE DATA ---
