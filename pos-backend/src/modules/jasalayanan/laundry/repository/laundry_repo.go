@@ -2,7 +2,7 @@ package repository
 
 import (
 	"pos-backend/models"
-	"pos-backend/src/modules/jasalayanan/laundry/domain" // <-- PATH BARU SUDAH DISESUAIKAN
+	"pos-backend/src/modules/jasalayanan/laundry/domain" 
 	"gorm.io/gorm"
 )
 
@@ -31,8 +31,6 @@ type LaundryRepository interface {
 	GetAllTransactions(storeID uint) ([]models.Transaction, error)
 	GetLaundryDetailByTxID(txID uint) (*domain.TransactionLaundryDetail, error)
 	GetProductByIDSimple(id uint) (*models.Product, error)
-
-	// 🚀 AMUNISI TERAKHIR UNTUK SETTING & TRACKING
 	UpdateStoreTx(tx *gorm.DB, store *models.Store) error
 	GetTrackingCucian(storeID uint) ([]domain.TrackingResponse, error)
 	UpdateStatusDetailCucian(id uint, status string) error
@@ -41,7 +39,9 @@ type LaundryRepository interface {
 type laundryRepo struct { db *gorm.DB }
 
 func NewLaundryRepo(db *gorm.DB) LaundryRepository { return &laundryRepo{db} }
+
 func (r *laundryRepo) GetDB() *gorm.DB { return r.db }
+
 func (r *laundryRepo) GetKasirByStoreID(storeID uint) ([]models.User, error) {
 	var list []models.User
 	err := r.db.Where("store_id = ? AND role = ?", storeID, "kasir").Find(&list).Error
@@ -58,7 +58,7 @@ func (r *laundryRepo) DeleteKasir(id uint, storeID uint) error {
 }
 func (r *laundryRepo) GetLayananLaundry(storeID uint) ([]models.Product, error) {
 	var products []models.Product
-	err := r.db.Where("store_id = ?", storeID).Find(&products).Error
+	err := r.db.Where("store_id = ? AND kategori = ?", storeID, "JASA_LAUNDRY").Find(&products).Error
 	return products, err
 }
 func (r *laundryRepo) FindCustomerByPhone(storeID uint, phone string) (*models.Customer, error) {
@@ -84,75 +84,66 @@ func (r *laundryRepo) GetTransactionByID(id uint, storeID uint) (*models.Transac
 	return &trx, err
 }
 func (r *laundryRepo) UpdateTransaction(transaction *models.Transaction) error { return r.db.Save(transaction).Error }
-func (r *laundryRepo) CreateLayanan(p *models.Product) error {
-	return r.db.Create(p).Error
-}
-
+func (r *laundryRepo) CreateLayanan(p *models.Product) error { return r.db.Create(p).Error }
 func (r *laundryRepo) DeleteLayanan(id uint, storeID uint) error {
 	return r.db.Where("id = ? AND store_id = ?", id, storeID).Delete(&models.Product{}).Error
 }
-
 func (r *laundryRepo) GetLayananByID(id uint, storeID uint) (*models.Product, error) {
 	var p models.Product
 	err := r.db.Where("id = ? AND store_id = ?", id, storeID).First(&p).Error
 	return &p, err
 }
-
-func (r *laundryRepo) UpdateLayanan(p *models.Product) error {
-	return r.db.Save(p).Error
-}
-
+func (r *laundryRepo) UpdateLayanan(p *models.Product) error { return r.db.Save(p).Error }
 func (r *laundryRepo) GetPerfumesByStoreID(storeID uint) ([]domain.Perfume, error) {
 	var list []domain.Perfume
 	err := r.db.Where("store_id = ?", storeID).Find(&list).Error
 	return list, err
 }
-
-func (r *laundryRepo) CreatePerfume(p *domain.Perfume) error {
-	return r.db.Create(p).Error
-}
-
+func (r *laundryRepo) CreatePerfume(p *domain.Perfume) error { return r.db.Create(p).Error }
 func (r *laundryRepo) DeletePerfume(id uint, storeID uint) error {
 	return r.db.Where("id = ? AND store_id = ?", id, storeID).Delete(&domain.Perfume{}).Error
 }
-
 func (r *laundryRepo) GetAllTransactions(storeID uint) ([]models.Transaction, error) {
 	var list []models.Transaction
 	err := r.db.Where("store_id = ?", storeID).Order("created_at desc").Find(&list).Error
 	return list, err
 }
-
 func (r *laundryRepo) GetLaundryDetailByTxID(txID uint) (*domain.TransactionLaundryDetail, error) {
 	var d domain.TransactionLaundryDetail
 	err := r.db.Where("transaction_id = ?", txID).First(&d).Error
 	return &d, err
 }
-
 func (r *laundryRepo) GetProductByIDSimple(id uint) (*models.Product, error) {
 	var p models.Product
 	err := r.db.Where("id = ?", id).First(&p).Error
 	return &p, err
 }
-
-func (r *laundryRepo) UpdateStoreTx(tx *gorm.DB, store *models.Store) error {
-	return tx.Save(store).Error
-}
+func (r *laundryRepo) UpdateStoreTx(tx *gorm.DB, store *models.Store) error { return tx.Save(store).Error }
 
 func (r *laundryRepo) GetTrackingCucian(storeID uint) ([]domain.TrackingResponse, error) {
 	var results []domain.TrackingResponse
-	
 	err := r.db.Table("laundry_transaction_details").
-		Select("laundry_transaction_details.id, transactions.no_invoice as invoice, laundry_transaction_details.nama_pelanggan as pelanggan, laundry_transaction_details.no_whatsapp as whatsapp, products.nama_produk as layanan, laundry_transaction_details.berat_kg, laundry_transaction_details.sub_total, laundry_transaction_details.status_cucian as status").
+		Select(`
+			laundry_transaction_details.id, 
+			transactions.no_invoice as invoice, 
+			laundry_transaction_details.nama_pelanggan as pelanggan, 
+			laundry_transaction_details.no_whatsapp as whatsapp, 
+			products.nama_produk as layanan, 
+			laundry_transaction_details.berat_kg, 
+			laundry_transaction_details.sub_total, 
+			laundry_transaction_details.status_cucian,
+			laundry_transaction_details.status_bayar,
+			laundry_transaction_details.nomor_rak,
+			laundry_transaction_details.estimasi_waktu
+		`).
 		Joins("left join transactions on transactions.id = laundry_transaction_details.transaction_id").
 		Joins("left join products on products.id = laundry_transaction_details.product_id").
 		Where("transactions.store_id = ? AND laundry_transaction_details.status_cucian != 'DIAMBIL'", storeID).
 		Order("laundry_transaction_details.id desc").
 		Scan(&results).Error
-		
 	return results, err
 }
 
 func (r *laundryRepo) UpdateStatusDetailCucian(id uint, status string) error {
-	// Diupdate langsung ke tabel detail cucian yang bener
 	return r.db.Table("laundry_transaction_details").Where("id = ?", id).Update("status_cucian", status).Error
 }

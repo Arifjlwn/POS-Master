@@ -1,37 +1,45 @@
 package delivery
 
-import "github.com/gin-gonic/gin"
+import (
+	"pos-backend/src/modules/jasalayanan/laundry/repository"
+	"pos-backend/src/modules/jasalayanan/laundry/usecase"
+	"github.com/gin-gonic/gin"
+)
 
-func RegisterLaundryRoutes(rg *gin.RouterGroup, h *LaundryHandler) {
-	// Kasir Karyawan Management
-	rg.GET("/kasir", h.GetKasirList)
-	rg.POST("/kasir", h.CreateKasir)
-	rg.DELETE("/kasir/:id", h.DeleteKasir)
+func RegisterLaundryRoutes(rg *gin.RouterGroup, repo repository.LaundryRepository) {
+	laundryUC := usecase.NewLaundryUseCase(repo)
 
-	// Kasir POS Laundry & Live Search
-	rg.GET("/services", h.AmbilDaftarLayananLaundry)
-	rg.POST("/checkout", h.ProsesCheckoutLaundry)
-	rg.GET("/customers/search", h.CariPelanggan)
+	txHandler      := NewLaundryTransactionHandler(laundryUC)
+	serviceHandler := NewLaundryServiceHandler(repo)
+	perfumeHandler := NewLaundryPerfumeHandler(repo)
+	staffHandler   := NewLaundryStaffHandler(repo)
+	reportHandler  := NewLaundryReportHandler(laundryUC, repo)
 
-	// Pelunasan Piutang / Bill
-	rg.PUT("/transactions/:id/lunas", h.LunasiTransaksi)
+	// Staff
+	rg.GET("/kasir", staffHandler.GetKasirList)
+	rg.POST("/kasir", staffHandler.CreateKasir)
+	rg.DELETE("/kasir/:id", staffHandler.DeleteKasir)
 
-	// Master Paket / Jasa Laundry
-	rg.POST("/services/new", h.TambahLayananLaundry) // Diubah dikit pathnya biar gampang dibedain sama GET services
-	rg.PUT("/services/:id", h.EditLayananLaundry)
-	rg.DELETE("/services/:id", h.HapusLayananLaundry)
+	// POS Core & Customer Search
+	rg.GET("/services", serviceHandler.AmbilDaftarLayananLaundry)
+	rg.POST("/checkout", txHandler.ProsesCheckoutLaundry)
+	rg.GET("/customers/search", reportHandler.CariPelanggan)
+	rg.PUT("/transactions/:id/lunas", txHandler.LunasiTransaksi)
 
-	// Perfume Management
-	rg.GET("/perfumes", h.GetPerfumes)
-	rg.POST("/perfumes", h.CreatePerfume)
-	rg.DELETE("/perfumes/:id", h.DeletePerfume)
+	// CRUD Services
+	rg.POST("/services/new", serviceHandler.TambahLayananLaundry)
+	rg.PUT("/services/:id", serviceHandler.EditLayananLaundry)
+	rg.DELETE("/services/:id", serviceHandler.HapusLayananLaundry)
 
-	// Report Keuangan & Antrean Cucian
-	rg.GET("/report", h.GetLaporan)
+	// Perfumes
+	rg.GET("/perfumes", perfumeHandler.GetPerfumes)
+	rg.POST("/perfumes", perfumeHandler.CreatePerfume)
+	rg.DELETE("/perfumes/:id", perfumeHandler.DeletePerfume)
 
-	// TRACKING & SETTING TOKO
-	rg.GET("/setting", h.GetSettingToko)
-	rg.PUT("/setting", h.UpdateSettingToko)
-	rg.GET("/tracking", h.AmbilDataTracking)
-	rg.PUT("/tracking/:id/status", h.UpdateStatusCucian)
+	// Reports & Settings
+	rg.GET("/report", txHandler.GetLaporan)
+	rg.GET("/setting", reportHandler.GetSettingToko)
+	rg.PUT("/setting", reportHandler.UpdateSettingToko)
+	rg.GET("/tracking", reportHandler.AmbilDataTracking)
+	rg.PUT("/tracking/:id/status", txHandler.UpdateStatusCucian)
 }

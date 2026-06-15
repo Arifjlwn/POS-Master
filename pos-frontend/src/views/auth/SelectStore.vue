@@ -3,12 +3,30 @@ import Swal from 'sweetalert2';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../../api.js';
-import PricingPlan from '../../modules/retail/components/PricingPlan.vue';
+import PricingPlan from '../../components/PricingPlan.vue';
 
 const router = useRouter();
 const stores = ref([]);
 const userName = ref('');
 const isLoading = ref(false);
+const currentPendingIndustry = computed(() => {
+	// 1. Jika user sudah punya toko terdaftar di database, ambil jenis industrinya saklek dari toko pertama!
+	if (stores.value && stores.value.length > 0) {
+		const firstStoreIndustry = stores.value[0].industry || stores.value[0].Industry;
+		if (firstStoreIndustry) {
+			// Standarisasi string: samakan dengan key 'jasa' pada PricingPlan bray
+			return firstStoreIndustry.toLowerCase() === 'laundry' ? 'jasa' : firstStoreIndustry.toLowerCase();
+		}
+	}
+
+	// 2. Fallback jika bener-bener baru mendaftar dan belum punya ruko sama sekali bray
+	const localPending = localStorage.getItem('pendingIndustry');
+	if (localPending) {
+		return localPending.toLowerCase() === 'laundry' ? 'jasa' : localPending.toLowerCase();
+	}
+
+	return 'retail';
+});
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -78,42 +96,52 @@ const selectBranch = async (store) => {
 
 	// 🚀 2. SELEKSI AKSES KASIR NORMAL (Jika status sudah 'active')
 	isLoading.value = true;
-	try {
-		const res = await api.post('/auth/select-store', { store_id: store.id });
+    try {
+        const res = await api.post('/auth/select-store', { store_id: store.id });
 
-		localStorage.setItem('token', res.data.token);
-		localStorage.setItem('store_id', res.data.store_id);
-		localStorage.setItem('storeName', res.data.store_name || 'POS UMKM');
-		localStorage.setItem('storeLogo', res.data.store_logo || res.data.logo_url || '');
-		localStorage.setItem('subscriptionPlan', res.data.subscription_plan || 'basic');
+        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('store_id', res.data.store_id);
+        localStorage.setItem('storeName', res.data.store_name || 'POS UMKM');
+        localStorage.setItem('storeLogo', res.data.store_logo || res.data.logo_url || '');
+        localStorage.setItem('subscriptionPlan', res.data.subscription_plan || 'basic');
 
-		let finalRole = 'owner';
-		if (res.data.role) {
-			finalRole = res.data.role.toLowerCase();
-		} else if (res.data.user && res.data.user.role) {
-			finalRole = res.data.user.role.toLowerCase();
-		} else {
-			const savedRole = localStorage.getItem('role');
-			if (savedRole) finalRole = savedRole.toLowerCase();
-		}
-		localStorage.setItem('role', finalRole);
+        // Set info industri aktif ke local storage buat dibaca Satpam Router Index global bray bray!
+        const targetIndustry = (store.industry || 'retail').toLowerCase();
+        localStorage.setItem('user_industry', targetIndustry);
 
-		localStorage.setItem('name', res.data.name || res.data.user?.name || 'Owner');
-		localStorage.setItem('foto_url', res.data.foto_url || res.data.user?.foto_url || '');
+        let finalRole = 'owner';
+        if (res.data.role) {
+            finalRole = res.data.role.toLowerCase();
+        } else if (res.data.user && res.data.user.role) {
+            finalRole = res.data.user.role.toLowerCase();
+        } else {
+            const savedRole = localStorage.getItem('role');
+            if (savedRole) finalRole = savedRole.toLowerCase();
+        }
+        localStorage.setItem('role', finalRole);
 
-		router.push('/retail/pos/riwayat');
-	} catch (error) {
-		console.error('Gagal masuk sesi toko:', error);
-		Swal.fire({
-			icon: 'error',
-			title: 'Akses Gagal',
-			text: error.response?.data?.error || 'Gagal masuk ke toko ini.',
-			confirmButtonColor: '#ef4444',
-			customClass: { popup: 'rounded-[32px]' },
-		});
-	} finally {
-		isLoading.value = false;
-	}
+        localStorage.setItem('name', res.data.name || res.data.user?.name || 'Owner');
+        localStorage.setItem('foto_url', res.data.foto_url || res.data.user?.foto_url || '');
+
+        // 🚀 NAVIGATION REDIRECT ENGINE: Pengalihan rute dinamis anti-pental!
+        if (targetIndustry === 'jasa' || targetIndustry === 'laundry') {
+            router.push('/laundry/pos/riwayat');
+        } else {
+            router.push('/retail/pos/riwayat');
+        }
+
+    } catch (error) {
+        console.error('Gagal masuk sesi toko:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Akses Gagal',
+            text: error.response?.data?.error || 'Gagal masuk ke toko ini.',
+            confirmButtonColor: '#ef4444',
+            customClass: { popup: 'rounded-[32px]' },
+        });
+    } finally {
+        isLoading.value = false;
+    }
 };
 
 const handlePilihPaket = (payload) => {
@@ -217,7 +245,7 @@ const getStoreLabel = (store, index) => {
 							<div class="flex items-start justify-between mb-6 md:mb-8">
 								<div class="w-14 h-14 md:w-16 md:h-16 rounded-[20px] md:rounded-[22px] bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden shrink-0 group-hover:scale-105 shadow-inner transition-all duration-500">
 									<img v-if="store.logo_url" :src="cleanLogoUrl(store.logo_url)" class="w-full h-full object-cover" />
-									<svg v-else class="w-6 h-6 md:w-7 h-7 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+									<svg v-else class="w-6 h-6 md:w-7 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 										<path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
 									</svg>
 								</div>
@@ -251,7 +279,7 @@ const getStoreLabel = (store, index) => {
 
 							<div :class="store.subscription_status === 'pending' ? 'text-rose-600 group-hover:text-rose-700' : 'text-slate-700 group-hover:text-indigo-600'" class="text-[10px] md:text-xs font-black uppercase tracking-widest flex items-center gap-1 transition-colors duration-300">
 								{{ store.subscription_status === 'pending' ? 'Selesaikan Aktivasi' : 'Kelola Toko' }}
-								<svg class="w-3.5 h-3.5 md:w-4 h-4 group-hover:translate-x-1.5 transition-transform duration-300 ease-out" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+								<svg class="w-3.5 h-3.5 md:w-4 group-hover:translate-x-1.5 transition-transform duration-300 ease-out" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
 									<path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
 								</svg>
 							</div>
@@ -260,7 +288,7 @@ const getStoreLabel = (store, index) => {
 
 					<div @click="showPricingModal = true" class="bg-white rounded-[32px] md:rounded-[36px] p-6 md:p-7 border-2 border-dashed border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/5 hover:-translate-y-1.5 transition-all duration-500 cubic-bezier-card cursor-pointer flex flex-col items-center justify-center text-center min-h-[200px] md:min-h-[230px] group shadow-sm">
 						<div class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-slate-50 border border-slate-200 group-hover:bg-indigo-100/50 group-hover:scale-105 transition-all duration-300 flex items-center justify-center mb-3 md:mb-4 shadow-sm">
-							<svg class="w-5 h-5 md:w-6 h-6 text-slate-400 group-hover:text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+							<svg class="w-5 h-5 md:w-6 text-slate-400 group-hover:text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
 								<path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
 							</svg>
 						</div>
@@ -287,7 +315,7 @@ const getStoreLabel = (store, index) => {
 				<div @click="stores.length > 0 ? (showPricingModal = false) : null" class="fixed inset-0 bg-slate-950/50 backdrop-blur-md transition-opacity duration-300"></div>
 
 				<div class="bg-white w-full max-w-6xl rounded-[32px] md:rounded-[44px] shadow-2xl p-5 sm:p-6 md:p-10 relative border border-slate-100 my-auto max-h-[92vh] overflow-y-auto custom-scrollbar flex flex-col items-center z-10 transform transition-all duration-500 cubic-bezier-modal">
-					<PricingPlan :is-expansion="isExpansionMode" :show-close="stores.length > 0" @close="showPricingModal = false" @select-plan="handlePilihPaket" />
+					<PricingPlan :is-expansion="isExpansionMode" :show-close="stores.length > 0" :lock-industry="currentPendingIndustry" @close="showPricingModal = false" @select-plan="handlePilihPaket" />
 				</div>
 			</div>
 		</Transition>

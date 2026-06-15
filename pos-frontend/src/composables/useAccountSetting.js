@@ -1,5 +1,5 @@
 import { ref, onMounted } from 'vue';
-import api from '../../../api.js';
+import api from '../api.js';
 import Swal from 'sweetalert2';
 import imageCompression from 'browser-image-compression';
 

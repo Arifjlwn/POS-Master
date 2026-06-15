@@ -26,7 +26,6 @@ func SetupTokoBaru(c *gin.Context) {
 	}
 	userID := uint(userIDRaw.(float64))
 
-	// 🚀 SUNTIK FIELD KOORDINAT BARU KE STRUCT INPUT JSON BRAY
 	var input struct {
 		NamaToko     string  `json:"nama_toko" binding:"required"`
 		Telepon      string  `json:"telepon"`
@@ -57,13 +56,57 @@ func SetupTokoBaru(c *gin.Context) {
 		return
 	}
 
-	subPlan := strings.ToLower(input.Plan)
+	subPlan := strings.ToLower(strings.TrimSpace(input.Plan))
 	if subPlan == "" {
 		subPlan = "trial"
 	}
-	subIndustry := input.Industry
+	
+	subIndustry := strings.ToUpper(strings.TrimSpace(input.Industry))
 	if subIndustry == "" {
-		subIndustry = "retail"
+		subIndustry = "RETAIL"
+	}
+	
+	subBusinessType := strings.ToUpper(strings.TrimSpace(input.BusinessType))
+
+	// ----------------=====================================================
+	// 🛡️ SECURITY GUARD 1: VALIDASI KESETARAAN KLASTER & KESIAPAN MODUL (CONFIG MAP)
+	// ----------------=====================================================
+	cluster, clusterExists := src.MasterAllowedIndustries[subIndustry]
+	if !clusterExists {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Klaster industri %s tidak terdaftar di platform!", input.Industry)})
+		return
+	}
+
+	subType, subTypeExists := cluster.SubTypes[subBusinessType]
+	if !subTypeExists {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Sub-bisnis %s tidak tersedia di klaster %s!", input.BusinessType, input.Industry)})
+		return
+	}
+
+	if !subType.IsReady {
+		c.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("Akses ditolak! Modul %s saat ini belum open beta.", subType.Name)})
+		return
+	}
+
+	// ----------------=====================================================
+	// 🛡️ SECURITY GUARD 2: LOCKING MULTI-TENANT ISOLATION (1 EMAIL = 1 INDUSTRI)
+	// ----------------=====================================================
+	var existingStores []models.Store
+	if err := src.DB.Where("owner_id = ?", userID).Find(&existingStores).Error; err == nil && len(existingStores) > 0 {
+		allowedCluster := strings.ToUpper(existingStores[0].Industry)
+		if subIndustry != allowedCluster {
+			c.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("Security Alert! Akun Anda sudah terikat pada klaster %s. Dilarang melakukan ekspansi lintas industri!", allowedCluster)})
+			return
+		}
+	}
+
+	// ----------------=====================================================
+	// 🛡️ SECURITY GUARD 3: PREVENT MANIPULASI PLAN
+	// ----------------=====================================================
+	validPlans := map[string]bool{"trial": true, "basic": true, "pro": true, "premium": true}
+	if !validPlans[subPlan] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Fraud Detected! Skema paket langganan tidak sah!"})
+		return
 	}
 
 	var subEnd time.Time
@@ -73,19 +116,16 @@ func SetupTokoBaru(c *gin.Context) {
 	switch subPlan {
 	case "trial":
 		subStatus = "active"
-		subEnd = time.Now().AddDate(0, 0, 14) // 14 Hari Uji Coba Gratis
+		subEnd = time.Now().AddDate(0, 0, 14)
 		fiturAktif = `["kasir", "absensi", "export_excel", "multi_gudang", "ai_analyst", "whatsapp"]`
-
 	case "pro":
-		subStatus = "pending" // 🔒 Gembok 'pending' sebelum settlement Midtrans
-		subEnd = time.Now()   // Nanti di-update otomatis lewat webhook sukses
+		subStatus = "pending"
+		subEnd = time.Now()
 		fiturAktif = `["kasir", "absensi", "export_excel"]`
-
 	case "premium":
 		subStatus = "pending"
 		subEnd = time.Now()
 		fiturAktif = `["kasir", "absensi", "export_excel", "multi_gudang", "whatsapp"]`
-
 	default:
 		subPlan = "basic"
 		subStatus = "pending"
@@ -93,14 +133,13 @@ func SetupTokoBaru(c *gin.Context) {
 		fiturAktif = `["kasir"]`
 	}
 
-	// 🚀 SUNTIK KOORDINAT GPS DATA KE MODEL GORM INDONESIA
 	newStore := models.Store{
 		PublicID:           utils.GenerateULID(),
 		OwnerID:            userID,
 		NamaToko:           input.NamaToko,
 		Telepon:            input.Telepon,
-		BusinessType:       input.BusinessType,
-		Industry:           subIndustry,
+		BusinessType:       subBusinessType, // Tetap sesuai data asli lu bray
+		Industry:           strings.ToLower(subIndustry), // Tetap sesuai data asli lowercase lu bray
 		SubscriptionPlan:   subPlan,
 		SubscriptionStatus: subStatus,
 		SubscriptionEnd:    &subEnd,
@@ -111,8 +150,8 @@ func SetupTokoBaru(c *gin.Context) {
 		Kecamatan:          input.Kecamatan,
 		Kelurahan:          input.Kelurahan,
 		KodePos:            input.KodePos,
-		Latitude:           input.Latitude,  // ◄ DI-MAP KE DB TABEL CORES
-		Longitude:          input.Longitude, // ◄ DI-MAP KE DB TABEL CORES
+		Latitude:           input.Latitude,
+		Longitude:          input.Longitude,
 	}
 
 	errTx := src.DB.Transaction(func(tx *gorm.DB) error {
@@ -147,7 +186,6 @@ func SetupTokoBaru(c *gin.Context) {
 		return
 	}
 
-	// 🚀 SUNTIKAN SENSOR LOG: Pendaftaran Tenant/Toko Baru Berhasil
 	utils.RecordSystemLog(c, "Registrasi Tenant Baru", newStore.PublicID, fmt.Sprintf("Toko bergabung: %s | Paket: %s | Mode: %s", newStore.NamaToko, strings.ToUpper(subPlan), subStatus))
 
 	c.JSON(http.StatusOK, gin.H{
@@ -213,14 +251,13 @@ func ReTriggerPaymentHandler(c *gin.Context) {
 		return
 	}
 
-	// 🚀 SUNTIKAN SENSOR LOG: Inisiasi Ulang Tagihan Midtrans
 	utils.RecordSystemLog(c, "Inisiasi Ulang Tagihan", store.PublicID, fmt.Sprintf("Ruko %s memicu ulang pembayaran paket %s (Rp%d)", store.NamaToko, planCode, finalPrice))
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":    "Sesi billing pembayaran berhasil di-restore!",
-		"store_id":   store.ID,
-		"store_name": store.NamaToko,
-		"snap_token": snapResp.Token,
-		"order_id":   orderID,
+		"message":             "Sesi billing pembayaran berhasil di-restore!",
+		"store_id":            store.ID,
+		"store_name":          store.NamaToko,
+		"snap_token":          snapResp.Token,
+		"order_id":            orderID,
 	})
 }

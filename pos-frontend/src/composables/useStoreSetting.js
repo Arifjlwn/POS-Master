@@ -1,6 +1,6 @@
 import Swal from 'sweetalert2';
 import { ref } from 'vue';
-import api from '../../../api.js';
+import api from '../api.js';
 
 export function useStoreSetting() {
 	const isLoading = ref(true);

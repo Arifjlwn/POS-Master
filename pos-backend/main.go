@@ -43,7 +43,6 @@ func main() {
 
 	// Inisialisasi Modul Laundry
 	laundryRepo := laundryRepository.NewLaundryRepo(src.DB)
-	laundryHandler := &laundryDelivery.LaundryHandler{Repo: laundryRepo}
 
 	// Inisialisasi Modul Food & Beverages (FnB)
 	fnbMenuRepo := fnbRepository.NewMenuRepo(src.DB)
@@ -157,7 +156,7 @@ func main() {
 		// 🧺 Modul Bisnis: LAUNDRY ECOSYSTEM
 		laundryAPI := apiGroup.Group("/laundry")
 		{
-			laundryDelivery.RegisterLaundryRoutes(laundryAPI, laundryHandler)
+			laundryDelivery.RegisterLaundryRoutes(laundryAPI, laundryRepo)
 		}
 
 		// 🍔 Modul Bisnis: FOOD & BEVERAGES (FnB)
