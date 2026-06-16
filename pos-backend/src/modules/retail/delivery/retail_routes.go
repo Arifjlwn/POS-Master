@@ -9,13 +9,6 @@ import (
 func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 
 	// =====================================
-	// 🟢 FITUR GERBANG UTAMA (BYPASS BILLING CHECK FOR PAYMENT GATEWAY)
-	// =====================================
-
-	// 🚀 FIX MUTLAK: Cabut RequireSaaSLevel dari rute upgrade pembayaran ! Toko inactive WAJIB bisa ngakses rute ini buat dapet Snap Token Midtrans!
-	rg.POST("/subscription/upgrade", h.CreateUpgradePayment)
-
-	// =====================================
 	// 🟢 FITUR LEVEL 1 (BASIC & CORE OPERATIONAL RETAIL)
 	// =====================================
 
@@ -42,10 +35,6 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 	rg.POST("/checkout", middlewares.RequireSaaSLevel(1), h.CreateTransaction)
 	rg.GET("/transactions", middlewares.RequireSaaSLevel(1), h.GetTransactions)
 	rg.GET("/journal/closing", middlewares.RequireSaaSLevel(1), h.GetDailyClosing)
-
-	// Store Profiles Settings
-	rg.GET("/store/settings", middlewares.RequireSaaSLevel(1), h.GetStoreSettings)
-	rg.PUT("/store/settings", middlewares.RequireSaaSLevel(1), h.UpdateStoreSettings)
 
 	// =====================================
 	// 🟡 FITUR LEVEL 2 (PRO - TIM & ABSENSI)
@@ -93,6 +82,4 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 	rg.POST("/returns", middlewares.RequireSaaSLevel(3), h.CreateReturn)
 	rg.GET("/returns", middlewares.RequireSaaSLevel(3), h.GetReturns)
 
-	// INTEGRASI EKSTERNAL
-	rg.POST("/whatsapp/test", middlewares.RequireSaaSLevel(3), h.TestWhatsApp)
 }

@@ -1,10 +1,10 @@
 <script setup>
+import GlobalAccountSetting from '../../../../../components/GlobalAccountSetting.vue';
 import SidebarLaundry from '../../components/SidebarLaundry.vue';
-import GlobalAccountSetting from '../../../../../components/setting-account/GlobalAccountSetting.vue';
 </script>
 
 <template>
-    <SidebarLaundry>
-        <GlobalAccountSetting />
-    </SidebarLaundry>
+	<SidebarLaundry>
+		<GlobalAccountSetting />
+	</SidebarLaundry>
 </template>

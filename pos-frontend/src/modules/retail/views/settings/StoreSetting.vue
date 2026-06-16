@@ -1,10 +1,10 @@
 <script setup>
+import GlobalStoreSetting from '../../../../components/GlobalStoreSetting.vue';
 import Sidebar from '../../components/Sidebar.vue';
-import GlobalStoreSetting from '../../../../components/setting-store/GlobalStoreSetting.vue';
 </script>
 
 <template>
-    <Sidebar>
-        <GlobalStoreSetting />
-    </Sidebar>
+	<Sidebar>
+		<GlobalStoreSetting />
+	</Sidebar>
 </template>

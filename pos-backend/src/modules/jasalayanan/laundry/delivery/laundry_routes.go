@@ -3,17 +3,18 @@ package delivery
 import (
 	"pos-backend/src/modules/jasalayanan/laundry/repository"
 	"pos-backend/src/modules/jasalayanan/laundry/usecase"
+
 	"github.com/gin-gonic/gin"
 )
 
 func RegisterLaundryRoutes(rg *gin.RouterGroup, repo repository.LaundryRepository) {
 	laundryUC := usecase.NewLaundryUseCase(repo)
 
-	txHandler      := NewLaundryTransactionHandler(laundryUC)
+	txHandler := NewLaundryTransactionHandler(laundryUC)
 	serviceHandler := NewLaundryServiceHandler(repo)
 	perfumeHandler := NewLaundryPerfumeHandler(repo)
-	staffHandler   := NewLaundryStaffHandler(repo)
-	reportHandler  := NewLaundryReportHandler(laundryUC, repo)
+	staffHandler := NewLaundryStaffHandler(repo)
+	reportHandler := NewLaundryReportHandler(laundryUC, repo)
 
 	// Staff
 	rg.GET("/kasir", staffHandler.GetKasirList)
@@ -27,7 +28,7 @@ func RegisterLaundryRoutes(rg *gin.RouterGroup, repo repository.LaundryRepositor
 	rg.PUT("/transactions/:id/lunas", txHandler.LunasiTransaksi)
 
 	// CRUD Services
-	rg.POST("/services/new", serviceHandler.TambahLayananLaundry)
+	rg.POST("/services", serviceHandler.TambahLayananLaundry)
 	rg.PUT("/services/:id", serviceHandler.EditLayananLaundry)
 	rg.DELETE("/services/:id", serviceHandler.HapusLayananLaundry)
 
@@ -38,8 +39,6 @@ func RegisterLaundryRoutes(rg *gin.RouterGroup, repo repository.LaundryRepositor
 
 	// Reports & Settings
 	rg.GET("/report", txHandler.GetLaporan)
-	rg.GET("/setting", reportHandler.GetSettingToko)
-	rg.PUT("/setting", reportHandler.UpdateSettingToko)
 	rg.GET("/tracking", reportHandler.AmbilDataTracking)
 	rg.PUT("/tracking/:id/status", txHandler.UpdateStatusCucian)
 }

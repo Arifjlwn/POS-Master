@@ -1,10 +1,10 @@
 <script setup>
+import GlobalAccountSetting from '../../../../components/GlobalAccountSetting.vue';
 import Sidebar from '../../components/Sidebar.vue';
-import GlobalAccountSetting from '../../../../components/setting-account/GlobalAccountSetting.vue';
 </script>
 
 <template>
-    <Sidebar>
-        <GlobalAccountSetting />
-    </Sidebar>
+	<Sidebar>
+		<GlobalAccountSetting />
+	</Sidebar>
 </template>

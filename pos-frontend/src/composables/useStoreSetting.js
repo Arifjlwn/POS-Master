@@ -48,7 +48,7 @@ export function useStoreSetting() {
 	const fetchSettings = async () => {
 		isLoading.value = true;
 		try {
-			const response = await api.get('/retail/store/settings');
+			const response = await api.get('/store/settings');
 			const data = response.data.data;
 
 			Object.assign(form.value, data);
@@ -99,11 +99,23 @@ export function useStoreSetting() {
 		const formData = new FormData();
 		const uppercaseFields = ['nama_toko', 'alamat', 'provinsi', 'kota', 'kecamatan', 'kelurahan', 'qris_name', 'receipt_footer'];
 
-		Object.keys(form.value).forEach((key) => {
-			if (key !== 'logo_url' && key !== 'qris_image') {
+		// 🛡️ SECURITY PATCH 1: WHITELIST STRICT FIELDS ONLY!
+		// Hanya field-field di bawah ini yang sah dan diizinkan dikirim ke backend ruko bray bray!
+		// Atribut sistem kritis seperti subscription_plan, subscription_status, quota_terminal TIDAK BOLEH MASUK!
+		const allowedFields = ['nama_toko', 'telepon', 'business_type', 'alamat', 'provinsi', 'kota', 'kecamatan', 'kelurahan', 'kode_pos', 'latitude', 'longitude', 'qris_name', 'is_tax_active', 'pajak_persen', 'receipt_footer', 'payment_type', 'midtrans_server_key', 'midtrans_client_key', 'printer_width', 'printer_type', 'wa_token', 'delete_logo', 'delete_qris'];
+
+		allowedFields.forEach((key) => {
+			if (form.value[key] !== undefined && form.value[key] !== null) {
 				let val = form.value[key];
 
-				// Pengaman untuk koordinat peta bray
+				// 🛡️ SECURITY PATCH 2: MASKING PROTECTOR INJECTION
+				// Jika user tidak mengganti token rahasia (nilainya masih kode samaran bawaan sistem),
+				// Jangan di-append ke payload agar tidak merusak/menimpa data asli di backend Go lu!
+				if ((key === 'wa_token' || key === 'midtrans_server_key' || key === 'midtrans_client_key') && (val === 'HAS_TOKEN_HIDDEN_BY_SYSTEM' || val === 'HAS_KEY_HIDDEN_BY_SYSTEM')) {
+					return; // Lewati field ini bray, aman rahasia terjaga!
+				}
+
+				// Pengaman konversi tipe data koordinat & format teks bray
 				if (key === 'latitude' || key === 'longitude') {
 					val = parseFloat(val) || 0;
 				} else if (typeof val === 'string') {
@@ -113,14 +125,10 @@ export function useStoreSetting() {
 				}
 
 				formData.append(key, val);
-				console.log('DATA YANG AKAN DIKIRIM KE BACKEND:');
-				for (let pair of formData.entries()) {
-					console.log(pair[0] + ': ' + pair[1]);
-				}
 			}
 		});
 
-		// PENGAMAN BARU: Hanya tempelkan ke form jika user benar-benar mengunggah file baru
+		// Pengaman upload file mutlak murni Vue File Object
 		if (form.value.logo_url instanceof File) {
 			formData.append('logo', form.value.logo_url);
 		}
@@ -130,7 +138,7 @@ export function useStoreSetting() {
 		}
 
 		try {
-			const response = await api.put('/retail/store/settings', formData);
+			const response = await api.put('/store/settings', formData);
 			const updatedData = response.data.data;
 
 			if (updatedData.nama_toko) {
@@ -154,8 +162,5 @@ export function useStoreSetting() {
 		}
 	};
 
-	// onMounted dicabut dari sini karena sudah dipanggil langsung di komponen StoreSetting.vue
-
-	// Pastikan fetchSettings terekspor agar bisa di-destructure di komponen
 	return { isLoading, isSaving, activeTab, form, logoPreview, qrisPreview, handleFileChange, removeLogo, removeQris, fetchSettings, saveSettings };
 }
