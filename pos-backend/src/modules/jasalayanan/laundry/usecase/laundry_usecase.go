@@ -1,17 +1,18 @@
 package usecase
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"math"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"pos-backend/models"
 	"pos-backend/src/modules/jasalayanan/laundry/domain"
 	"pos-backend/src/modules/jasalayanan/laundry/repository"
+	"pos-backend/utils"
 )
 
 type LaundryUseCase interface {
@@ -29,29 +30,39 @@ func NewLaundryUseCase(repo repository.LaundryRepository) LaundryUseCase {
 	return &laundryUseCase{repo: repo}
 }
 
-func (u *laundryUseCase) saveBase64Image(base64Data, folder, filename string) (string, error) {
+// 🚀 CLOUD STORAGE CONVERSION: Kirim base64 langsung meluncur ke Supabase Storage bray!
+func (u *laundryUseCase) uploadBase64ToSupabase(base64Data, publicID, subFolder string) (string, error) {
 	if base64Data == "" {
 		return "", nil
 	}
+
 	parts := strings.Split(base64Data, ",")
-	var pureBase64 string
+	pureBase64 := parts[0]
 	if len(parts) > 1 {
 		pureBase64 = parts[1]
-	} else {
-		pureBase64 = parts[0]
 	}
+
 	decodedData, err := base64.StdEncoding.DecodeString(pureBase64)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("gagal decode base64: %v", err)
 	}
-	if err := os.MkdirAll(folder, os.ModePerm); err != nil {
-		return "", err
+
+	bucketName := os.Getenv("SUPABASE_BUCKET_NAME")
+	if bucketName == "" {
+		bucketName = "nexa-pos-storage"
 	}
-	filePath := filepath.Join(folder, filename)
-	if err := os.WriteFile(filePath, decodedData, 0644); err != nil {
-		return "", err
+
+	remotePath := fmt.Sprintf("laundry/stores/%s/%s", publicID, subFolder)
+	fileReader := bytes.NewReader(decodedData)
+	fileName := fmt.Sprintf("%d.jpg", time.Now().UnixNano())
+
+	// Tembak langsung ke awan nexa-pos-storage bray!
+	urlResult, errUpload := utils.UploadToSupabase(fileReader, fileName, "image/jpeg", bucketName, remotePath)
+	if errUpload != nil {
+		return "", fmt.Errorf("gagal upload ke supabase cloud: %v", errUpload)
 	}
-	return strings.ReplaceAll(filePath, "\\", "/"), nil
+
+	return urlResult, nil
 }
 
 func (u *laundryUseCase) ProcessCheckout(storeID, userID uint, input domain.CheckoutLaundryInput) (string, string, error) {
@@ -62,18 +73,23 @@ func (u *laundryUseCase) ProcessCheckout(storeID, userID uint, input domain.Chec
 
 	invoiceCode := fmt.Sprintf("INV/LD/%s/%s", time.Now().Format("20060102"), time.Now().Format("150405"))
 
+	// 🛡️ SECURITY PATCH 1: Generate Public ID Transaksi unik berbasis UUID
+	trxPublicID := utils.GenerateULID()
+
+	// 🚀 UPLOAD LANGSUNG KE SUPABASE CLOUD (Folder public/uploads sudah punah!)
 	var buktiPath, fotoBarangPath string
 	if input.PaymentMethod == "QRIS" && input.BuktiTransferBase64 != "" {
-		buktiPath, _ = u.saveBase64Image(input.BuktiTransferBase64, "public/uploads/qris", strings.ReplaceAll(invoiceCode, "/", "")+".jpg")
+		buktiPath, _ = u.uploadBase64ToSupabase(input.BuktiTransferBase64, trxPublicID, "qris")
 	}
 	if input.FotoBarangBase64 != "" {
-		fotoBarangPath, _ = u.saveBase64Image(input.FotoBarangBase64, "public/uploads/items", strings.ReplaceAll(invoiceCode, "/", "")+".jpg")
+		fotoBarangPath, _ = u.uploadBase64ToSupabase(input.FotoBarangBase64, trxPublicID, "items")
 	}
 
 	db := u.repo.GetDB()
 	tx := db.Begin()
 
 	newTx := models.Transaction{
+		PublicID:      trxPublicID, // 🛡️ SECURITY PATCH 2: Kunci mati unique constraint DB lu bray!
 		SessionID:     1,
 		StoreID:       storeID,
 		UserID:        userID,
@@ -133,17 +149,7 @@ func (u *laundryUseCase) ProcessCheckout(storeID, userID uint, input domain.Chec
 	}
 
 	tx.Commit()
-
-	baseURL := os.Getenv("BASE_URL")
-	if baseURL == "" {
-		baseURL = "http://localhost:8080"
-	}
-	fotoPublicUrl := ""
-	if fotoBarangPath != "" {
-		fotoPublicUrl = baseURL + "/" + fotoBarangPath
-	}
-
-	return invoiceCode, fotoPublicUrl, nil
+	return invoiceCode, fotoBarangPath, nil
 }
 
 func (u *laundryUseCase) ProcessPelunasan(trxID, storeID uint, input domain.PelunasanInput) error {
@@ -155,7 +161,7 @@ func (u *laundryUseCase) ProcessPelunasan(trxID, storeID uint, input domain.Pelu
 		return fmt.Errorf("transaksi ini sudah lunas sebelumnya")
 	}
 	if input.MetodeBayar == "QRIS" && input.BuktiTransferBase64 != "" {
-		buktiPath, _ := u.saveBase64Image(input.BuktiTransferBase64, "public/uploads/qris", strings.ReplaceAll(trx.NoInvoice, "/", "")+"_lunas.jpg")
+		buktiPath, _ := u.uploadBase64ToSupabase(input.BuktiTransferBase64, trx.PublicID, "qris_lunas")
 		trx.BuktiTransfer = buktiPath
 	}
 	trx.StatusBayar = "LUNAS"
