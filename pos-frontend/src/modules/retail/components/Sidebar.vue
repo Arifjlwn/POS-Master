@@ -50,7 +50,7 @@ onMounted(async () => {
 
 	try {
 		// FIX: Semua role harus menarik data ini agar langganan tidak kereset jadi Basic
-		const res = await api.get('/retail/store/settings');
+		const res = await api.get('/store/settings');
 		const data = res.data.data;
 		const status = data.subscription_status;
 

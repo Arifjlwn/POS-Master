@@ -17,7 +17,7 @@ const storeData = ref({});
 // 🚀 AMBIL LOKASI IDENTITAS BISNIS SEBELUM MODAL DI-RENDER BRAY
 onMounted(async () => {
 	try {
-		const res = await api.get('/retail/store/settings');
+		const res = await api.get('/store/settings');
 		storeData.value = res.data.data;
 	} catch (e) {
 		console.error('Gagal memuat tipe bisnis merchant di katalog produk:', e);

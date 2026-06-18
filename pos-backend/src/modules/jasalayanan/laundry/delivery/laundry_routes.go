@@ -16,6 +16,9 @@ func RegisterLaundryRoutes(rg *gin.RouterGroup, repo repository.LaundryRepositor
 	staffHandler := NewLaundryStaffHandler(repo)
 	reportHandler := NewLaundryReportHandler(laundryUC, repo)
 
+	// 🚀 INSTANSIASI HANDLER RAK BARU KITA BRAY!
+	rackHandler := NewLaundryRackHandler(repo)
+
 	// Staff
 	rg.GET("/kasir", staffHandler.GetKasirList)
 	rg.POST("/kasir", staffHandler.CreateKasir)
@@ -41,4 +44,13 @@ func RegisterLaundryRoutes(rg *gin.RouterGroup, repo repository.LaundryRepositor
 	rg.GET("/report", txHandler.GetLaporan)
 	rg.GET("/tracking", reportHandler.AmbilDataTracking)
 	rg.PUT("/tracking/:id/status", txHandler.UpdateStatusCucian)
+
+	// =====================================
+	// 📦 FITUR SMART RACK LAUNDRY BRAY
+	// =====================================
+	// Sekarang kita panggil fungsi dari rackHandler yang barusan kita bikin!
+	rg.GET("/racks", rackHandler.GetRacks)
+	rg.POST("/racks/setup", rackHandler.SetupInitialRacks)
+	rg.PUT("/racks/:id/status", rackHandler.ToggleRackStatus)
+	rg.PUT("/transactions/:id/pindah-rak", rackHandler.ChangeOrderRack)
 }

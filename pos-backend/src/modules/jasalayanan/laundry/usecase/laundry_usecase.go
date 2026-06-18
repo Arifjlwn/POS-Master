@@ -16,7 +16,7 @@ import (
 )
 
 type LaundryUseCase interface {
-	ProcessCheckout(storeID, userID uint, input domain.CheckoutLaundryInput) (string, string, error)
+	ProcessCheckout(storeID, userID uint, input domain.CheckoutLaundryInput) (string, string, string, error)
 	ProcessPelunasan(trxID, storeID uint, input domain.PelunasanInput) error
 	GetLaporanRingkasan(storeID uint) (domain.ReportSummaryResponse, error)
 	UpdateStatusCucian(detailID uint, status string) error
@@ -30,7 +30,40 @@ func NewLaundryUseCase(repo repository.LaundryRepository) LaundryUseCase {
 	return &laundryUseCase{repo: repo}
 }
 
-// 🚀 CLOUD STORAGE CONVERSION: Kirim base64 langsung meluncur ke Supabase Storage bray!
+// FUNGSI INTERNAL: Algoritma Pencari Rak Otomatis (Load Balancer)
+func (u *laundryUseCase) CariRakTerbaik(storeID uint) (*domain.LaundryRack, error) {
+	db := u.repo.GetDB()
+	var rack domain.LaundryRack
+
+	// 1. PRIORITAS UTAMA: Cari rak yang 100% KOSONG pakai Subquery NOT IN (Anti Meleset!)
+	// 🚀 FIXED: Gak usah pake err := dan .Error di ujungnya, biarin GORM ngeksekusi murni
+	db.Raw(`
+		SELECT * FROM laundry_racks 
+		WHERE store_id = ? AND status = 'TERSEDIA' 
+		AND id NOT IN (
+			SELECT DISTINCT rack_id FROM laundry_transaction_details 
+			WHERE store_id = ? AND status_cucian NOT IN ('DIAMBIL', 'SELESAI') AND rack_id IS NOT NULL
+		) 
+		ORDER BY baris ASC, kolom ASC LIMIT 1`, storeID, storeID).Scan(&rack)
+
+	// 2. FALLBACK: Jika semua rak sudah terisi (ID = 0), cari rak dengan muatan paling sedikit
+	if rack.ID == 0 {
+		db.Raw(`
+			SELECT r.* FROM laundry_racks r
+			LEFT JOIN laundry_transaction_details ltd ON ltd.rack_id = r.id AND ltd.status_cucian NOT IN ('DIAMBIL', 'SELESAI')
+			WHERE r.store_id = ? AND r.status = 'TERSEDIA'
+			GROUP BY r.id
+			ORDER BY COUNT(ltd.id) ASC, r.baris ASC, r.kolom ASC LIMIT 1`, storeID).Scan(&rack)
+	}
+
+	// 3. Jika benar-benar tidak ada rak fisik yang terdaftar atau tersedia
+	if rack.ID == 0 {
+		return nil, fmt.Errorf("tidak ada rak yang tersedia")
+	}
+
+	return &rack, nil
+}
+
 func (u *laundryUseCase) uploadBase64ToSupabase(base64Data, publicID, subFolder string) (string, error) {
 	if base64Data == "" {
 		return "", nil
@@ -56,7 +89,6 @@ func (u *laundryUseCase) uploadBase64ToSupabase(base64Data, publicID, subFolder 
 	fileReader := bytes.NewReader(decodedData)
 	fileName := fmt.Sprintf("%d.jpg", time.Now().UnixNano())
 
-	// Tembak langsung ke awan nexa-pos-storage bray!
 	urlResult, errUpload := utils.UploadToSupabase(fileReader, fileName, "image/jpeg", bucketName, remotePath)
 	if errUpload != nil {
 		return "", fmt.Errorf("gagal upload ke supabase cloud: %v", errUpload)
@@ -65,18 +97,16 @@ func (u *laundryUseCase) uploadBase64ToSupabase(base64Data, publicID, subFolder 
 	return urlResult, nil
 }
 
-func (u *laundryUseCase) ProcessCheckout(storeID, userID uint, input domain.CheckoutLaundryInput) (string, string, error) {
+// 🚀 TIMPA FUNGSI INI SECARA UTUH BRAY
+func (u *laundryUseCase) ProcessCheckout(storeID, userID uint, input domain.CheckoutLaundryInput) (string, string, string, error) {
 	estimasiTime, err := time.Parse("2006-01-02", input.EstimasiSelesai)
 	if err != nil {
 		estimasiTime = time.Now().Add(time.Hour * 48)
 	}
 
 	invoiceCode := fmt.Sprintf("INV/LD/%s/%s", time.Now().Format("20060102"), time.Now().Format("150405"))
-
-	// 🛡️ SECURITY PATCH 1: Generate Public ID Transaksi unik berbasis UUID
 	trxPublicID := utils.GenerateULID()
 
-	// 🚀 UPLOAD LANGSUNG KE SUPABASE CLOUD (Folder public/uploads sudah punah!)
 	var buktiPath, fotoBarangPath string
 	if input.PaymentMethod == "QRIS" && input.BuktiTransferBase64 != "" {
 		buktiPath, _ = u.uploadBase64ToSupabase(input.BuktiTransferBase64, trxPublicID, "qris")
@@ -85,11 +115,21 @@ func (u *laundryUseCase) ProcessCheckout(storeID, userID uint, input domain.Chec
 		fotoBarangPath, _ = u.uploadBase64ToSupabase(input.FotoBarangBase64, trxPublicID, "items")
 	}
 
+	// EKSEKUSI ALGORITMA RAK
+	bestRack, errRack := u.CariRakTerbaik(storeID)
+	rackID := uint(0)
+	nomorRak := "-"
+
+	if errRack == nil && bestRack != nil {
+		rackID = bestRack.ID
+		nomorRak = bestRack.NamaRak
+	}
+
 	db := u.repo.GetDB()
 	tx := db.Begin()
 
 	newTx := models.Transaction{
-		PublicID:      trxPublicID, // 🛡️ SECURITY PATCH 2: Kunci mati unique constraint DB lu bray!
+		PublicID:      trxPublicID,
 		SessionID:     1,
 		StoreID:       storeID,
 		UserID:        userID,
@@ -107,7 +147,8 @@ func (u *laundryUseCase) ProcessCheckout(storeID, userID uint, input domain.Chec
 
 	if err := u.repo.CreateTransactionTx(tx, &newTx); err != nil {
 		tx.Rollback()
-		return "", "", fmt.Errorf("gagal membuat invoice induk: %v", err)
+		// 🚀 FIXED: Tambah 1 string kosong "" di sini!
+		return "", "", "", fmt.Errorf("gagal membuat invoice induk: %v", err)
 	}
 
 	for _, item := range input.Items {
@@ -127,11 +168,14 @@ func (u *laundryUseCase) ProcessCheckout(storeID, userID uint, input domain.Chec
 			FotoBarang:    fotoBarangPath,
 			NamaParfum:    item.NamaParfum,
 			HargaParfum:   item.HargaParfum,
+			RackID:        rackID,
+			NomorRak:      nomorRak,
 		}
 
 		if err := u.repo.CreateLaundryDetailTx(tx, &laundryDetail); err != nil {
 			tx.Rollback()
-			return "", "", fmt.Errorf("gagal menyimpan rincian cucian: %v", err)
+			// 🚀 FIXED: Tambah 1 string kosong "" di sini juga bray!
+			return "", "", "", fmt.Errorf("gagal menyimpan rincian cucian: %v", err)
 		}
 	}
 
@@ -149,7 +193,8 @@ func (u *laundryUseCase) ProcessCheckout(storeID, userID uint, input domain.Chec
 	}
 
 	tx.Commit()
-	return invoiceCode, fotoBarangPath, nil
+	// 🚀 INI UDAH BENER, BALIKIN nomorRak
+	return invoiceCode, fotoBarangPath, nomorRak, nil
 }
 
 func (u *laundryUseCase) ProcessPelunasan(trxID, storeID uint, input domain.PelunasanInput) error {

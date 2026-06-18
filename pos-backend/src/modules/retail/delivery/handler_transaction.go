@@ -29,7 +29,7 @@ type CartItem struct {
 
 type TransactionInput struct {
 	Items         []CartItem `json:"items" binding:"required,gt=0"`
-	NominalBayar  float64    `json:"nominal_pay" binding:"required"` // Disesuaikan atau disamakan nominal_bayar
+	NominalBayar  float64    `json:"nominal_bayar" binding:"required"`
 	MetodeBayar   string     `json:"metode_bayar"`
 	NoHPPelanggan string     `json:"no_hp_pelanggan"`
 }

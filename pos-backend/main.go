@@ -172,7 +172,6 @@ func main() {
 		retailAPI := apiGroup.Group("/retail")
 		{
 			retailDelivery.RegisterRetailInventoryRoutes(retailAPI, retailHandler)
-			retailAPI.POST("/pos/checkout", retailHandler.CreatePosMidtransOrder) // Transaksi kasir murni bray bray
 		}
 
 		// 🧺 Modul Bisnis: LAUNDRY ECOSYSTEM

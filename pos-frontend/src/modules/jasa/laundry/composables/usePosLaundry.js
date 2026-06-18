@@ -348,7 +348,10 @@ export function usePosLaundry() {
 					pelanggan: customerName.value,
 					pelanggan_phone: customerPhone.value,
 					estimasi: estimasiSelesai.value,
-					items: [...cart.value],
+					items: cart.value.map((item) => ({
+						...item,
+						nomor_rak: response.data.nomor_rak, // 🎯 INI KUNCI SAKLEKNYA BRAY!
+					})),
 					total: totalTagihan.value,
 					metode: paymentMethod.value,
 					bayar: paymentMethod.value === 'TUNAI' ? uangBayar.value || totalTagihan.value : totalTagihan.value,

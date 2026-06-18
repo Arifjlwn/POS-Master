@@ -37,7 +37,7 @@ const sinkronisasiStatusBerlangganan = async () => {
 	isBillingLoading.value = true;
 	try {
 		// Tembak endpoint modular terpadu bray!
-		const targetUrl = isLaundry.value ? '/laundry/setting' : '/retail/store/settings';
+		const targetUrl = isLaundry.value ? '/laundry/setting' : '/store/settings';
 		const res = await api.get(targetUrl);
 
 		// Ambil data langsung dari response object backend

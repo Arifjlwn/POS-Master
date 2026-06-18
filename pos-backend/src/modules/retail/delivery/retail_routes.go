@@ -32,7 +32,7 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 	rg.POST("/pos/close-session/:id", middlewares.RequireSaaSLevel(1), h.CloseSession)
 
 	// POS Checkout Transaksi Kasir
-	rg.POST("/checkout", middlewares.RequireSaaSLevel(1), h.CreateTransaction)
+	rg.POST("/pos/checkout", middlewares.RequireSaaSLevel(1), h.CreateTransaction)
 	rg.GET("/transactions", middlewares.RequireSaaSLevel(1), h.GetTransactions)
 	rg.GET("/journal/closing", middlewares.RequireSaaSLevel(1), h.GetDailyClosing)
 

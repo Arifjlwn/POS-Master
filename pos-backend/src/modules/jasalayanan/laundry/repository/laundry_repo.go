@@ -2,7 +2,8 @@ package repository
 
 import (
 	"pos-backend/models"
-	"pos-backend/src/modules/jasalayanan/laundry/domain" 
+	"pos-backend/src/modules/jasalayanan/laundry/domain"
+
 	"gorm.io/gorm"
 )
 
@@ -36,7 +37,7 @@ type LaundryRepository interface {
 	UpdateStatusDetailCucian(id uint, status string) error
 }
 
-type laundryRepo struct { db *gorm.DB }
+type laundryRepo struct{ db *gorm.DB }
 
 func NewLaundryRepo(db *gorm.DB) LaundryRepository { return &laundryRepo{db} }
 
@@ -66,8 +67,12 @@ func (r *laundryRepo) FindCustomerByPhone(storeID uint, phone string) (*models.C
 	err := r.db.Where("store_id = ? AND no_whatsapp = ?", storeID, phone).First(&customer).Error
 	return &customer, err
 }
-func (r *laundryRepo) CreateCustomer(customer *models.Customer) error { return r.db.Create(customer).Error }
-func (r *laundryRepo) UpdateCustomer(customer *models.Customer) error { return r.db.Save(customer).Error }
+func (r *laundryRepo) CreateCustomer(customer *models.Customer) error {
+	return r.db.Create(customer).Error
+}
+func (r *laundryRepo) UpdateCustomer(customer *models.Customer) error {
+	return r.db.Save(customer).Error
+}
 func (r *laundryRepo) SearchCustomers(storeID uint, keyword string) ([]models.Customer, error) {
 	var customers []models.Customer
 	query := r.db.Where("store_id = ?", storeID)
@@ -76,14 +81,20 @@ func (r *laundryRepo) SearchCustomers(storeID uint, keyword string) ([]models.Cu
 	}
 	return customers, query.Order("updated_at desc").Limit(5).Find(&customers).Error
 }
-func (r *laundryRepo) CreateTransactionTx(tx *gorm.DB, transaction *models.Transaction) error { return tx.Create(transaction).Error }
-func (r *laundryRepo) CreateLaundryDetailTx(tx *gorm.DB, detail *domain.TransactionLaundryDetail) error { return tx.Create(detail).Error }
+func (r *laundryRepo) CreateTransactionTx(tx *gorm.DB, transaction *models.Transaction) error {
+	return tx.Create(transaction).Error
+}
+func (r *laundryRepo) CreateLaundryDetailTx(tx *gorm.DB, detail *domain.TransactionLaundryDetail) error {
+	return tx.Create(detail).Error
+}
 func (r *laundryRepo) GetTransactionByID(id uint, storeID uint) (*models.Transaction, error) {
 	var trx models.Transaction
 	err := r.db.Where("id = ? AND store_id = ?", id, storeID).First(&trx).Error
 	return &trx, err
 }
-func (r *laundryRepo) UpdateTransaction(transaction *models.Transaction) error { return r.db.Save(transaction).Error }
+func (r *laundryRepo) UpdateTransaction(transaction *models.Transaction) error {
+	return r.db.Save(transaction).Error
+}
 func (r *laundryRepo) CreateLayanan(p *models.Product) error { return r.db.Create(p).Error }
 func (r *laundryRepo) DeleteLayanan(id uint, storeID uint) error {
 	return r.db.Where("id = ? AND store_id = ?", id, storeID).Delete(&models.Product{}).Error
@@ -118,24 +129,27 @@ func (r *laundryRepo) GetProductByIDSimple(id uint) (*models.Product, error) {
 	err := r.db.Where("id = ?", id).First(&p).Error
 	return &p, err
 }
-func (r *laundryRepo) UpdateStoreTx(tx *gorm.DB, store *models.Store) error { return tx.Save(store).Error }
+func (r *laundryRepo) UpdateStoreTx(tx *gorm.DB, store *models.Store) error {
+	return tx.Save(store).Error
+}
 
 func (r *laundryRepo) GetTrackingCucian(storeID uint) ([]domain.TrackingResponse, error) {
 	var results []domain.TrackingResponse
 	err := r.db.Table("laundry_transaction_details").
 		Select(`
-			laundry_transaction_details.id, 
-			transactions.no_invoice as invoice, 
-			laundry_transaction_details.nama_pelanggan as pelanggan, 
-			laundry_transaction_details.no_whatsapp as whatsapp, 
-			products.nama_produk as layanan, 
-			laundry_transaction_details.berat_kg, 
-			laundry_transaction_details.sub_total, 
-			laundry_transaction_details.status_cucian,
-			laundry_transaction_details.status_bayar,
-			laundry_transaction_details.nomor_rak,
-			laundry_transaction_details.estimasi_waktu
-		`).
+            laundry_transaction_details.id, 
+            transactions.no_invoice as invoice, 
+            laundry_transaction_details.nama_pelanggan as pelanggan, 
+            laundry_transaction_details.no_whatsapp as whatsapp, 
+            products.nama_produk as layanan, 
+            laundry_transaction_details.berat_kg, 
+            laundry_transaction_details.sub_total, 
+            laundry_transaction_details.status_cucian,
+            laundry_transaction_details.status_bayar,
+            laundry_transaction_details.rack_id,
+            laundry_transaction_details.nomor_rak,
+            laundry_transaction_details.estimasi_waktu
+        `).
 		Joins("left join transactions on transactions.id = laundry_transaction_details.transaction_id").
 		Joins("left join products on products.id = laundry_transaction_details.product_id").
 		Where("transactions.store_id = ? AND laundry_transaction_details.status_cucian != 'DIAMBIL'", storeID).

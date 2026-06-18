@@ -517,7 +517,7 @@ export function usePos() {
 		if (!token) return router.push('/login');
 
 		try {
-			const setRes = await api.get('/retail/store/settings');
+			const setRes = await api.get('/store/settings');
 			storeSettings.value = setRes.data.data;
 
 			const res = await posService.checkSession();

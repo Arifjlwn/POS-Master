@@ -21,7 +21,7 @@ const showWaModal = ref(false);
 // 🚀 SATPAM KHUSUS POS & LOAD DATA TOKO
 onMounted(async () => {
 	try {
-		const res = await api.get('/retail/store/settings');
+		const res = await api.get('/store/settings');
 		storeData.value = res.data.data;
 		localStorage.setItem('storeLogo', storeData.value.logo_url || '');
 

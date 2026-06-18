@@ -4,41 +4,38 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../../api.js';
 import PricingPlan from '../../components/PricingPlan.vue';
+// 🚀 1. IMPORT MODAL ONBOARDING RAK LAUNDRY
+import OnboardingRackModal from '../../modules/jasa/laundry/components/OnboardingRackModal.vue';
 
 const router = useRouter();
 const stores = ref([]);
 const userName = ref('');
 const isLoading = ref(false);
+
 const currentPendingIndustry = computed(() => {
-	// 1. Jika user sudah punya toko terdaftar di database, ambil jenis industrinya saklek dari toko pertama!
 	if (stores.value && stores.value.length > 0) {
 		const firstStoreIndustry = stores.value[0].industry || stores.value[0].Industry;
 		if (firstStoreIndustry) {
-			// Standarisasi string: samakan dengan key 'jasa' pada PricingPlan bray
 			return firstStoreIndustry.toLowerCase() === 'laundry' ? 'jasa' : firstStoreIndustry.toLowerCase();
 		}
 	}
-
-	// 2. Fallback jika bener-bener baru mendaftar dan belum punya ruko sama sekali bray
 	const localPending = localStorage.getItem('pendingIndustry');
 	if (localPending) {
 		return localPending.toLowerCase() === 'laundry' ? 'jasa' : localPending.toLowerCase();
 	}
-
 	return 'retail';
 });
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
-// ==============================================================
-// PENGATURAN NAMA BRAND APLIKASI
-// ==============================================================
 const BRAND_NAME = 'ARZURA';
 
 // STATE UTAMA UNTUK MODAL
 const showPricingModal = ref(false);
 
-// 🚀 TIMPA HOOK ONMOUNTED DI SELECTSTORE.VUE LU PAKAI INI RIF!
+// 🚀 2. STATE UNTUK MENAHAN REDIRECT & MUNCULIN MODAL RAK
+const showRackModal = ref(false);
+const pendingRedirectUrl = ref('');
+
 onMounted(async () => {
 	const name = localStorage.getItem('temp_name');
 	userName.value = name || 'Owner';
@@ -57,19 +54,16 @@ onMounted(async () => {
 	}
 });
 
-// Urutkan toko berdasarkan ID bawaan
 const sortedStores = computed(() => {
 	return [...stores.value].sort((a, b) => a.id - b.id);
 });
 
-// Menentukan kondisi apakah user sedang melakukan "Ekspansi" (jika sudah punya toko aktif)
 const isExpansionMode = computed(() => {
-	// 🚀 FILTER CERDAS: Hanya dianggap ekspansi kalau sudah punya toko yang statusnya 'active' !
 	return stores.value.some((store) => store.subscription_status === 'active' || store.subscription_status === 'ACTIVE');
 });
 
 const selectBranch = async (store) => {
-	// 🚀 1. INTERCEPTOR TOKO PENDING (Penyelamat Transaksi Tertunda !)
+	// 1. INTERCEPTOR TOKO PENDING
 	if (store.subscription_status === 'pending' || store.subscription_status === 'PENDING') {
 		Swal.fire({
 			title: 'Pembayaran Tertunda',
@@ -83,65 +77,88 @@ const selectBranch = async (store) => {
 			customClass: { popup: 'rounded-[32px]' },
 		}).then((result) => {
 			if (result.isConfirmed) {
-				// Simpan data cadangan ke localStorage agar halaman setup-toko tahu paket apa yang mau dibayar
 				localStorage.setItem('pendingIndustry', store.industry || 'retail');
 				localStorage.setItem('pendingPlan', store.subscription_plan || 'basic');
-
-				// Lempar balik ke setup toko dengan membawa parameter ID Toko lama yang pending tadi !
 				router.push(`/setup-toko?is_expansion=true&resume_store_id=${store.id}`);
 			}
 		});
-		return; // Blokir eksekusi agar dia tidak menembak login kasir !
+		return;
 	}
 
-	// 🚀 2. SELEKSI AKSES KASIR NORMAL (Jika status sudah 'active')
+	// 2. SELEKSI AKSES KASIR NORMAL
 	isLoading.value = true;
-    try {
-        const res = await api.post('/auth/select-store', { store_id: store.id });
+	try {
+		const res = await api.post('/auth/select-store', { store_id: store.id });
 
-        localStorage.setItem('token', res.data.token);
-        localStorage.setItem('store_id', res.data.store_id);
-        localStorage.setItem('storeName', res.data.store_name || 'POS UMKM');
-        localStorage.setItem('storeLogo', res.data.store_logo || res.data.logo_url || '');
-        localStorage.setItem('subscriptionPlan', res.data.subscription_plan || 'basic');
+		localStorage.setItem('token', res.data.token);
+		localStorage.setItem('store_id', res.data.store_id);
+		localStorage.setItem('storeName', res.data.store_name || 'POS UMKM');
+		localStorage.setItem('storeLogo', res.data.store_logo || res.data.logo_url || '');
+		localStorage.setItem('subscriptionPlan', res.data.subscription_plan || 'basic');
 
-        // Set info industri aktif ke local storage buat dibaca Satpam Router Index global bray bray!
-        const targetIndustry = (store.industry || 'retail').toLowerCase();
-        localStorage.setItem('user_industry', targetIndustry);
+		const targetIndustry = (store.industry || 'retail').toLowerCase();
+		localStorage.setItem('user_industry', targetIndustry);
 
-        let finalRole = 'owner';
-        if (res.data.role) {
-            finalRole = res.data.role.toLowerCase();
-        } else if (res.data.user && res.data.user.role) {
-            finalRole = res.data.user.role.toLowerCase();
-        } else {
-            const savedRole = localStorage.getItem('role');
-            if (savedRole) finalRole = savedRole.toLowerCase();
-        }
-        localStorage.setItem('role', finalRole);
+		let finalRole = 'owner';
+		if (res.data.role) {
+			finalRole = res.data.role.toLowerCase();
+		} else if (res.data.user && res.data.user.role) {
+			finalRole = res.data.user.role.toLowerCase();
+		} else {
+			const savedRole = localStorage.getItem('role');
+			if (savedRole) finalRole = savedRole.toLowerCase();
+		}
+		localStorage.setItem('role', finalRole);
 
-        localStorage.setItem('name', res.data.name || res.data.user?.name || 'Owner');
-        localStorage.setItem('foto_url', res.data.foto_url || res.data.user?.foto_url || '');
+		localStorage.setItem('name', res.data.name || res.data.user?.name || 'Owner');
+		localStorage.setItem('foto_url', res.data.foto_url || res.data.user?.foto_url || '');
 
-        // 🚀 NAVIGATION REDIRECT ENGINE: Pengalihan rute dinamis anti-pental!
-        if (targetIndustry === 'jasa' || targetIndustry === 'laundry') {
-            router.push('/laundry/pos/riwayat');
-        } else {
-            router.push('/retail/pos/riwayat');
-        }
+		// 🚀 3. INTERCEPTOR KHUSUS RAK LAUNDRY (HANYA UNTUK OWNER & LAUNDRY)
+		if (finalRole === 'owner' && (targetIndustry === 'jasa' || targetIndustry === 'laundry')) {
+			try {
+				// Cek isi rak ke database
+				const resRacks = await api.get('/laundry/racks');
+				if (resRacks.data && resRacks.data.data && resRacks.data.data.length === 0) {
+					// Simpan URL tujuan buat nanti abis modalnya beres
+					pendingRedirectUrl.value = '/laundry/pos/riwayat';
+					showRackModal.value = true;
+					return; // 🛑 BLOKIR REDIRECT OTOMATIS DISINI BRAY!
+				}
+			} catch (rackErr) {
+				console.error('Gagal mengecek status rak laundry:', rackErr);
+				// Kalo error cuekin aja, biar owner tetep bisa masuk
+			}
+		}
 
-    } catch (error) {
-        console.error('Gagal masuk sesi toko:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Akses Gagal',
-            text: error.response?.data?.error || 'Gagal masuk ke toko ini.',
-            confirmButtonColor: '#ef4444',
-            customClass: { popup: 'rounded-[32px]' },
-        });
-    } finally {
-        isLoading.value = false;
-    }
+		// 4. NAVIGATION REDIRECT ENGINE (Kalau lolos semua rintangan)
+		if (targetIndustry === 'jasa' || targetIndustry === 'laundry') {
+			router.push('/laundry/pos/riwayat');
+		} else {
+			router.push('/retail/pos/riwayat');
+		}
+	} catch (error) {
+		console.error('Gagal masuk sesi toko:', error);
+		Swal.fire({
+			icon: 'error',
+			title: 'Akses Gagal',
+			text: error.response?.data?.error || 'Gagal masuk ke toko ini.',
+			confirmButtonColor: '#ef4444',
+			customClass: { popup: 'rounded-[32px]' },
+		});
+	} finally {
+		isLoading.value = false;
+	}
+};
+
+// 🚀 FUNGSI PENERIMA EVENT DARI MODAL RAK
+const handleLanjutKeDashboardLaundry = () => {
+	showRackModal.value = false;
+	// Lanjutin perjalanan yang tadi tertunda bray
+	if (pendingRedirectUrl.value) {
+		router.push(pendingRedirectUrl.value);
+	} else {
+		router.push('/laundry/pos/riwayat');
+	}
 };
 
 const handlePilihPaket = (payload) => {
@@ -191,7 +208,6 @@ const cleanLogoUrl = (url) => {
 };
 
 const getStoreLabel = (store, index) => {
-	// 🚀 JIKA PENDING: Berikan informasi tegas mendeteksi status belum diaktivasi !
 	if (store.subscription_status === 'pending' || store.subscription_status === 'PENDING') {
 		return 'MENUNGGU PEMBAYARAN';
 	}
@@ -320,6 +336,9 @@ const getStoreLabel = (store, index) => {
 			</div>
 		</Transition>
 
+		<!-- 🚀 MODAL ONBOARDING RAK TERPASANG DI SINI BRAY! -->
+		<OnboardingRackModal :show="showRackModal" @setup-success="handleLanjutKeDashboardLaundry" @bypass="handleLanjutKeDashboardLaundry" />
+
 		<div v-if="isLoading" class="fixed inset-0 z-[150] bg-slate-950/40 backdrop-blur-sm flex items-center justify-center p-4">
 			<div class="bg-white p-6 md:p-8 rounded-[24px] md:rounded-[28px] shadow-2xl border border-slate-100 flex flex-col items-center max-w-xs w-full text-center">
 				<div class="w-11 h-11 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
@@ -330,7 +349,6 @@ const getStoreLabel = (store, index) => {
 </template>
 
 <style scoped>
-/* CSS Tetap Mewah Konsisten */
 .cubic-bezier-card {
 	transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
 }

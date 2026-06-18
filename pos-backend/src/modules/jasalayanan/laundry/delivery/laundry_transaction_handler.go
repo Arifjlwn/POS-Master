@@ -2,9 +2,10 @@ package delivery
 
 import (
 	"net/http"
-	"strconv"
 	"pos-backend/src/modules/jasalayanan/laundry/domain"
 	"pos-backend/src/modules/jasalayanan/laundry/usecase"
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -28,7 +29,7 @@ func (h *LaundryTransactionHandler) ProsesCheckoutLaundry(c *gin.Context) {
 		return
 	}
 
-	invoiceCode, fotoURL, err := h.usecase.ProcessCheckout(storeID, userID, input)
+	invoiceCode, fotoURL, nomorRak, err := h.usecase.ProcessCheckout(storeID, userID, input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -39,6 +40,7 @@ func (h *LaundryTransactionHandler) ProsesCheckoutLaundry(c *gin.Context) {
 		"message":      "Transaksi laundry berhasil diproses!",
 		"invoice_code": invoiceCode,
 		"foto_url":     fotoURL,
+		"nomor_rak":    nomorRak, // 🚀 LEMPAR NOMOR RAK KE FRONTEND VUE BRAY!
 	})
 }
 

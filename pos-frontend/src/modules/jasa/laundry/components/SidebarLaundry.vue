@@ -18,7 +18,7 @@ const getPlanLevel = (plan) => {
 };
 const planLevel = computed(() => getPlanLevel(subPlan.value));
 
-// 🛡️ LOCKING GATEWAY SYSTEM: Alert paywall pembatasan fitur premium ruko laundry
+// LOCKING GATEWAY SYSTEM: Alert paywall pembatasan fitur premium ruko laundry
 const triggerUpgrade = (fiturName, minLevel) => {
 	sidebarOpen.value = false;
 	let targetPlan = minLevel === 2 ? 'PRO' : 'PREMIUM';
@@ -42,13 +42,13 @@ const updatePlanRealtime = () => {
 	subPlan.value = localStorage.getItem('subscriptionPlan') || 'basic';
 };
 
-// 🚀 NAVIGATION SWITCH MULTI-BRANCH: Balik ke gerbang pilih cabang instan
+// NAVIGATION SWITCH MULTI-BRANCH: Balik ke gerbang pilih cabang instan
 const goToSelectStore = () => {
 	sidebarOpen.value = false;
 	router.push('/select-store');
 };
 
-// 🎯 ONE GATEWAY THREE ACTIONS: FULL SVG ICONS NO EMOJI BRAY!
+// ONE GATEWAY THREE ACTIONS: FULL SVG ICONS NO EMOJI BRAY!
 const handleAccountAction = () => {
 	sidebarOpen.value = false;
 
@@ -59,24 +59,24 @@ const handleAccountAction = () => {
 		showCancelButton: true,
 		showDenyButton: true,
 
-		// 🔄 Tombol 1: Ganti Cabang (SVG Icon)
-		confirmButtonText: 'Ganti Cabang',
+		// Tombol 1: Ganti Cabang (SVG Icon disuntik langsung ke string HTML)
+		confirmButtonText: `<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg> Ganti Cabang`,
 		confirmButtonColor: '#0f172a',
 
-		// 🚪 Tombol 2: Keluar Akun (SVG Icon)
-		denyButtonText: 'Keluar Akun',
+		// Tombol 2: Keluar Akun (SVG Icon disuntik langsung ke string HTML)
+		denyButtonText: `<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg> Keluar Akun`,
 		denyButtonColor: '#e11d48',
 
-		// ✖️ Tombol 3: Batalkan (SVG Icon)
-		cancelButtonText: 'Batalkan',
+		// Tombol 3: Batalkan (SVG Icon disuntik langsung ke string HTML)
+		cancelButtonText: `<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg> Batalkan`,
 		cancelButtonColor: '#94a3b8',
 
-		// Custom class dipasang flex + gap biar Icon SVG sama teksnya sejajar cakep bray!
+		// Custom class dipasang flex + gap biar Icon SVG sama teksnya sejajar cakep!
 		customClass: {
 			popup: 'rounded-[28px] p-6',
-			confirmButton: 'w-full sm:w-auto rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-wider order-2 flex items-center justify-center gap-2',
-			denyButton: 'w-full sm:w-auto rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-wider order-1 flex items-center justify-center gap-2',
-			cancelButton: 'w-full sm:w-auto rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-wider order-3 flex items-center justify-center gap-2',
+			confirmButton: 'w-full sm:w-auto rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-wider order-2 flex items-center justify-center gap-2.5',
+			denyButton: 'w-full sm:w-auto rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-wider order-1 flex items-center justify-center gap-2.5',
+			cancelButton: 'w-full sm:w-auto rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-wider order-3 flex items-center justify-center gap-2.5',
 		},
 	}).then((result) => {
 		if (result.isConfirmed) {
@@ -197,7 +197,7 @@ onUnmounted(() => {
 			<nav class="flex-1 px-4 sm:px-6 py-6 space-y-7 overflow-y-auto custom-scrollbar min-h-0">
 				<div>
 					<div class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] px-2 mb-3 flex items-center gap-2">
-						<span class="w-1.5 h-1.5 bg-slate-400 rounded-full"></span>
+						<span class="w-1.5 h-1.5 bg-slate-400 rounded-full shrink-0"></span>
 						Operasional Ruko
 					</div>
 					<div class="space-y-1">
@@ -219,10 +219,10 @@ onUnmounted(() => {
 				<div>
 					<button @click="toggleGroup('stock')" class="group-btn hover:text-white">
 						<span class="flex items-center gap-2">
-							<span class="w-1.5 h-1.5 bg-slate-500 rounded-full"></span>
+							<span class="w-1.5 h-1.5 bg-slate-500 rounded-full shrink-0"></span>
 							Katalog Jasa & Paket
 						</span>
-						<svg :class="openGroups.stock ? 'rotate-180 text-white' : ''" class="w-3 h-3 transition-transform" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+						<svg :class="openGroups.stock ? 'rotate-180 text-white' : ''" class="w-3 h-3 transition-transform shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
 					</button>
 					<div v-show="openGroups.stock" class="mt-1 space-y-1 ml-4 border-l-2 border-slate-800 pl-2">
 						<router-link v-if="user.role === 'owner'" to="/laundry/master-layanan" @click="sidebarOpen = false" class="sub-link hover:text-white hover:bg-slate-800" :class="{ 'active-sub !text-white !bg-slate-800': route.path.startsWith('/laundry/master-layanan') }">Master Katalog Harga</router-link>
@@ -232,10 +232,10 @@ onUnmounted(() => {
 				<div v-if="user.role !== 'staff'">
 					<button @click="toggleGroup('admin')" class="group-btn hover:text-white">
 						<span class="flex items-center gap-2">
-							<span class="w-1.5 h-1.5 bg-slate-500 rounded-full"></span>
+							<span class="w-1.5 h-1.5 bg-slate-500 rounded-full shrink-0"></span>
 							Administrasi Finansial
 						</span>
-						<svg :class="openGroups.admin ? 'rotate-180 text-white' : ''" class="w-3 h-3 transition-transform" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+						<svg :class="openGroups.admin ? 'rotate-180 text-white' : ''" class="w-3 h-3 transition-transform shrink-0" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
 					</button>
 					<div v-show="openGroups.admin" class="mt-1 space-y-1 ml-4 border-l-2 border-slate-800 pl-2">
 						<template v-if="user.role === 'owner'">
@@ -266,11 +266,19 @@ onUnmounted(() => {
 
 				<div>
 					<div class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] px-2 mb-3 mt-4 flex items-center gap-2">
-						<span class="w-1.5 h-1.5 bg-slate-400 rounded-full"></span>
+						<span class="w-1.5 h-1.5 bg-slate-400 rounded-full shrink-0"></span>
 						Sistem & Akun Cloud
 					</div>
 					<div class="space-y-1">
 						<template v-if="user.role === 'owner'">
+							<!-- BARU BRAY: MENU MANAJEMEN RAK (HANYA OWNER) -->
+							<router-link to="/laundry/rak" @click="sidebarOpen = false" class="nav-link group" :class="{ active: route.path === '/laundry/rak' }">
+								<svg class="icon group-hover:rotate-12 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+								</svg>
+								<span>Manajemen Rak</span>
+							</router-link>
+
 							<a v-if="planLevel < 3" href="#" @click.prevent="triggerUpgrade('Integrasi WhatsApp Bot Nota', 3)" class="nav-link-locked">
 								<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21" />
@@ -312,7 +320,7 @@ onUnmounted(() => {
 				</div>
 			</nav>
 
-			<!-- 🎯 BAGIAN PROFIL BAWAH (1 TOMBOL KONTROL FULL-WIDTH & NO EMOJI) -->
+			<!-- BAGIAN PROFIL BAWAH (1 TOMBOL KONTROL FULL-WIDTH & NO EMOJI) -->
 			<div class="p-4 bg-black/20 border-t border-slate-800 shrink-0">
 				<div @click="handleAccountAction" class="flex items-center justify-between p-3 bg-slate-800/50 rounded-2xl border border-slate-800 cursor-pointer hover:bg-slate-700 hover:border-slate-600 transition-all duration-300 group" title="Buka Kontrol Sesi & Akun">
 					<div class="flex items-center gap-2.5 min-w-0">
