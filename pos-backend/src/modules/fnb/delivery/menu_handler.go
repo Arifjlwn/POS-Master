@@ -45,7 +45,7 @@ func (h *MenuHandler) CreateProduct(c *gin.Context) {
 		Kategori:    input.Kategori,
 		Stok:        input.Stok,
 		Gambar:      input.Gambar,
-		IsAvailable: true, // Default aktif pas dibuat
+		IsAvailable: true,
 	}
 
 	if err := h.Repo.Create(&product); err != nil {

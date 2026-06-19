@@ -1,6 +1,10 @@
 package repository
 
 import (
+	"strings"
+	"fmt"
+
+
 	"pos-backend/models"
 	"pos-backend/src/modules/jasalayanan/laundry/domain"
 
@@ -58,9 +62,12 @@ func (r *laundryRepo) DeleteKasir(id uint, storeID uint) error {
 	return r.db.Where("id = ? AND store_id = ? AND role = ?", id, storeID, "kasir").Delete(&models.User{}).Error
 }
 func (r *laundryRepo) GetLayananLaundry(storeID uint) ([]models.Product, error) {
-	var products []models.Product
-	err := r.db.Where("store_id = ? AND kategori = ?", storeID, "JASA_LAUNDRY").Find(&products).Error
-	return products, err
+    var products []models.Product
+    
+    // 🚀 FIXED KASTA TERTINGGI: Filter berdasarkan product_type, bukan kategori!
+    err := r.db.Where("store_id = ? AND product_type = ? AND is_active = ?", storeID, "JASA_LAUNDRY", true).Find(&products).Error
+    
+    return products, err
 }
 func (r *laundryRepo) FindCustomerByPhone(storeID uint, phone string) (*models.Customer, error) {
 	var customer models.Customer
@@ -97,12 +104,38 @@ func (r *laundryRepo) UpdateTransaction(transaction *models.Transaction) error {
 }
 func (r *laundryRepo) CreateLayanan(p *models.Product) error { return r.db.Create(p).Error }
 func (r *laundryRepo) DeleteLayanan(id uint, storeID uint) error {
-	return r.db.Where("id = ? AND store_id = ?", id, storeID).Delete(&models.Product{}).Error
+	// 1. Coba Hard Delete dulu (kalau layanannya belum pernah dipakai transaksi, hapus aja biar database bersih)
+	err := r.db.Where("id = ? AND store_id = ?", id, storeID).Delete(&models.Product{}).Error
+	
+	if err != nil {
+		// 2. 🛡️ SECURITY KASTA TINGGI: Kalau PostgreSQL nolak karena Foreign Key (23503)
+		if strings.Contains(err.Error(), "23503") || strings.Contains(strings.ToLower(err.Error()), "foreign key") {
+			
+			// 🚀 AUTO-FALLBACK: Kita arsipkan (Soft Delete) layanannya dengan mengubah is_active = false
+			errArsip := r.db.Model(&models.Product{}).
+				Where("id = ? AND store_id = ?", id, storeID).
+				Update("is_active", false).Error
+				
+			if errArsip != nil {
+				return fmt.Errorf("gagal mengarsipkan layanan: %v", errArsip)
+			}
+			
+			// Return nil karena proses arsip sukses
+			return nil
+		}
+		
+		// Kalau error lain (misal database putus)
+		return fmt.Errorf("gagal menghapus layanan dari database: %v", err)
+	}
+	
+	return nil
 }
+
 func (r *laundryRepo) GetLayananByID(id uint, storeID uint) (*models.Product, error) {
-	var p models.Product
-	err := r.db.Where("id = ? AND store_id = ?", id, storeID).First(&p).Error
-	return &p, err
+    var p models.Product
+    // 🚀 FIXED: Tambahin is_active = true
+    err := r.db.Where("id = ? AND store_id = ? AND is_active = ?", id, storeID, true).First(&p).Error
+    return &p, err
 }
 func (r *laundryRepo) UpdateLayanan(p *models.Product) error { return r.db.Save(p).Error }
 func (r *laundryRepo) GetPerfumesByStoreID(storeID uint) ([]domain.Perfume, error) {

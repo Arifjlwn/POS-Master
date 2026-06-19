@@ -12,8 +12,19 @@ export function useLaundryCatalog() {
     const editId = ref(null);
     const showForm = ref(false);
 
-    const formJasa = ref({ nama_produk: '', harga_jual: '', satuan_dasar: 'KG', estimasi: '1 Hari' });
-    const formParfum = ref({ nama: '', harga: 0 });
+    // 🚀 FIXED: State default form Jasa ngikutin kasta tertinggi
+    const formJasa = ref({ 
+        nama_produk: '', 
+        harga_jual: '', 
+        satuan_dasar: 'KG',
+        estimasi_durasi: 1,      // 🎯 Default angka 1
+        estimasi_satuan: 'Hari'  // 🎯 Default satuan Hari
+    });
+    
+    const formParfum = ref({ 
+        nama: '', 
+        harga: 0 
+    });
 
     const formatRupiah = (angka) => {
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(angka || 0);
@@ -54,12 +65,16 @@ export function useLaundryCatalog() {
     const triggerEdit = (item) => {
         isEditing.value = true;
         editId.value = item.id;
+        
+        // 🚀 FIXED: Narik data dari DB disesuaikan dengan 2 kolom baru
         formJasa.value = {
             nama_produk: item.nama_produk,
             harga_jual: item.harga_jual,
             satuan_dasar: item.satuan_dasar,
-            estimasi: item.estimasi || '1 Hari'
+            estimasi_durasi: item.estimasi_durasi || 1,      // Fallback ke 1 kalau DB kosong
+            estimasi_satuan: item.estimasi_satuan || 'Hari'  // Fallback ke Hari kalau DB kosong
         };
+        
         showForm.value = true;
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -69,23 +84,38 @@ export function useLaundryCatalog() {
         setTimeout(() => {
             isEditing.value = false;
             editId.value = null;
-            formJasa.value = { nama_produk: '', harga_jual: '', satuan_dasar: 'KG', estimasi: '1 Hari' };
+            // 🚀 FIXED: Balikin form ke kondisi perawan
+            formJasa.value = { 
+                nama_produk: '', 
+                harga_jual: '', 
+                satuan_dasar: 'KG', 
+                estimasi_durasi: 1, 
+                estimasi_satuan: 'Hari' 
+            };
             formParfum.value = { nama: '', harga: 0 };
         }, 200);
     };
 
     const handleSave = async () => {
         if (activeTab.value === 'jasa') {
+            // 🚀 VALIDASI EKSTRA: Jangan biarin owner masukin angka aneh (minus atau nol)
             if (!formJasa.value.nama_produk || !formJasa.value.harga_jual) {
                 return Swal.fire('Data Kurang', 'Nama dan Harga paket cuci wajib diisi bray!', 'warning');
             }
+            if (!formJasa.value.estimasi_durasi || formJasa.value.estimasi_durasi <= 0) {
+                return Swal.fire('Data Kurang', 'Waktu estimasi harus berupa angka yang lebih dari 0 bray!', 'warning');
+            }
+
             try {
+                // 🚀 FIXED: Lemparan Payload ke API Golang disesuaikan dengan struct baru lu!
                 const payload = {
                     nama_produk: formJasa.value.nama_produk,
                     harga_jual: parseFloat(formJasa.value.harga_jual),
                     satuan_dasar: formJasa.value.satuan_dasar,
-                    estimasi: formJasa.value.estimasi
+                    estimasi_durasi: parseInt(formJasa.value.estimasi_durasi, 10), // Pastiin bentuknya integer
+                    estimasi_satuan: formJasa.value.estimasi_satuan
                 };
+                
                 if (isEditing.value) {
                     await laundryCatalogService.updateService(editId.value, payload);
                     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Paket Jasa Berhasil Diubah!', showConfirmButton: false, timer: 1500 });
@@ -93,9 +123,12 @@ export function useLaundryCatalog() {
                     await laundryCatalogService.createService(payload);
                     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Paket Jasa Berhasil Disimpan!', showConfirmButton: false, timer: 1500 });
                 }
+                
                 cancelForm();
                 services.value = await laundryCatalogService.getServices();
-            } catch (e) { Swal.fire('Gagal!', 'Gagal memproses konfigurasi paket.', 'error'); }
+            } catch (e) { 
+                Swal.fire('Gagal!', 'Gagal memproses konfigurasi paket.', 'error'); 
+            }
         } else {
             if (!formParfum.value.nama) {
                 return Swal.fire('Data Kurang', 'Nama varian aroma parfum wajib diisi bray!', 'warning');
@@ -109,7 +142,9 @@ export function useLaundryCatalog() {
                 Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Aroma Parfum Ditambahkan!', showConfirmButton: false, timer: 1500 });
                 cancelForm();
                 perfumes.value = await laundryCatalogService.getPerfumes();
-            } catch (e) { Swal.fire('Gagal!', 'Gagal meregistrasikan aroma.', 'error'); }
+            } catch (e) { 
+                Swal.fire('Gagal!', 'Gagal meregistrasikan aroma.', 'error'); 
+            }
         }
     };
 

@@ -44,7 +44,7 @@ func (h *LaundryRackHandler) GetRacks(c *gin.Context) {
 
 	// Tarik semua detail cucian yang belum diambil/selesai dan punya rack_id
 	var activeDetails []domain.TransactionLaundryDetail
-	db.Preload("Product").Where("store_id = ? AND status_cucian NOT IN ('DIAMBIL', 'SELESAI') AND rack_id IS NOT NULL", storeID).Find(&activeDetails)
+	db.Preload("Product").Where("store_id = ? AND status_cucian NOT IN ('DIAMBIL') AND rack_id IS NOT NULL", storeID).Find(&activeDetails)
 
 	// Map data cucian ke rak masing-masing
 	result := make([]RackResponse, 0)
@@ -291,7 +291,7 @@ func (h *LaundryRackHandler) DeleteZonaRack(c *gin.Context) {
 	var activeItems int64
 	db.Model(&domain.TransactionLaundryDetail{}).
 		Joins("JOIN laundry_racks ON laundry_racks.id = laundry_transaction_details.rack_id").
-		Where("laundry_racks.store_id = ? AND laundry_racks.zona = ? AND laundry_transaction_details.status_cucian NOT IN ('DIAMBIL', 'SELESAI')", storeID, input.Zona).
+		Where("laundry_racks.store_id = ? AND laundry_racks.zona = ? AND laundry_transaction_details.status_cucian NOT IN ('DIAMBIL')", storeID, input.Zona).
 		Count(&activeItems)
 
 	if activeItems > 0 {

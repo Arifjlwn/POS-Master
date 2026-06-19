@@ -17,10 +17,11 @@ func NewLaundryServiceHandler(r repository.LaundryRepository) *LaundryServiceHan
 }
 
 type InputLayanan struct {
-	NamaProduk  string  `json:"nama_produk" binding:"required"`
-	HargaJual   float64 `json:"harga_jual" binding:"required"`
-	SatuanDasar string  `json:"satuan_dasar" binding:"required"` 
-	Estimasi    string  `json:"estimasi"`                                       
+	NamaProduk     string  `json:"nama_produk" binding:"required"`
+	SatuanDasar    string  `json:"satuan_dasar" binding:"required"`
+	EstimasiDurasi int     `json:"estimasi_durasi" binding:"required,gt=0"`
+	EstimasiSatuan string  `json:"estimasi_satuan" binding:"required"`
+	HargaJual      float64 `json:"harga_jual" binding:"required"`                                       
 }
 
 func (h *LaundryServiceHandler) AmbilDaftarLayananLaundry(c *gin.Context) {
@@ -42,7 +43,15 @@ func (h *LaundryServiceHandler) TambahLayananLaundry(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Format input layanan tidak valid"})
 		return
 	}
-	newLayanan := models.Product{StoreID: storeID, NamaProduk: input.NamaProduk, Kategori: "JASA_LAUNDRY", HargaJual: input.HargaJual, SatuanDasar: input.SatuanDasar, Estimasi: input.Estimasi, Stok: 0}
+	newLayanan := models.Product{ // atau nama model lu
+		StoreID:        storeID,
+		NamaProduk:     input.NamaProduk,
+		SatuanDasar:    input.SatuanDasar,
+		HargaJual:      input.HargaJual,
+		EstimasiDurasi: input.EstimasiDurasi,
+		EstimasiSatuan: input.EstimasiSatuan,
+		ProductType:     "JASA_LAUNDRY",
+	}
 	if err := h.Repo.CreateLayanan(&newLayanan); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan layanan baru"})
 		return
@@ -67,7 +76,9 @@ func (h *LaundryServiceHandler) EditLayananLaundry(c *gin.Context) {
 	layanan.NamaProduk = input.NamaProduk
 	layanan.HargaJual = input.HargaJual
 	layanan.SatuanDasar = input.SatuanDasar
-	layanan.Estimasi = input.Estimasi
+	layanan.EstimasiDurasi = input.EstimasiDurasi
+	layanan.EstimasiSatuan = input.EstimasiSatuan
+
 	if err := h.Repo.UpdateLayanan(layanan); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memperbarui layanan"})
 		return
@@ -77,11 +88,15 @@ func (h *LaundryServiceHandler) EditLayananLaundry(c *gin.Context) {
 
 func (h *LaundryServiceHandler) HapusLayananLaundry(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
-	storeID := uint(storeIDRaw.(float64))
+	storeID := uint(storeIDRaw.(float64)) // ⚠️ Gunakan helper lu kalau ada, atau biarkan pakai ini
+	
 	productID, _ := strconv.Atoi(c.Param("id"))
+	
 	if err := h.Repo.DeleteLayanan(uint(productID), storeID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus layanan"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Layanan berhasil dihapus"})
+	
+	// 🚀 Ubah pesannya biar elegan
+	c.JSON(http.StatusOK, gin.H{"status": "sukses", "message": "Layanan berhasil dihapus / diarsipkan dari katalog"})
 }

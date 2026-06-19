@@ -30,7 +30,7 @@ const emit = defineEmits(['edit', 'delete']);
                 </div>
                 <div class="relative z-10">
                     <div class="mb-2.5">
-                        <span class="text-[9px] font-black bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-lg uppercase tracking-widest border border-indigo-100 inline-block">Est: {{ item.estimasi || 'Standar' }}</span>
+                        <span class="text-[9px] font-black bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-lg uppercase tracking-widest border border-indigo-100 inline-block">Est: {{ item.estimasi_durasi || '1' }} {{ item.estimasi_satuan || 'Hari' }}</span>
                     </div>
                     <h3 class="text-sm font-black text-slate-800 uppercase leading-tight line-clamp-2 pr-14">{{ item.nama_produk }}</h3>
                 </div>

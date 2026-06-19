@@ -55,6 +55,8 @@ type Product struct {
 	// SATUAN DASAR (UOM LAYER 1)
 	// ==========================================
 	SatuanDasar string `gorm:"type:varchar(20);default:'PCS'" json:"satuan_dasar"`
+	EstimasiDurasi int     `gorm:"default:1" json:"estimasi_durasi"`
+	EstimasiSatuan string  `gorm:"size:10;default:'Hari'" json:"estimasi_satuan"`
 
 	// ==========================================
 	// KONVERSI 2 LAPIS (UOM LAYER 2)
