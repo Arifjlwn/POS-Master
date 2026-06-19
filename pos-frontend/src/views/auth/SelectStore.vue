@@ -116,19 +116,27 @@ const selectBranch = async (store) => {
 		// 🚀 3. INTERCEPTOR KHUSUS RAK LAUNDRY (HANYA UNTUK OWNER & LAUNDRY)
 		if (finalRole === 'owner' && (targetIndustry === 'jasa' || targetIndustry === 'laundry')) {
 			try {
-				// Cek isi rak ke database
-				const resRacks = await api.get('/laundry/racks');
-				if (resRacks.data && resRacks.data.data && resRacks.data.data.length === 0) {
-					// Simpan URL tujuan buat nanti abis modalnya beres
-					pendingRedirectUrl.value = '/laundry/pos/riwayat';
-					showRackModal.value = true;
-					return; // 🛑 BLOKIR REDIRECT OTOMATIS DISINI BRAY!
+				const snoozeTime = localStorage.getItem('snooze_rack_setup');
+				const isSnoozed = snoozeTime && new Date().getTime() < parseInt(snoozeTime);
+
+				if (!isSnoozed) {
+					const resRacks = await api.get('/laundry/racks');
+
+					// 🚀 FIXED KASTA TERTINGGI: Cek kalau datanya null ATAU length-nya 0
+					const rakData = resRacks.data?.data;
+					if (!rakData || rakData.length === 0) {
+						pendingRedirectUrl.value = '/laundry/pos/riwayat';
+						showRackModal.value = true;
+						return; // 🛑 BLOKIR REDIRECT OTOMATIS
+					}
 				}
 			} catch (rackErr) {
 				console.error('Gagal mengecek status rak laundry:', rackErr);
-				// Kalo error cuekin aja, biar owner tetep bisa masuk
 			}
 		}
+
+		// Kalau semua aman, baru redirect ke dashboard
+		router.push('/laundry/pos/riwayat');
 
 		// 4. NAVIGATION REDIRECT ENGINE (Kalau lolos semua rintangan)
 		if (targetIndustry === 'jasa' || targetIndustry === 'laundry') {
@@ -337,7 +345,25 @@ const getStoreLabel = (store, index) => {
 		</Transition>
 
 		<!-- 🚀 MODAL ONBOARDING RAK TERPASANG DI SINI BRAY! -->
-		<OnboardingRackModal :show="showRackModal" @setup-success="handleLanjutKeDashboardLaundry" @bypass="handleLanjutKeDashboardLaundry" />
+		<OnboardingRackModal
+			:show="showRackModal"
+			@setup-success="
+				(isRedirect) => {
+					showRackModal = false;
+					// 🚀 Kalau dari tombol SUDAH PUNYA, arahin ke halaman Setting Rak!
+					if (isRedirect === true) {
+						router.push('/laundry/racks');
+					} else {
+						router.push(pendingRedirectUrl);
+					}
+				}
+			"
+			@bypass="
+				() => {
+					showRackModal = false;
+					router.push(pendingRedirectUrl);
+				}
+			" />
 
 		<div v-if="isLoading" class="fixed inset-0 z-[150] bg-slate-950/40 backdrop-blur-sm flex items-center justify-center p-4">
 			<div class="bg-white p-6 md:p-8 rounded-[24px] md:rounded-[28px] shadow-2xl border border-slate-100 flex flex-col items-center max-w-xs w-full text-center">

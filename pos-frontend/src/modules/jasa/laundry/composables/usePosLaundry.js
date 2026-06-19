@@ -32,7 +32,6 @@ export function usePosLaundry() {
 	const showPerfumeControlModal = ref(false);
 	const qrisStoreUrl = ref('');
 
-	// 🚀 FIX STORE INFO: Menampung data alamat lengkap dan logo url
 	const storeInfo = ref({
 		nama_toko: 'LAUNDRY POS',
 		alamat: '',
@@ -48,6 +47,13 @@ export function usePosLaundry() {
 	const uangBayar = ref('');
 	const printData = ref(null);
 	const printerSize = ref('58');
+
+	// 🚀 ENGINE BARU: Buat reset tanggal otomatis ke H+2
+	const resetEstimasiSelesai = () => {
+		const today = new Date();
+		today.setDate(today.getDate() + 2);
+		estimasiSelesai.value = today.toISOString().split('T')[0];
+	};
 
 	const formattedUangBayar = computed({
 		get() {
@@ -162,8 +168,6 @@ export function usePosLaundry() {
 			cameraStream.value.getTracks().forEach((track) => track.stop());
 			cameraStream.value = null;
 		}
-		videoItemRef.value = null;
-		videoQrisRef.value = null;
 	};
 
 	const fetchServices = async () => {
@@ -180,11 +184,28 @@ export function usePosLaundry() {
 
 	const fetchPerfumes = async () => {
 		try {
-			const response = await api.get('/laundry/perfumes');
-			perfumes.value = response.data.data || response.data || [];
-		} catch (error) {
-			console.error('Gagal load data parfum:', error);
+			const res = await api.get('/laundry/perfumes');
+			const savedPerfumeStates = JSON.parse(localStorage.getItem('perfume_states')) || {};
+
+			// 🚀 FIXED: Jaring pengaman! Tarik data dari res.data.data, kalau kosong ambil dari res.data, kalau kosong lagi jadikan array kosong []
+			const rawPerfumes = res.data?.data || res.data || [];
+
+			perfumes.value = rawPerfumes.map((p) => {
+				return {
+					...p,
+					status: savedPerfumeStates[p.id] !== undefined ? savedPerfumeStates[p.id] : 'Tersedia',
+				};
+			});
+		} catch (err) {
+			console.error('Gagal menarik data parfum:', err);
 		}
+	};
+
+	const togglePerfumeStatus = (perfume) => {
+		perfume.status = perfume.status === 'Tersedia' ? 'Habis' : 'Tersedia';
+		const savedPerfumeStates = JSON.parse(localStorage.getItem('perfume_states')) || {};
+		savedPerfumeStates[perfume.id] = perfume.status;
+		localStorage.setItem('perfume_states', JSON.stringify(savedPerfumeStates));
 	};
 
 	const fetchStoreSetting = async () => {
@@ -192,20 +213,19 @@ export function usePosLaundry() {
 			const response = await api.get('/store/settings');
 			const data = response.data.data || response.data;
 			if (data) {
-				// 🚀 BINDING ALAMAT LENGKAP: Rakit semua potongan alamat jadi satu string utuh bray!
 				let alamatLengkap = data.alamat || '';
 				if (data.kelurahan || data.kecamatan) alamatLengkap += `\n${data.kelurahan || ''}, ${data.kecamatan || ''}`;
 				if (data.kota || data.provinsi) alamatLengkap += `\n${data.kota || ''}, ${data.provinsi || ''} ${data.kode_pos || ''}`;
 
 				storeInfo.value = {
 					nama_toko: data.nama_toko || 'LAUNDRY POS',
-					alamat: alamatLengkap, // Tembak langsung hasil rakitan
+					alamat: alamatLengkap,
 					telepon: data.telepon || '',
 					receipt_footer: data.receipt_footer || 'Terima Kasih',
 					payment_type: data.payment_type || 'qris_static',
-					logo_url: data.logo_url || '', // Asli logo ruko bray
+					logo_url: data.logo_url || '',
 				};
-				if (data.qris_image) qrisStoreUrl.value = data.qris_image; // Ini murni buat gambar scan bayar
+				if (data.qris_image) qrisStoreUrl.value = data.qris_image;
 			}
 		} catch (error) {
 			console.error(error);
@@ -275,10 +295,13 @@ export function usePosLaundry() {
 			if (currentPaymentType === 'midtrans' && !isSubmitting.value) {
 				isSubmitting.value = true;
 				try {
-					const midtransRes = await api.post('/retail/pos/checkout', {
+					// 🚀 SEKARANG SUDAH PUNYA JALUR MANDIRI KASTA TERTINGGI BRAY!
+					// Kita ubah dari '/retail/pos/checkout' ke endpoint laundry baru kita:
+					const midtransRes = await api.post('/laundry/midtrans-token', {
 						total: parseFloat(totalTagihan.value),
 					});
 
+					// Nangkep tokennya tetep sama bray
 					const snapToken = midtransRes.data?.token || midtransRes.data?.data?.token;
 
 					if (snapToken) {
@@ -338,10 +361,10 @@ export function usePosLaundry() {
 			if (response.data && response.data.status === 'sukses') {
 				printData.value = {
 					toko_nama: storeInfo.value.nama_toko || 'LAUNDRY POS',
-					toko_alamat: storeInfo.value.alamat, // Udah dirakit lengkap di atas bray
+					toko_alamat: storeInfo.value.alamat,
 					toko_telepon: storeInfo.value.telepon,
 					toko_footer: storeInfo.value.receipt_footer,
-					logo_url: storeInfo.value.logo_url, // Asli logo toko, bukan QRIS lagi anjir!
+					logo_url: storeInfo.value.logo_url,
 					invoice: response.data.invoice_code,
 					kasir: 'Admin',
 					tanggal: new Date().toISOString(),
@@ -350,7 +373,7 @@ export function usePosLaundry() {
 					estimasi: estimasiSelesai.value,
 					items: cart.value.map((item) => ({
 						...item,
-						nomor_rak: response.data.nomor_rak, // 🎯 INI KUNCI SAKLEKNYA BRAY!
+						nomor_rak: response.data.nomor_rak,
 					})),
 					total: totalTagihan.value,
 					metode: paymentMethod.value,
@@ -358,6 +381,7 @@ export function usePosLaundry() {
 					kembali: kembalian.value > 0 ? kembalian.value : 0,
 				};
 
+				// 🚀 Kosongin cart dan form
 				cart.value = [];
 				customerName.value = '';
 				customerPhone.value = '';
@@ -367,6 +391,9 @@ export function usePosLaundry() {
 				photoData.value = null;
 				buktiTransferData.value = null;
 				isCartOpen.value = false;
+
+				// 🚀 FIXED: RESET TANGGAL ESTIMASI KEMBALI KE H+2 DEFAULT!
+				resetEstimasiSelesai();
 			}
 		} catch (error) {
 			Swal.fire('Gagal!', 'Gagal memproses transaksi final.', 'error');
@@ -379,6 +406,7 @@ export function usePosLaundry() {
 		fetchServices();
 		fetchPerfumes();
 		fetchStoreSetting();
+		resetEstimasiSelesai(); // 🚀 Setup awal pas komponen load
 
 		if (!document.getElementById('midtrans-snap-script')) {
 			const script = document.createElement('script');
@@ -388,10 +416,6 @@ export function usePosLaundry() {
 			script.async = true;
 			document.head.appendChild(script);
 		}
-
-		const today = new Date();
-		today.setDate(today.getDate() + 2);
-		estimasiSelesai.value = today.toISOString().split('T')[0];
 	});
 
 	return {
@@ -429,10 +453,10 @@ export function usePosLaundry() {
 		formatNoHpCustomer,
 		searchCustomer,
 		selectCustomer,
-		closeCustomerDropdown: () =>
-			setTimeout(() => {
-				showCustomerDropdown.value = false;
-			}, 200),
+		// 🚀 FIXED: Hapus timeout ganda karena udah diurus di PosCartSidebar.vue (handleBlurDropdown)
+		closeCustomerDropdown: () => {
+			showCustomerDropdown.value = false;
+		},
 		filteredServices: computed(() => services.value.filter((s) => s.nama_produk.toLowerCase().includes(searchQuery.value.toLowerCase()))),
 		availablePerfumes: computed(() => perfumes.value.filter((p) => p.status === 'Tersedia')),
 		addToCart,
@@ -484,11 +508,7 @@ export function usePosLaundry() {
 			processCheckout();
 		},
 		processCheckout,
-		togglePerfumeStatus: async (perfume) => {
-			const newStatus = perfume.status === 'Tersedia' ? 'Habis' : 'Tersedia';
-			perfume.status = newStatus;
-			Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `${perfume.nama} di-set ${newStatus}`, showConfirmButton: false, timer: 1500 });
-		},
+		togglePerfumeStatus,
 		setPaymentMethod,
 		setNominalCash,
 		bindVideoStreaming,

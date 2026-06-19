@@ -29,27 +29,28 @@ const emit = defineEmits(['save', 'cancel']);
 				<input v-model="formJasa.nama_produk" type="text" placeholder="Contoh: Cuci Karpet Tebal" class="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-bold text-sm text-slate-800 transition-all placeholder:text-slate-300" />
 			</div>
 			<div>
-				<label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Harga Jual</label>
-				<input v-model="formJasa.harga_jual" type="number" placeholder="0" class="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-black text-sm text-slate-800 transition-all placeholder:text-slate-300" />
-			</div>
-			<div>
 				<label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Tipe Satuan</label>
 				<select v-model="formJasa.satuan_dasar" class="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-bold text-sm text-slate-800 cursor-pointer transition-all">
 					<option value="KG">Kiloan (KG)</option>
-					<option value="PCS">Satuan (PCS / Helai)</option>
-					<option value="M2">Meter Persegi (M2)</option>
+					<option value="PCS">Satuan (PCS)</option>
+					<option value="PASANG">Pasang (PSG)</option>
+					<option value="METER">Meter (M)</option>
 				</select>
 			</div>
 			<div>
 				<label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Estimasi Waktu Pengerjaan</label>
 				<select v-model="formJasa.estimasi" class="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-bold text-sm text-slate-800 cursor-pointer transition-all">
-					<option value="3 Jam">Express (3 Jam)</option>
+					<option value="3 Jam">Super Express (3 Jam)</option>
 					<option value="6 Jam">Express (6 Jam)</option>
 					<option value="1 Hari">Kilat (1 Hari)</option>
 					<option value="2 Hari">Reguler (2 Hari)</option>
-					<option value="3 Hari">Standar (3 Hari)</option>
-					<option value="7 Hari">Khusus (7 Hari)</option>
+					<option value="3 Hari">Hemat (3 Hari)</option>
+					<option value="7 Hari">Cuci Besar (7 Hari)</option>
 				</select>
+			</div>
+			<div>
+				<label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Harga Jasa</label>
+				<input v-model="formJasa.harga_jual" type="number" placeholder="0" class="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-black text-sm text-slate-800 transition-all placeholder:text-slate-300" />
 			</div>
 		</div>
 

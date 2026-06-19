@@ -20,6 +20,12 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:isCartOpen', 'update:customerName', 'update:customerPhone', 'update:estimasiSelesai', 'search-customer', 'select-customer', 'close-dropdown', 'clear-cart', 'remove-item', 'perfume-change', 'update-berat', 'open-camera', 'remove-photo', 'set-payment', 'set-nominal', 'checkout', 'format-no-hp']);
+
+const handleBlurDropdown = () => {
+	setTimeout(() => {
+		emit('close-dropdown');
+	}, 200);
+};
 </script>
 
 <template>
@@ -49,14 +55,15 @@ const emit = defineEmits(['update:isCartOpen', 'update:customerName', 'update:cu
 							emit('update:customerName', $event.target.value);
 							emit('search-customer');
 						"
-						@blur="emit('close-dropdown')"
+						@blur="handleBlurDropdown"
 						@focus="emit('search-customer')"
 						type="text"
 						class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-slate-800 outline-none font-bold text-slate-800 text-xs placeholder:text-slate-300 shadow-inner"
 						placeholder="Ketik nama pelanggan..." />
+
 					<div v-if="showCustomerDropdown" class="absolute left-0 right-0 top-[105%] z-50 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden">
 						<div class="max-h-40 overflow-y-auto custom-scrollbar">
-							<div v-for="cust in customerResults" :key="cust.id" @click="emit('select-customer', cust)" class="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 flex flex-col transition-colors">
+							<div v-for="cust in customerResults" :key="cust.id" @mousedown.prevent="emit('select-customer', cust)" class="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 flex flex-col transition-colors">
 								<span class="font-black text-xs text-slate-800">{{ cust.nama }}</span>
 								<span class="text-[9px] font-bold text-slate-400 mt-0.5">WhatsApp: +{{ cust.no_whatsapp }}</span>
 							</div>

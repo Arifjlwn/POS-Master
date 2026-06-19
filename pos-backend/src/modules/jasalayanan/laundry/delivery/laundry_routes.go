@@ -27,6 +27,7 @@ func RegisterLaundryRoutes(rg *gin.RouterGroup, repo repository.LaundryRepositor
 	// POS Core & Customer Search
 	rg.GET("/services", serviceHandler.AmbilDaftarLayananLaundry)
 	rg.POST("/checkout", txHandler.ProsesCheckoutLaundry)
+	rg.POST("/midtrans-token", txHandler.GetMidtransTokenLaundry)
 	rg.GET("/customers/search", reportHandler.CariPelanggan)
 	rg.PUT("/transactions/:id/lunas", txHandler.LunasiTransaksi)
 
@@ -43,14 +44,15 @@ func RegisterLaundryRoutes(rg *gin.RouterGroup, repo repository.LaundryRepositor
 	// Reports & Settings
 	rg.GET("/report", txHandler.GetLaporan)
 	rg.GET("/tracking", reportHandler.AmbilDataTracking)
-	rg.PUT("/tracking/:id/status", txHandler.UpdateStatusCucian)
+	rg.PUT("/transactions/:id/status", txHandler.UpdateStatusCucian)
 
 	// =====================================
 	// 📦 FITUR SMART RACK LAUNDRY BRAY
 	// =====================================
-	// Sekarang kita panggil fungsi dari rackHandler yang barusan kita bikin!
 	rg.GET("/racks", rackHandler.GetRacks)
 	rg.POST("/racks/setup", rackHandler.SetupInitialRacks)
 	rg.PUT("/racks/:id/status", rackHandler.ToggleRackStatus)
 	rg.PUT("/transactions/:id/pindah-rak", rackHandler.ChangeOrderRack)
+	rg.PUT("/racks/zona", rackHandler.UpdateZonaRack)
+	rg.DELETE("/racks/zona", rackHandler.DeleteZonaRack)
 }

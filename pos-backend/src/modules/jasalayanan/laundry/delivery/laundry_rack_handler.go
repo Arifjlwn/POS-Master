@@ -47,7 +47,7 @@ func (h *LaundryRackHandler) GetRacks(c *gin.Context) {
 	db.Preload("Product").Where("store_id = ? AND status_cucian NOT IN ('DIAMBIL', 'SELESAI') AND rack_id IS NOT NULL", storeID).Find(&activeDetails)
 
 	// Map data cucian ke rak masing-masing
-	var result []RackResponse
+	result := make([]RackResponse, 0)
 	for _, r := range racks {
 		rackRes := RackResponse{
 			LaundryRack:  r,
@@ -72,8 +72,9 @@ func (h *LaundryRackHandler) GetRacks(c *gin.Context) {
 
 // 2. 🚀 SETUP INITIAL RACKS
 type SetupRackInput struct {
-	JumlahBaris int `json:"jumlah_baris" binding:"required,gt=0,lte=26"`
-	JumlahKolom int `json:"jumlah_kolom" binding:"required,gt=0,lte=50"`
+	Zona        string `json:"zona" binding:"required"`
+	JumlahBaris int    `json:"jumlah_baris" binding:"required,gt=0,lte=26"`
+	JumlahKolom int    `json:"jumlah_kolom" binding:"required,gt=0,lte=50"`
 }
 
 func (h *LaundryRackHandler) SetupInitialRacks(c *gin.Context) {
@@ -82,33 +83,42 @@ func (h *LaundryRackHandler) SetupInitialRacks(c *gin.Context) {
 
 	var input SetupRackInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Input jumlah baris atau kolom tidak valid bray!"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Input zona, baris, atau kolom tidak valid!"})
 		return
 	}
 
 	db := h.Repo.GetDB()
 
 	err := db.Transaction(func(tx *gorm.DB) error {
-		var count int64
-		tx.Model(&domain.LaundryRack{}).Where("store_id = ?", storeID).Count(&count)
-		if count > 0 {
-			return fmt.Errorf("ruko Anda sudah memiliki konfigurasi rak aktif, gunakan menu upgrade kapasitas")
+		// 1. Tarik rak lama tapi spesifik HANYA DI ZONA YANG SAMA
+		var existingRacks []domain.LaundryRack
+		tx.Where("store_id = ? AND zona = ?", storeID, input.Zona).Find(&existingRacks)
+
+		existingMap := make(map[string]bool)
+		for _, r := range existingRacks {
+			existingMap[r.NamaRak] = true
 		}
 
 		var racksToInsert []domain.LaundryRack
+
 		for b := 1; b <= input.JumlahBaris; b++ {
 			hurufBaris := string(rune(64 + b))
 			for k := 1; k <= input.JumlahKolom; k++ {
 				namaRak := fmt.Sprintf("%s-%d", hurufBaris, k)
-				racksToInsert = append(racksToInsert, domain.LaundryRack{
-					StoreID:   storeID,
-					NamaRak:   namaRak,
-					Baris:     b,
-					Kolom:     k,
-					Status:    "TERSEDIA",
-					CreatedAt: time.Now(),
-					UpdatedAt: time.Now(),
-				})
+
+				// 🚀 SMART UPSERT PER-ZONA
+				if !existingMap[namaRak] {
+					racksToInsert = append(racksToInsert, domain.LaundryRack{
+						StoreID:   storeID,
+						Zona:      input.Zona,
+						NamaRak:   namaRak,
+						Baris:     b,
+						Kolom:     k,
+						Status:    "TERSEDIA",
+						CreatedAt: time.Now(),
+						UpdatedAt: time.Now(),
+					})
+				}
 			}
 		}
 
@@ -117,6 +127,7 @@ func (h *LaundryRackHandler) SetupInitialRacks(c *gin.Context) {
 				return err
 			}
 		}
+
 		return nil
 	})
 
@@ -125,7 +136,7 @@ func (h *LaundryRackHandler) SetupInitialRacks(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "sukses", "message": "BOOM! Konfigurasi susunan rak baju berhasil di-generate otomatis!"})
+	c.JSON(http.StatusOK, gin.H{"status": "sukses", "message": "Lemari / Zona rak baru berhasil ditambahkan ke sistem!"})
 }
 
 // 3. 🛠️ TOGGLE RACK STATUS
@@ -199,7 +210,7 @@ func (h *LaundryRackHandler) ChangeOrderRack(c *gin.Context) {
 			Where("transaction_id = ? AND store_id = ?", trx.ID, storeID).
 			Updates(map[string]interface{}{
 				"rack_id":    newRack.ID,
-				"nomor_rak":  newRack.NamaRak,
+				"nomor_rak":  fmt.Sprintf("%s / %s", newRack.Zona, newRack.NamaRak),
 				"updated_at": time.Now(),
 			}).Error; err != nil {
 			return fmt.Errorf("gagal memindahkan item cucian ke rak baru")
@@ -214,6 +225,87 @@ func (h *LaundryRackHandler) ChangeOrderRack(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "sukses", "message": "Seluruh cucian pada nota ini berhasil dievakuasi ke rak baru!"})
+}
+
+// ==========================================
+// 🚀 FITUR BARU: UPDATE & DELETE ZONA BRAY
+// ==========================================
+
+// 5. ✏️ UPDATE NAMA ZONA / LEMARI
+type UpdateZonaInput struct {
+	OldZona string `json:"old_zona" binding:"required"`
+	NewZona string `json:"new_zona" binding:"required"`
+}
+
+func (h *LaundryRackHandler) UpdateZonaRack(c *gin.Context) {
+	storeIDRaw, _ := c.Get("store_id")
+	storeID := extractUintID(storeIDRaw)
+
+	var input UpdateZonaInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data nama lemari lama dan baru wajib dilampirkan bray!"})
+		return
+	}
+
+	db := h.Repo.GetDB()
+
+	// 🚀 Update massal semua slot rak yang namanya OldZona menjadi NewZona
+	res := db.Model(&domain.LaundryRack{}).
+		Where("store_id = ? AND zona = ?", storeID, input.OldZona).
+		Updates(map[string]interface{}{
+			"zona":       input.NewZona,
+			"updated_at": time.Now(),
+		})
+
+	if res.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal merubah identitas kluster lemari dari database."})
+		return
+	}
+
+	if res.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Kluster lemari tidak ditemukan di database."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "sukses", "message": fmt.Sprintf("Identitas kluster berhasil diubah menjadi %s", input.NewZona)})
+}
+
+// 6. 🗑️ DELETE ZONA / LEMARI
+type DeleteZonaInput struct {
+	Zona string `json:"zona" binding:"required"`
+}
+
+func (h *LaundryRackHandler) DeleteZonaRack(c *gin.Context) {
+	storeIDRaw, _ := c.Get("store_id")
+	storeID := extractUintID(storeIDRaw)
+
+	var input DeleteZonaInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Nama lemari yang ingin dihapus wajib dilampirkan bray!"})
+		return
+	}
+
+	db := h.Repo.GetDB()
+
+	// 🛡️ SECURITY KASTA TINGGI: Cek ulang di backend, pastiin bener-bener gak ada cucian aktif di lemari ini
+	var activeItems int64
+	db.Model(&domain.TransactionLaundryDetail{}).
+		Joins("JOIN laundry_racks ON laundry_racks.id = laundry_transaction_details.rack_id").
+		Where("laundry_racks.store_id = ? AND laundry_racks.zona = ? AND laundry_transaction_details.status_cucian NOT IN ('DIAMBIL', 'SELESAI')", storeID, input.Zona).
+		Count(&activeItems)
+
+	if activeItems > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Akses ditolak! Masih ada pesanan cucian aktif di dalam lemari ini."})
+		return
+	}
+
+	// 🚀 Hapus massal fisik rak di zona tersebut
+	if err := db.Where("store_id = ? AND zona = ?", storeID, input.Zona).Delete(&domain.LaundryRack{}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memusnahkan kluster lemari dari database."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "sukses", "message": fmt.Sprintf("Kluster lemari %s telah berhasil dimusnahkan!", input.Zona)})
 }
 
 // --- HELPER UNTUK EXTRAKSI TOKEN STORE ID AMAN BRAY ---

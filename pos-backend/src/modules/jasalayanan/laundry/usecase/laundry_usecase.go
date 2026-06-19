@@ -19,7 +19,7 @@ type LaundryUseCase interface {
 	ProcessCheckout(storeID, userID uint, input domain.CheckoutLaundryInput) (string, string, string, error)
 	ProcessPelunasan(trxID, storeID uint, input domain.PelunasanInput) error
 	GetLaporanRingkasan(storeID uint) (domain.ReportSummaryResponse, error)
-	UpdateStatusCucian(detailID uint, status string) error
+	UpdateStatusCucian(trxID uint, status string) error
 }
 
 type laundryUseCase struct {
@@ -35,28 +35,26 @@ func (u *laundryUseCase) CariRakTerbaik(storeID uint) (*domain.LaundryRack, erro
 	db := u.repo.GetDB()
 	var rack domain.LaundryRack
 
-	// 1. PRIORITAS UTAMA: Cari rak yang 100% KOSONG pakai Subquery NOT IN (Anti Meleset!)
-	// 🚀 FIXED: Gak usah pake err := dan .Error di ujungnya, biarin GORM ngeksekusi murni
+	// 1. PRIORITAS UTAMA: Cari rak 100% KOSONG pakai NOT EXISTS (Anti Meleset!)
 	db.Raw(`
-		SELECT * FROM laundry_racks 
-		WHERE store_id = ? AND status = 'TERSEDIA' 
-		AND id NOT IN (
-			SELECT DISTINCT rack_id FROM laundry_transaction_details 
-			WHERE store_id = ? AND status_cucian NOT IN ('DIAMBIL', 'SELESAI') AND rack_id IS NOT NULL
-		) 
-		ORDER BY baris ASC, kolom ASC LIMIT 1`, storeID, storeID).Scan(&rack)
+        SELECT r.* FROM laundry_racks r
+        WHERE r.store_id = ? AND r.status = 'TERSEDIA' 
+        AND NOT EXISTS (
+            SELECT 1 FROM laundry_transaction_details ltd 
+            WHERE ltd.rack_id = r.id AND ltd.status_cucian NOT IN ('DIAMBIL', 'SELESAI')
+        ) 
+        ORDER BY r.zona ASC, r.baris ASC, r.kolom ASC LIMIT 1`, storeID).Scan(&rack)
 
 	// 2. FALLBACK: Jika semua rak sudah terisi (ID = 0), cari rak dengan muatan paling sedikit
 	if rack.ID == 0 {
 		db.Raw(`
-			SELECT r.* FROM laundry_racks r
-			LEFT JOIN laundry_transaction_details ltd ON ltd.rack_id = r.id AND ltd.status_cucian NOT IN ('DIAMBIL', 'SELESAI')
-			WHERE r.store_id = ? AND r.status = 'TERSEDIA'
-			GROUP BY r.id
-			ORDER BY COUNT(ltd.id) ASC, r.baris ASC, r.kolom ASC LIMIT 1`, storeID).Scan(&rack)
+            SELECT r.* FROM laundry_racks r
+            LEFT JOIN laundry_transaction_details ltd ON ltd.rack_id = r.id AND ltd.status_cucian NOT IN ('DIAMBIL', 'SELESAI')
+            WHERE r.store_id = ? AND r.status = 'TERSEDIA'
+            GROUP BY r.id
+            ORDER BY COUNT(ltd.id) ASC, r.zona ASC, r.baris ASC, r.kolom ASC LIMIT 1`, storeID).Scan(&rack)
 	}
 
-	// 3. Jika benar-benar tidak ada rak fisik yang terdaftar atau tersedia
 	if rack.ID == 0 {
 		return nil, fmt.Errorf("tidak ada rak yang tersedia")
 	}
@@ -97,7 +95,7 @@ func (u *laundryUseCase) uploadBase64ToSupabase(base64Data, publicID, subFolder 
 	return urlResult, nil
 }
 
-// 🚀 TIMPA FUNGSI INI SECARA UTUH BRAY
+// 🚀 FUNGSI CHECKOUT KASTA TERTINGGI (ANTI ERROR FOREIGN KEY)
 func (u *laundryUseCase) ProcessCheckout(storeID, userID uint, input domain.CheckoutLaundryInput) (string, string, string, error) {
 	estimasiTime, err := time.Parse("2006-01-02", input.EstimasiSelesai)
 	if err != nil {
@@ -122,15 +120,38 @@ func (u *laundryUseCase) ProcessCheckout(storeID, userID uint, input domain.Chec
 
 	if errRack == nil && bestRack != nil {
 		rackID = bestRack.ID
-		nomorRak = bestRack.NamaRak
+		nomorRak = fmt.Sprintf("%s / %s", bestRack.Zona, bestRack.NamaRak)
 	}
 
 	db := u.repo.GetDB()
 	tx := db.Begin()
 
+	// 🚀 POLYFILL ENGINE: BIKIN SHIFT DUMMY SESUAI STRUCT CORE_SESSION LU BRAY!
+	var activeSession models.CashierSession
+	errSession := tx.Where("store_id = ? AND user_id = ? AND status = 'OPEN'", storeID, userID).Order("id DESC").First(&activeSession).Error
+
+	if errSession != nil {
+		// Bikin shift siluman yang lolos gembok constraint PostgreSQL lu
+		activeSession = models.CashierSession{
+			PublicID:      utils.GenerateULID(), // Wajib ada buat UUID
+			StoreID:       storeID,
+			UserID:        userID,
+			StationNumber: "AUTO-LD", // Bypass unique index per stasiun
+			ModalAwal:     0,
+			Status:        "OPEN",
+			OpenedAt:      time.Now(), // Nama kolom yang bener sesuai struct lu
+			OpenedBy:      userID,     // Saksi forensik pembuka shift
+		}
+		if err := tx.Create(&activeSession).Error; err != nil {
+			tx.Rollback()
+			return "", "", "", fmt.Errorf("gagal membuat sesi kasir otomatis: %v", err)
+		}
+	}
+
+	// 🚀 INJEKSI DATA TRANSAKSI
 	newTx := models.Transaction{
 		PublicID:      trxPublicID,
-		SessionID:     1,
+		SessionID:     activeSession.ID,
 		StoreID:       storeID,
 		UserID:        userID,
 		NoInvoice:     invoiceCode,
@@ -140,6 +161,8 @@ func (u *laundryUseCase) ProcessCheckout(storeID, userID uint, input domain.Chec
 		TotalHarga:    input.TotalAmount,
 		MetodeBayar:   input.PaymentMethod,
 		StatusBayar:   input.PaymentStatus,
+		TipeBisnis:    "LAUNDRY",
+		StatusPesanan: "ANTRI",
 		NominalBayar:  input.TotalAmount,
 		Kembalian:     0,
 		BuktiTransfer: buktiPath,
@@ -147,7 +170,6 @@ func (u *laundryUseCase) ProcessCheckout(storeID, userID uint, input domain.Chec
 
 	if err := u.repo.CreateTransactionTx(tx, &newTx); err != nil {
 		tx.Rollback()
-		// 🚀 FIXED: Tambah 1 string kosong "" di sini!
 		return "", "", "", fmt.Errorf("gagal membuat invoice induk: %v", err)
 	}
 
@@ -174,7 +196,6 @@ func (u *laundryUseCase) ProcessCheckout(storeID, userID uint, input domain.Chec
 
 		if err := u.repo.CreateLaundryDetailTx(tx, &laundryDetail); err != nil {
 			tx.Rollback()
-			// 🚀 FIXED: Tambah 1 string kosong "" di sini juga bray!
 			return "", "", "", fmt.Errorf("gagal menyimpan rincian cucian: %v", err)
 		}
 	}
@@ -182,6 +203,7 @@ func (u *laundryUseCase) ProcessCheckout(storeID, userID uint, input domain.Chec
 	existingCustomer, err := u.repo.FindCustomerByPhone(storeID, input.CustomerPhone)
 	if err != nil {
 		newCustomer := models.Customer{
+			PublicID:   utils.GenerateULID(),
 			StoreID:    storeID,
 			Nama:       input.CustomerName,
 			NoWhatsapp: input.CustomerPhone,
@@ -193,7 +215,6 @@ func (u *laundryUseCase) ProcessCheckout(storeID, userID uint, input domain.Chec
 	}
 
 	tx.Commit()
-	// 🚀 INI UDAH BENER, BALIKIN nomorRak
 	return invoiceCode, fotoBarangPath, nomorRak, nil
 }
 
@@ -240,7 +261,9 @@ func (u *laundryUseCase) GetLaporanRingkasan(storeID uint) (domain.ReportSummary
 		}
 
 		detail, err := u.repo.GetLaundryDetailByTxID(trx.ID)
-		var namaPelanggan, noWhatsapp string
+
+		// 🚀 FIXED: Tambahin variabel buat nampung nomorRak
+		var namaPelanggan, noWhatsapp, nomorRak string
 		var productID uint
 		var beratKg, subTotalDetail float64
 		var estimasiWaktu time.Time
@@ -252,12 +275,18 @@ func (u *laundryUseCase) GetLaporanRingkasan(storeID uint) (domain.ReportSummary
 			beratKg = detail.BeratKg
 			subTotalDetail = detail.SubTotal
 			estimasiWaktu = detail.EstimasiWaktu
+			nomorRak = detail.NomorRak // 🎯 TARIK DATA RAK DARI DATABASE BRAY!
 		}
 
 		layananName := "Paket Laundry"
+		satuanDasar := "KG" // 🚀 Default-nya KG
+
 		if productID > 0 {
 			if prod, err := u.repo.GetProductByIDSimple(productID); err == nil {
 				layananName = prod.NamaProduk
+				if prod.SatuanDasar != "" {
+					satuanDasar = prod.SatuanDasar // 🎯 Tarik satuan asli dari Master Layanan!
+				}
 			}
 		}
 
@@ -268,8 +297,10 @@ func (u *laundryUseCase) GetLaporanRingkasan(storeID uint) (domain.ReportSummary
 			Whatsapp:      noWhatsapp,
 			Layanan:       layananName,
 			BeratKg:       beratKg,
+			SatuanDasar:   satuanDasar,
 			SubTotal:      subTotalDetail,
 			EstimasiWaktu: estimasiWaktu,
+			NomorRak:      nomorRak,
 		})
 	}
 
@@ -292,6 +323,21 @@ func (u *laundryUseCase) GetLaporanRingkasan(storeID uint) (domain.ReportSummary
 	}, nil
 }
 
-func (u *laundryUseCase) UpdateStatusCucian(detailID uint, status string) error {
-	return u.repo.UpdateStatusDetailCucian(detailID, status)
+func (u *laundryUseCase) UpdateStatusCucian(trxID uint, status string) error {
+	db := u.repo.GetDB()
+
+	// 1. 🚀 UPDATE TABEL INDUK (Biar Papan Kanban Vue lu bisa pindah kotak)
+	err := db.Model(&models.Transaction{}).
+		Where("id = ?", trxID).
+		Update("status_pesanan", status).Error
+	if err != nil {
+		return fmt.Errorf("gagal merubah status pesanan induk: %v", err)
+	}
+
+	// 2. 🚀 UPDATE TABEL ANAK (Biar rincian cucian di dalamnya ikut sinkron)
+	err = db.Model(&domain.TransactionLaundryDetail{}).
+		Where("transaction_id = ?", trxID).
+		Update("status_cucian", status).Error
+
+	return err
 }

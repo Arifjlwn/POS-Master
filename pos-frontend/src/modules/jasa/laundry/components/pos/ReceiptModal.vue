@@ -19,6 +19,15 @@ const emit = defineEmits(['close', 'refresh-data']);
 const isEditingRack = ref(false);
 const allRacks = ref([]);
 const availableRacks = ref([]);
+const groupedAvailableRacks = computed(() => {
+	const groups = {};
+	availableRacks.value.forEach((rack) => {
+		const zone = rack.zona || 'RAK UTAMA';
+		if (!groups[zone]) groups[zone] = [];
+		groups[zone].push(rack);
+	});
+	return groups;
+});
 const selectedRackId = ref('');
 const isSubmittingRack = ref(false);
 
@@ -103,7 +112,6 @@ const formatKemasan = (item) => {
 	return `${item.berat || 0} ${item.satuan_dasar || 'KG'}`;
 };
 
-// 🚀 COMPUTED: Ambil info Rak Otomatis
 const currentRack = computed(() => {
 	const items = props.invoiceData?.items || [];
 	if (items.length > 0 && items[0].nomor_rak) {
@@ -112,10 +120,26 @@ const currentRack = computed(() => {
 	return '-';
 });
 
-// 🚀 COMPUTED BARU: Deteksi isi cucian yang ada di dalam rak aktif saat ini
 const currentRackDetails = computed(() => {
-	const rack = allRacks.value.find((r) => r.nama_rak === currentRack.value);
-	return rack ? rack.detail_cucian : [];
+	const rackString = currentRack.value; // Contoh: "RAK UTAMA / A-1"
+	let targetNamaRak = rackString;
+	let targetZona = 'RAK UTAMA'; // Default zona
+
+	// 🚀 FIXED: Pecah string biar dapet Zona dan Nama Rak yang akurat
+	if (rackString.includes(' / ')) {
+		const parts = rackString.split(' / ');
+		targetZona = parts[0].trim();
+		targetNamaRak = parts[1].trim();
+	}
+
+	// Cari fisik raknya yang zonanya dan namanya cocok
+	const rack = allRacks.value.find((r) => r.nama_rak === targetNamaRak && (r.zona || 'RAK UTAMA') === targetZona);
+	if (!rack) return [];
+
+	// 🚀 KASTA TERTINGGI: Sembunyikan item milik TRANSAKSI SAAT INI!
+	// Biar kasir gak bingung ngeliat pesanannya sendiri dibilang "Penghuni Rak Lama"
+	const currentCustomer = props.invoiceData?.pelanggan;
+	return rack.detail_cucian.filter((item) => item.nama_pelanggan !== currentCustomer);
 });
 
 // 🚀 ENGINE: Fetch data rak kosong pas modal terbuka
@@ -124,13 +148,12 @@ watch(
 	async (newVal) => {
 		if (newVal) {
 			isEditingRack.value = false;
-
 			try {
 				const res = await api.get('/laundry/racks');
-
 				allRacks.value = res.data.data || [];
 
-				availableRacks.value = allRacks.value.filter((r) => r.status === 'TERSEDIA' && r.isi_cucian === 0);
+				// 🚀 Tampilkan semua rak, biar kasir bebas mau numpang di rak mana aja
+				availableRacks.value = allRacks.value.filter((r) => r.status === 'TERSEDIA');
 			} catch (err) {
 				console.error('Gagal memuat list master denah rak:', err);
 			}
@@ -143,25 +166,25 @@ const handlePilihRakGrid = async (id) => {
 	if (!id || isSubmittingRack.value) return;
 
 	selectedRackId.value = id;
-
-	// 🎯 KITA PAKAI NOMOR INVOICE SEKARANG BRAY, BUKAN ID PRODUK!
 	const invoiceCode = props.invoiceData?.invoice;
+
 	if (!invoiceCode) {
 		return Swal.fire('Error', 'Data Nomor Invoice tidak ditemukan!', 'error');
 	}
 
 	isSubmittingRack.value = true;
 	try {
-		// Bypass URL param :id pakai kata 'update', lempar data asli ke dalam body JSON
 		const res = await api.put(`/laundry/transactions/update/pindah-rak`, {
 			new_rack_id: parseInt(id),
-			invoice: invoiceCode, // 🚀 Injeksi Invoice ke Golang!
+			invoice: invoiceCode,
 		});
 
 		if (res.data.status === 'sukses') {
-			const newRackName = availableRacks.value.find((r) => r.id === parseInt(id))?.nama_rak;
+			const targetRack = availableRacks.value.find((r) => r.id === parseInt(id));
 
-			// Ubah reaktif nama rak di struk layar kasir
+			// 🚀 FIXED: GABUNGIN ZONA DAN NAMA RAK BIAR GAK HILANG!
+			const newRackName = targetRack ? `${targetRack.zona || 'RAK UTAMA'} / ${targetRack.nama_rak}` : '-';
+
 			if (props.invoiceData.items && props.invoiceData.items.length > 0) {
 				props.invoiceData.items.forEach((item) => {
 					item.nomor_rak = newRackName;
@@ -169,6 +192,12 @@ const handlePilihRakGrid = async (id) => {
 			}
 
 			isEditingRack.value = false;
+
+			// 🚀 FIXED: TUNGGU API BERES BIAR UI GAK KETINGGALAN!
+			const resRefresh = await api.get('/laundry/racks');
+			allRacks.value = resRefresh.data.data || [];
+			availableRacks.value = allRacks.value.filter((rk) => rk.status === 'TERSEDIA');
+
 			Swal.fire({
 				toast: true,
 				position: 'top-end',
@@ -200,10 +229,10 @@ const triggerPrint = () => {
 					<div class="flex items-center justify-between">
 						<div class="flex flex-col">
 							<span class="text-[10px] font-black uppercase tracking-widest text-indigo-200">Alokasi Rak Otomatis</span>
-							<span class="text-3xl font-black tracking-tighter leading-none mt-1 drop-shadow-sm">{{ currentRack }}</span>
+							<span class="text-3xl font-black tracking-tighter leading-none mt-1 drop-shadow-sm uppercase">{{ currentRack }}</span>
 						</div>
 						<button @click="isEditingRack = true" class="bg-white/20 hover:bg-white/30 text-white p-2.5 rounded-xl transition-all active:scale-95 flex items-center justify-center backdrop-blur-md shadow-sm border border-white/10" title="Ubah Rak Fisik">
-							<svg xmlns="http://www.w3.org/2000/xl" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+							<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
 								<path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
 							</svg>
 						</button>
@@ -221,7 +250,7 @@ const triggerPrint = () => {
 							<div v-if="currentRackDetails.length > 0" v-for="(item, idx) in currentRackDetails" :key="idx" class="bg-indigo-800/60 p-2 rounded-lg border border-indigo-700/50 flex justify-between items-center shadow-inner">
 								<div class="flex flex-col min-w-0 pr-2">
 									<span class="text-[10px] font-bold text-indigo-50 line-clamp-1 uppercase">{{ item.product?.nama_produk || 'PAKET LAUNDRY' }}</span>
-									<span class="text-[8px] font-medium text-indigo-300 line-clamp-1 mt-0.5 uppercase">PELANGGAN: {{ item.nama_pelanggan }}</span>
+									<span class="text-[8px] font-medium text-indigo-300 line-clamp-1 mt-0.5 uppercase">P: {{ item.nama_pelanggan }}</span>
 								</div>
 								<span class="text-[9px] font-black bg-indigo-900 px-2 py-0.5 rounded text-indigo-300 shrink-0 border border-indigo-800">{{ item.berat_kg }} KG</span>
 							</div>
@@ -233,7 +262,7 @@ const triggerPrint = () => {
 
 				<div v-else class="flex flex-col gap-3 relative z-10 animate-fade-in w-full">
 					<div class="flex justify-between items-center mb-1">
-						<span class="text-[10px] font-black uppercase tracking-widest text-indigo-200">Pilih Denah Rak Kosong</span>
+						<span class="text-[10px] font-black uppercase tracking-widest text-indigo-200">Pilih Denah Rak</span>
 						<button @click="isEditingRack = false" class="text-white hover:text-rose-300 transition-colors p-1 bg-white/10 rounded-lg active:scale-95">
 							<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
 								<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -249,18 +278,33 @@ const triggerPrint = () => {
 						<span class="text-[10px] font-black tracking-widest uppercase text-indigo-200 animate-pulse">Menyinkronkan Rak...</span>
 					</div>
 
-					<div v-else-if="availableRacks.length > 0" class="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[220px] overflow-y-auto custom-scrollbar pr-1">
-						<button v-for="rack in availableRacks" :key="rack.id" @click="handlePilihRakGrid(rack.id)" class="bg-indigo-700/50 hover:bg-white text-indigo-100 hover:text-indigo-900 border border-indigo-500 hover:border-white rounded-xl p-2 flex flex-col items-center justify-center transition-all active:scale-95 group shadow-sm">
-							<span class="text-[8px] font-bold opacity-70 group-hover:opacity-100 transition-opacity">R{{ rack.baris }}C{{ rack.kolom }}</span>
-							<span class="font-black text-sm mt-0.5 tracking-tighter">{{ rack.nama_rak }}</span>
-						</button>
+					<div v-else-if="Object.keys(groupedAvailableRacks).length > 0" class="max-h-[220px] overflow-y-auto custom-scrollbar pr-1 space-y-4 w-full">
+						<div v-for="(zoneRacks, zoneName) in groupedAvailableRacks" :key="zoneName" class="bg-indigo-700/30 p-2.5 rounded-2xl border border-indigo-500/20">
+							<span class="text-[9px] font-black uppercase tracking-widest text-indigo-200 mb-2 px-1 flex items-center gap-1">
+								<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+									<path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+								</svg>
+								Kluster: {{ zoneName }}
+							</span>
+							<div class="grid grid-cols-4 gap-2">
+								<button v-for="rack in zoneRacks" :key="rack.id" @click="handlePilihRakGrid(rack.id)" :class="['relative rounded-xl p-2 flex flex-col items-center justify-center transition-all active:scale-95 group shadow-sm border', rack.isi_cucian > 0 ? 'bg-amber-500/20 hover:bg-amber-500/40 text-amber-100 border-amber-500/50 hover:border-amber-400' : 'bg-indigo-700/60 hover:bg-white text-indigo-100 hover:text-indigo-900 border-indigo-500 hover:border-white']">
+									<span class="text-[7px] font-bold opacity-70 group-hover:opacity-100 transition-opacity">R{{ rack.baris }}C{{ rack.kolom }}</span>
+									<span class="font-black text-xs mt-0.5 tracking-tighter">{{ rack.nama_rak }}</span>
+
+									<div v-if="rack.isi_cucian > 0" class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-amber-500 text-white rounded-full flex items-center justify-center text-[8px] font-black shadow-sm group-hover:scale-110 transition-transform">
+										{{ rack.isi_cucian }}
+									</div>
+								</button>
+							</div>
+						</div>
 					</div>
 
 					<div v-else class="text-center bg-white/10 border border-white/20 rounded-xl p-4 mt-2">
 						<svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mx-auto mb-2 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 							<path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
 						</svg>
-						<p class="text-[10px] font-black uppercase tracking-widest text-indigo-200">Semua Rak Sedang Penuh / Rusak</p>
+						<p class="text-[10px] font-black uppercase tracking-widest text-indigo-200">Semua Rak Sedang Rusak</p>
 					</div>
 				</div>
 			</div>
@@ -356,7 +400,7 @@ const triggerPrint = () => {
 				<div class="mt-4 mb-4 flex items-center gap-2 overflow-hidden opacity-80 text-black print:mt-0">
 					<span class="font-mono text-xs font-black tracking-widest leading-none">-</span>
 					<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-						<path stroke-linecap="round" stroke-linejoin="round" d="M14.121 14.121L19 19m-7-7l3-3m-3 3L7.05 9.05a2.828 2.828 0 114-4l4 4a2.828 2.828 0 11-4 4zm0 0l-3 3m3-3l3 3m-3-3l-4 4a2.828 2.828 0 11-4-4l4-4a2.828 2.828 0 114 4z" />
+						<path stroke-linecap="round" stroke-linejoin="round" d="M14.121 14.121L19 19m-7-7l3-3m-3 3L7.05 9.05a2.828 2.828 0 114-4l4 4a2.828 2.828 0 11-4 4zm0 0l-3 3m3-3l3-3l-4 4a2.828 2.828 0 11-4-4l4-4a2.828 2.828 0 114 4z" />
 					</svg>
 					<span class="font-mono text-xs font-black tracking-widest leading-none w-full border-b border-dashed border-black"></span>
 				</div>
@@ -365,13 +409,12 @@ const triggerPrint = () => {
 					<h2 class="font-black text-[10px] uppercase tracking-tighter mb-1">{{ invoiceData?.toko_nama || 'LAUNDRY POS' }}</h2>
 					<div class="border-2 border-black p-2 my-2 bg-black text-white">
 						<div class="text-[9px] font-bold tracking-widest mb-1 opacity-90">LOKASI RAK BAJU:</div>
-						<div class="text-3xl font-black tracking-tighter">{{ currentRack }}</div>
+						<div class="text-3xl font-black tracking-tighter uppercase">{{ currentRack }}</div>
 					</div>
-					<div class="flex justify-between items-center text-[10px] font-black uppercase text-left mt-2">
-						<span class="w-1/2 truncate pr-1">P: {{ invoiceData.pelanggan || 'UMUM' }}</span>
+					<div class="flex items-center text-[10px] font-black uppercase text-left mt-2">
+						<span class="w-1/2 truncate pr-1">ITEM: {{ invoiceData.items ? invoiceData.items.length : 0 }} BARANG</span>
 						<span class="w-1/2 text-right truncate">#{{ invoiceData.invoice ? invoiceData.invoice.split('/').pop() : 'INV' }}</span>
 					</div>
-					<div class="text-left text-[9px] font-black mt-1">ITEM: {{ invoiceData.items ? invoiceData.items.length : 0 }} BARANG</div>
 				</div>
 
 				<div class="hidden print:block font-mono text-xs leading-none select-none text-white">

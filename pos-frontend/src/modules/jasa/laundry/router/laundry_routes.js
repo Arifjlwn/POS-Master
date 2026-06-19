@@ -19,7 +19,7 @@ export default [
 	{
 		path: '/laundry/status',
 		name: 'LaundryStatus',
-		component: () => import('../views/StatusCucian.vue'),
+		component: () => import('../views/produk/StatusCucian.vue'),
 		meta: { requiresAuth: true, minPlanLevel: 1 },
 	},
 

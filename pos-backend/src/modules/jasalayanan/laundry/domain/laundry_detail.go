@@ -92,8 +92,10 @@ type TransactionReportResponse struct {
 	Whatsapp      string    `json:"whatsapp"`
 	Layanan       string    `json:"layanan"`
 	BeratKg       float64   `json:"berat_kg"`
+	SatuanDasar   string    `json:"satuan_dasar"`
 	SubTotal      float64   `json:"sub_total"`
 	EstimasiWaktu time.Time `json:"estimasi_waktu"`
+	NomorRak      string    `json:"nomor_rak"`
 }
 
 type ReportSummaryResponse struct {
@@ -104,6 +106,7 @@ type ReportSummaryResponse struct {
 type LaundryRack struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	StoreID   uint      `gorm:"index;not null" json:"store_id"`
+	Zona      string    `gorm:"type:varchar(100);not null;default:'Rak Utama'" json:"zona"`
 	NamaRak   string    `gorm:"type:varchar(50);not null" json:"nama_rak"`         // Cth: "A-1", "B-2"
 	Baris     int       `json:"baris"`                                             // Posisi Koordinat Y
 	Kolom     int       `json:"kolom"`                                             // Posisi Koordinat X
