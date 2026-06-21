@@ -56,15 +56,15 @@ const industries = [
 	},
 	{
 		id: 'fnb',
-		title: 'Food & Beverage',
+		title: 'Food & Beverage (Cooming Soon)',
 		desc: 'Cafe, Restoran, Kedai Kopi, Waralaba / Franchise',
 		icon: 'M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z M6 1v3 M10 1v3 M14 1v3',
 		isReady: false,
 	},
 	{
 		id: 'jasa',
-		title: 'Layanan Jasa Laundry',
-		desc: 'Sistem Antrean Cucian, Timbangan Curah Kg, Rak Nomor Tracking, CRUD Parfum [Barbershop & Bengkel: COOMING SOON]',
+		title: 'Layanan Jasa (Cooming Soon)',
+		desc: 'Laundry, Barbershop, Bengkel, Steam Kendaraan',
 		icon: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.27 6.96L12 12.01l8.73-5.05',
 		isReady: true,
 	},
@@ -346,7 +346,7 @@ const handlePilihPaket = (payload) => {
 						<h4 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Klaster Solusi</h4>
 						<ul class="flex flex-col gap-2.5 text-xs font-bold text-slate-600">
 							<li><button @click="scrollToSection('pricing')" class="hover:text-indigo-600 transition-colors">Ritel & Minimarket</button></li>
-							<li><button @click="scrollToSection('pricing')" class="hover:text-indigo-600 transition-colors">Layanan Jasa Laundry</button></li>
+							<li><button @click="scrollToSection('pricing')" class="hover:text-indigo-600 transition-colors">Layanan Jasa (Soon)</button></li>
 							<li><button class="text-slate-400 cursor-not-allowed line-through" disabled>F&B Resto (Soon)</button></li>
 							<li><button @click="scrollToSection('hero')" class="hover:text-indigo-600 transition-colors">Multi-Store Expansion</button></li>
 						</ul>
