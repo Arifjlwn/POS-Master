@@ -3,6 +3,19 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
+// 🎯 --- FIX ICON LEAFLET HILANG PAS DEPLOY (WAJIB ADA) ---
+import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
+import iconUrl from 'leaflet/dist/images/marker-icon.png';
+import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
+
+delete L.Icon.Default.prototype._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: iconRetinaUrl,
+    iconUrl: iconUrl,
+    shadowUrl: shadowUrl,
+});
+
 const props = defineProps({
 	formData: {
 		type: Object,
@@ -34,33 +47,32 @@ const alamatWilayahSaja = computed(() => {
 
 // Inisialisasi Peta Awal
 const initMap = () => {
-	if (!mapContainer.value) return;
+    if (!mapContainer.value) return;
 
-	const initLat = props.formData && parseFloat(props.formData.latitude) && props.formData.latitude !== 0 ? parseFloat(props.formData.latitude) : -6.224168;
+    const initLat = props.formData && parseFloat(props.formData.latitude) && props.formData.latitude !== 0 ? parseFloat(props.formData.latitude) : -6.224168;
+    const initLng = props.formData && parseFloat(props.formData.longitude) && props.formData.longitude !== 0 ? parseFloat(props.formData.longitude) : 106.864388;
 
-	const initLng = props.formData && parseFloat(props.formData.longitude) && props.formData.longitude !== 0 ? parseFloat(props.formData.longitude) : 106.864388;
+    map = L.map(mapContainer.value, {
+        center: [initLat, initLng],
+        zoom: 16,
+        zoomControl: false,
+    });
 
-	map = L.map(mapContainer.value, {
-		center: [initLat, initLng],
-		zoom: 16, // Zoom kita naikin ke 16 biar pas loading langsung deket ruko bray
-		zoomControl: false,
-	});
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-	L.control.zoom({ position: 'bottomright' }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap',
+    }).addTo(map);
 
-	L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-		attribution: '&copy; OpenStreetMap',
-	}).addTo(map);
+    marker = L.marker([initLat, initLng], { draggable: true }).addTo(map);
 
-	marker = L.marker([initLat, initLng], { draggable: true }).addTo(map);
-
-	marker.on('dragend', function () {
-		const position = marker.getLatLng();
-		if (props.formData) {
-			props.formData.latitude = position.lat;
-			props.formData.longitude = position.lng;
-		}
-	});
+    marker.on('dragend', function () {
+        const position = marker.getLatLng();
+        if (props.formData) {
+            props.formData.latitude = position.lat;
+            props.formData.longitude = position.lng;
+        }
+    });
 };
 
 // 🚀 ENGINE TARGET SATELIT KODE POS + KELURAHAN
