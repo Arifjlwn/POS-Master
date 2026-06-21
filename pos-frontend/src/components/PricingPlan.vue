@@ -37,7 +37,7 @@ const activePricingTab = ref('retail');
 const industriesList = [
 	{ id: 'retail', title: 'Retail', isReady: true },
 	{ id: 'fnb', title: 'F&B (soon)', isReady: false },
-	{ id: 'jasa', title: 'Jasa', isReady: false },
+	{ id: 'jasa', title: 'Jasa (soon)', isReady: false },
 ];
 
 const normalizeIndustryId = (id) => (id === 'laundry' || id === 'jasa' ? 'jasa' : id);

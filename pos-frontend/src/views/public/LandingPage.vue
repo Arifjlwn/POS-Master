@@ -346,7 +346,7 @@ const handlePilihPaket = (payload) => {
 						<h4 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Klaster Solusi</h4>
 						<ul class="flex flex-col gap-2.5 text-xs font-bold text-slate-600">
 							<li><button @click="scrollToSection('pricing')" class="hover:text-indigo-600 transition-colors">Ritel & Minimarket</button></li>
-							<li><button @click="scrollToSection('pricing')" class="hover:text-indigo-600 transition-colors">Layanan Jasa (Soon)</button></li>
+							<li><button class="text-slate-400 cursor-not-allowed line-through" disabled>Layanan Jasa (Soon)</button></li>
 							<li><button class="text-slate-400 cursor-not-allowed line-through" disabled>F&B Resto (Soon)</button></li>
 							<li><button @click="scrollToSection('hero')" class="hover:text-indigo-600 transition-colors">Multi-Store Expansion</button></li>
 						</ul>
