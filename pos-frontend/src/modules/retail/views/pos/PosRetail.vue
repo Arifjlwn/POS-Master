@@ -21,11 +21,11 @@ const showWaModal = ref(false);
 // 🚀 SATPAM KHUSUS POS & LOAD DATA TOKO
 onMounted(async () => {
 	try {
-		const res = await api.get('/retail/store/settings');
+		const res = await api.get('/store/settings');
 		storeData.value = res.data.data;
 		localStorage.setItem('storeLogo', storeData.value.logo_url || '');
 
-		// SUNTIK SCRIPT MIDTRANS DINAMIS (BACA CONFIG BACKEND DATABASE)
+		// SUNTIK SCRIPT MIDTRANS DINAMIS
 		if (storeData.value.payment_type === 'midtrans' && storeData.value.midtrans_client_key) {
 			if (!document.getElementById('midtrans-script')) {
 				const midtransEnv = import.meta.env.VITE_MIDTRANS_ENV || 'sandbox';
@@ -39,7 +39,7 @@ onMounted(async () => {
 			}
 		}
 
-		// --- BLOK SATPAM GLOBAL (ANTI-KABUR TOKO KADALUWARSA) ---
+		// --- BLOK SATPAM GLOBAL ---
 		const role = localStorage.getItem('role') || 'owner';
 		if (role === 'owner') {
 			let isDead = false;
@@ -112,9 +112,11 @@ const {
 	logout,
 	setNominal,
 	noHpPelanggan,
+	categories,
+	selectedCategory,
 } = usePos();
 
-// INITIAL CHECKOUT ROUTER: Otak percabangan Midtrans vs QRIS Statis !
+// INITIAL CHECKOUT ROUTER
 const handleInitialCheckout = async () => {
 	if (cart.length === 0) return;
 
@@ -165,14 +167,14 @@ const handleInitialCheckout = async () => {
 				isProcessingCheckout.value = false;
 			}
 		} else {
-			showQrisModal.value = true; // Buka Modal Gambar QRIS Manual
+			showQrisModal.value = true;
 		}
 	} else {
 		triggerCheckoutFlow();
 	}
 };
 
-// 🛡️ ANTI-FRAUD QRIS MANUAL: Paksa kasir sumpah konfirmasi mutasi masuk !
+// 🛡️ ANTI-FRAUD QRIS MANUAL
 const verifyManualQrisPayment = () => {
 	Swal.fire({
 		title: 'Konfirmasi Uang Masuk',
@@ -191,8 +193,6 @@ const verifyManualQrisPayment = () => {
 	});
 };
 
-// 🛡️ FIX SECURITY: Cabut validasi premium dari LocalStorage!
-// Ambil status langsung dari object 'storeData' database aman backend !
 const triggerCheckoutFlow = () => {
 	showQrisModal.value = false;
 	const planFromDb = storeData.value?.subscription_plan || 'basic';
@@ -208,7 +208,7 @@ const triggerCheckoutFlow = () => {
 
 const proceedToFinalCheckout = async () => {
 	showWaModal.value = false;
-	await executeCheckout();
+	await executeCheckout(); // Otomatis mengurus showReceipt.value = true di dalem composable bray bray
 };
 
 const handleWaSubmit = (phone) => {
@@ -218,8 +218,8 @@ const handleWaSubmit = (phone) => {
 
 const handleWaSkip = () => {
 	noHpPelanggan.value = '';
+	// 🚀 FIX: Jangan timpa showReceipt.value manual di sini bray, serahkan murni ke antrean async checkout!
 	proceedToFinalCheckout();
-	showReceipt.value = true;
 };
 
 const printClosing = () => {
@@ -229,32 +229,28 @@ const finishClosing = () => router.push('/retail/pos/riwayat');
 const goToRiwayat = () => router.push('/retail/pos/riwayat');
 
 watch([showHeldModal, showScanner, showQrisModal, showWaModal, showClosingModal], (newValues) => {
-	// Jika salah satu dari modal bernilai true (terbuka)
 	const isAnyModalOpen = newValues.some((val) => val === true);
-
 	if (isAnyModalOpen) {
-		// Paksa elemen yang sedang aktif/fokus saat ini untuk lepas fokus
 		if (document.activeElement && typeof document.activeElement.blur === 'function') {
 			document.activeElement.blur();
 		}
 	} else {
-		// Ketika SEMUA modal ditutup, kembalikan kursor fokus secara aman ke input utama pencarian produk kasir
 		setTimeout(() => {
 			const inputProduk = document.querySelector('input[placeholder*="Cari Nama Produk"]');
 			if (inputProduk) {
 				inputProduk.focus();
 			}
-		}, 100); // Beri delay sedikit agar transisi aria-hidden selesai dilepas oleh browser
+		}, 100);
 	}
 });
 </script>
 
 <template>
-	<div class="h-[100dvh] flex flex-col bg-slate-100 font-sans overflow-hidden print:h-auto print:bg-white print:overflow-visible print:block">
-		<PosHeader class="print:hidden" :currentUser="currentUser" :currentSession="currentSession" :currentTime="currentTime" @go-dashboard="goToRiwayat" @logout="logout" />
+	<div class="h-[100dvh] flex flex-col bg-slate-100 font-sans overflow-hidden print:hidden">
+		<PosHeader :currentUser="currentUser" :currentSession="currentSession" :currentTime="currentTime" @go-dashboard="goToRiwayat" @logout="logout" />
 
-		<div class="print:hidden flex-1 flex overflow-hidden p-2 md:p-4 pt-2 md:pt-4 gap-4 relative">
-			<ProductCatalog v-model:searchQuery="searchQuery" :filteredProducts="filteredProducts" :heldOrders="heldOrders" :getImageUrl="getImageUrl" @barcode-scan="handleBarcodeScan" @start-scanner="startScanner" @show-held="showHeldModal = true" @add-to-cart="addToCart" />
+		<div class="flex-1 flex overflow-hidden p-2 md:p-4 pt-2 md:pt-4 gap-4 relative">
+			<ProductCatalog v-model:searchQuery="searchQuery" v-model:selectedCategory="selectedCategory" :categories="categories" :is-loading="isLoadingProducts" :filteredProducts="filteredProducts" :heldOrders="heldOrders" :getImageUrl="getImageUrl" @barcode-scan="handleBarcodeScan" @start-scanner="startScanner" @show-held="showHeldModal = true" @add-to-cart="addToCart" />
 
 			<CartSidebar
 				v-model:noHpPelanggan="noHpPelanggan"
@@ -283,14 +279,14 @@ watch([showHeldModal, showScanner, showQrisModal, showWaModal, showClosingModal]
 				@toggle-uom="toggleUom" />
 		</div>
 
-		<div v-if="cart.length > 0" class="lg:hidden fixed bottom-0 left-0 right-0 p-3 bg-white/90 backdrop-blur-sm border-t border-slate-200 z-40 shadow-md print:hidden">
+		<div v-if="cart.length > 0" class="lg:hidden fixed bottom-0 left-0 right-0 p-3 bg-white/90 backdrop-blur-sm border-t border-slate-200 z-40 shadow-md">
 			<button @click="isMobileCartOpen = true" class="w-full bg-indigo-600 text-white p-3 rounded-xl flex justify-between items-center active:scale-95 transition-all">
 				<span class="bg-white text-indigo-600 font-black px-3 py-1 rounded-lg text-xs">{{ cart.length }} Item</span>
 				<span class="font-black text-sm">Rp {{ totalBelanja.toLocaleString('id-ID') }} ➔</span>
 			</button>
 		</div>
 
-		<div v-if="showHeldModal" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-[150] p-4 backdrop-blur-sm print:hidden">
+		<div v-if="showHeldModal" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-[150] p-4 backdrop-blur-sm">
 			<div class="bg-white p-6 md:p-8 rounded-[32px] shadow-2xl w-full max-w-xl max-h-[80vh] flex flex-col">
 				<div class="flex justify-between items-center mb-6">
 					<h2 class="text-lg font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">Pesanan Tertunda</h2>
@@ -310,7 +306,7 @@ watch([showHeldModal, showScanner, showQrisModal, showWaModal, showClosingModal]
 			</div>
 		</div>
 
-		<div v-if="showScanner" class="fixed inset-0 bg-slate-900/90 flex items-center justify-center z-[150] p-4 backdrop-blur-sm print:hidden">
+		<div v-if="showScanner" class="fixed inset-0 bg-slate-900/90 flex items-center justify-center z-[150] p-4 backdrop-blur-sm">
 			<div class="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
 				<div class="p-6 border-b flex justify-between items-center bg-slate-50/50">
 					<h2 class="text-lg font-black text-slate-800 uppercase tracking-widest">Scan Barcode</h2>
@@ -320,7 +316,7 @@ watch([showHeldModal, showScanner, showQrisModal, showWaModal, showClosingModal]
 			</div>
 		</div>
 
-		<div v-if="showQrisModal" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-[150] p-4 backdrop-blur-sm print:hidden">
+		<div v-if="showQrisModal" class="fixed inset-0 bg-slate-900/80 flex items-center justify-center z-[150] p-4 backdrop-blur-sm">
 			<div class="bg-white p-6 md:p-8 rounded-[32px] shadow-2xl w-full max-w-sm text-center flex flex-col border-t-8 border-indigo-600">
 				<h2 class="text-xl font-black text-slate-900 uppercase tracking-widest mb-1">Bayar via QRIS</h2>
 				<div class="bg-white p-3 rounded-2xl border border-slate-300 w-full mb-4 flex flex-col justify-center items-center min-h-[200px]">
@@ -341,29 +337,30 @@ watch([showHeldModal, showScanner, showQrisModal, showWaModal, showClosingModal]
 		</div>
 
 		<WaPromptModal :show="showWaModal" :totalBelanja="totalBelanja" @submit="handleWaSubmit" @skip="handleWaSkip" @close="showWaModal = false" />
-		<ReceiptModal :show="showReceipt" :invoiceData="lastTransaction" :storeData="currentSession?.store || currentSession?.Store" :cashierName="currentUser?.name ? currentUser.name.split(' ')[0] : 'KASIR'" :stationNumber="currentSession?.station_number || '01'" @close="showReceipt = false" />
-
-		<ClosingModal
-			:show="showClosingModal"
-			:showReceiptClosing="showReceiptClosing"
-			:pecahan="pecahan"
-			:totalUangFisik="totalUangFisik"
-			:lastClosingData="lastClosingData"
-			:currentSession="currentSession"
-			:currentUser="currentUser"
-			:storeLogo="storeLogo"
-			:storeData="storeData"
-			@close="showClosingModal = false"
-			@process-closing="handleClosing"
-			@print-closing="printClosing"
-			@finish-closing="
-				() => {
-					showReceiptClosing = false;
-					currentSession = null;
-					router.push('/retail/pos/riwayat');
-				}
-			" />
 	</div>
+
+	<ReceiptModal :show="showReceipt" :invoiceData="lastTransaction" :storeData="storeData" :cashierName="currentUser?.name ? currentUser.name.split(' ')[0] : 'KASIR'" :stationNumber="currentSession?.station_number || '01'" @close="showReceipt = false" />
+
+	<ClosingModal
+		:show="showClosingModal"
+		:showReceiptClosing="showReceiptClosing"
+		:pecahan="pecahan"
+		:totalUangFisik="totalUangFisik"
+		:lastClosingData="lastClosingData"
+		:currentSession="currentSession"
+		:currentUser="currentUser"
+		:storeLogo="storeLogo"
+		:storeData="storeData"
+		@close="showClosingModal = false"
+		@process-closing="handleClosing"
+		@print-closing="printClosing"
+		@finish-closing="
+			() => {
+				showReceiptClosing = false;
+				currentSession = null;
+				router.push('/retail/pos/riwayat');
+			}
+		" />
 </template>
 
 <style scoped>
@@ -382,15 +379,23 @@ watch([showHeldModal, showScanner, showQrisModal, showWaModal, showClosingModal]
 	background: #cbd5e1;
 	border-radius: 10px;
 }
+
+/* 🚀 CLEAN INDUSTRIAL STYLESHEET PRINT MODE */
 @media print {
-	@page {
-		margin: 0;
+	/* Sembunyikan total seluruh elemen bawaan aplikasi kasir bray */
+	.print\:hidden {
+		display: none !important;
 	}
+	html,
 	body {
-		background: white;
-		-webkit-print-color-adjust: exact;
+		background: white !important;
+		margin: 0 !important;
+		padding: 0 !important;
+		overflow: visible !important;
+		height: auto !important;
 	}
 }
+
 :deep(.swal2-popup) {
 	font-family: 'Inter', sans-serif !important;
 	border-radius: 28px !important;

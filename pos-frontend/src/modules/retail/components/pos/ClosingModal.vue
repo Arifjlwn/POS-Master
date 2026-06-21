@@ -1,5 +1,7 @@
 <script setup>
 import { computed } from 'vue';
+// 🚀 IMPORT SATPAM GLOBAL SWEETALERT2 BRAY!
+import Swal from 'sweetalert2';
 
 defineOptions({ name: 'ClosingModal' });
 
@@ -72,9 +74,39 @@ const sanitizePecahanInput = (event, key) => {
 	props.pecahan[key] = cleanVal ? parseInt(cleanVal, 10) : 0;
 };
 
+// 🚀 ENJIN FILTER DOUBLE-GUARD ALERT INTERCEPTOR: Steril dari emoji alay bray bray!
+const triggerClosingConfirmation = () => {
+	Swal.fire({
+		title: 'Konfirmasi Tutup Shift?',
+		text: `Total perhitungan uang fisik di laci saat ini adalah Rp ${formatRupiah(props.totalUangFisik)}. Sesi kasir akan dikunci permanen untuk proses rekapitulasi serah terima!`,
+		icon: 'warning',
+		showCancelButton: true,
+		confirmButtonColor: '#4f46e5', // Indigo modern
+		cancelButtonColor: '#94a3b8', // Slate soft
+		confirmButtonText: 'Ya, Tutup Shift!',
+		cancelButtonText: 'Batal / Hitung Ulang',
+		customClass: {
+			popup: 'rounded-[28px]',
+		},
+	}).then((result) => {
+		if (result.isConfirmed) {
+			// Terbangkan payload ke core_transaction.go bray!
+			emit('process-closing');
+		}
+	});
+};
+
 const triggerPrint = () => {
 	window.print();
 };
+
+const printerWidthStyle = computed(() => {
+	const width = props.storeData?.printer_width || props.storeData?.PrinterWidth || '58mm';
+	return {
+		width: width,
+		maxWidth: width,
+	};
+});
 </script>
 
 <template>
@@ -115,14 +147,19 @@ const triggerPrint = () => {
 					<span class="text-slate-500 text-[9px] font-black uppercase tracking-widest">Total Fisik Aktual:</span>
 					<span class="text-2xl font-black text-indigo-700">Rp {{ formatRupiah(totalUangFisik) }}</span>
 				</div>
-				<button @click="emit('process-closing')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-black text-xs tracking-widest flex items-center justify-center gap-2 uppercase shadow-lg shadow-indigo-200 active:scale-95 transition-all">Proses Tutup Shift Kasir</button>
+				<button @click="triggerClosingConfirmation" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-black text-xs tracking-widest flex items-center justify-center gap-2 uppercase shadow-lg shadow-indigo-200 active:scale-95 transition-all">
+					<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+					</svg>
+					Proses Tutup Shift Kasir
+				</button>
 			</div>
 		</div>
 	</div>
 
 	<div v-if="showReceiptClosing" class="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-[200] p-4 backdrop-blur-sm print:static print:bg-white print:p-0 print:block">
 		<div class="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] shadow-2xl w-full max-w-sm flex flex-col max-h-[90vh] border-[6px] md:border-[8px] border-slate-800 print:border-none print:shadow-none print:max-h-none print:max-w-none print:rounded-none print:m-0 print:p-0">
-			<div class="overflow-y-auto custom-scrollbar bg-white p-2 mx-auto print:overflow-visible print:mx-0 print:px-3 print:py-2 select-none" id="print-area">
+			<div class="overflow-y-auto custom-scrollbar bg-white p-2 mx-auto print:overflow-visible print:mx-0 print:px-2 print:py-1 select-none receipt-print-engine" id="print-area" :style="printerWidthStyle">
 				<div class="text-center mb-4 font-mono leading-none">
 					<div v-if="storeData?.logo_url && storeData.logo_url !== ''" class="mb-2">
 						<img :src="storeData.logo_url.startsWith('http://') || storeData.logo_url.startsWith('https://') ? storeData.logo_url : API_BASE_URL + storeData.logo_url" class="w-16 h-16 object-contain mx-auto grayscale contrast-200 brightness-90" alt="Logo Toko" />
@@ -251,6 +288,19 @@ const triggerPrint = () => {
 </template>
 
 <style scoped>
+/* 🚀 CORE TYPOGRAPHY ENGINE FOR HIGH-QUALITY THERMAL PRINTING */
+.receipt-print-engine {
+	font-family: 'Tahoma', 'Arial Black', sans-serif !important;
+	font-weight: bold !important;
+	letter-spacing: -0.01em !important;
+	color: #000000 !important;
+}
+
+.receipt-divider {
+	border-bottom: 2px solid #000000 !important;
+	width: 100%;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
 	width: 4px;
 }
@@ -262,17 +312,38 @@ const triggerPrint = () => {
 	border-radius: 10px;
 }
 
-#print-area {
-	width: v-bind("storeData?.printer_width || storeData?.PrinterWidth || '58mm'") !important;
-	max-width: 100% !important;
-}
-
+/* ==========================================
+   🖨️ PREMIUM NATIVE MATRIX PRINT SPECIFICATION
+   ========================================== */
 @media print {
-	#print-area {
-		width: v-bind("storeData?.printer_width || storeData?.PrinterWidth || '58mm'") !important;
-		margin: 0 auto !important;
+	@page {
+		margin: 0mm !important;
+		/* Biarkan size auto mendeteksi lebar dari body container inline style bray */
+		size: auto;
+	}
+
+	html,
+	body {
+		background: #ffffff !important;
+		margin: 0 !important;
 		padding: 0 !important;
-		background: white !important;
+		height: auto !important;
+		max-height: none !important;
+	}
+
+	.receipt-print-engine {
+		color: #000000 !important;
+		-webkit-print-color-adjust: exact !important;
+		print-color-adjust: exact !important;
+	}
+
+	/* Paksa semua teks hitam legam pas dibakar head printer */
+	span,
+	div,
+	h2,
+	p {
+		font-weight: 900 !important;
+		color: #000000 !important;
 	}
 }
 </style>

@@ -20,8 +20,9 @@ import (
 // ====================================
 
 type CartItem struct {
-	ProductID uint    `json:"product_id" binding:"required"`
-	Kuantitas int     `json:"kuantitas" binding:"required,gt=0"`
+	ProductID uint `json:"product_id" binding:"required"`
+	// 🚀 AMAN 1: Ubah ke float64 untuk mendukung desimal 0.25 / 0.5 bray
+	Kuantitas float64 `json:"kuantitas" binding:"required,gt=0"`
 	UomLabel  string  `json:"uom_label"`
 	HargaUom  float64 `json:"harga_uom"`
 }
@@ -110,12 +111,13 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 				return fmt.Errorf("produk ID %d tidak ditemukan di rak toko", item.ProductID)
 			}
 
-			if product.Stok < item.Kuantitas {
-				return fmt.Errorf("stok %s habis ! Sisa fisik: %d", product.NamaProduk, product.Stok)
+			// 🚀 AMAN 2: Paksa casting product.Stok ke float64 jika di model masih int, mencegah crash mismatched types bray!
+			if float64(product.Stok) < item.Kuantitas {
+				return fmt.Errorf("stok %s habis ! Sisa fisik: %.2f", product.NamaProduk, float64(product.Stok))
 			}
 
-			// Potong stok produk aman
-			product.Stok -= item.Kuantitas
+			// Potong stok produk (Casting kembali agar tipe data sinkron)
+			product.Stok -= int(item.Kuantitas) // Jika models.Product.Stok masih int, kalau nanti udah dimigrasi ke float64, buang int() nya bray
 			if err := tx.Save(&product).Error; err != nil {
 				return err
 			}
@@ -132,30 +134,30 @@ func (h *RetailHandler) CreateTransaction(c *gin.Context) {
 				}
 			}
 
-			qtyOriginal := 1
-			fmt.Sscanf(item.UomLabel, "%d", &qtyOriginal)
+			// 🚀 AMAN 3: Ubah %d menjadi %f agar mengekstrak nilai koma murni (cth: "0.5") dengan akurat bray!
+			qtyOriginal := 1.0
+			fmt.Sscanf(item.UomLabel, "%f", &qtyOriginal)
 			if qtyOriginal <= 0 {
-				qtyOriginal = 1
+				qtyOriginal = 1.0
 			}
 
-			itemSubTotal := float64(qtyOriginal) * hargaSatuanResmi
+			itemSubTotal := qtyOriginal * hargaSatuanResmi
 			subTotal += itemSubTotal
 
 			rincianBarangWA += fmt.Sprintf("▪️ *%s*\n   %s x %s = *%s*\n", product.NamaProduk, item.UomLabel, formatRupiah(hargaSatuanResmi), formatRupiah(itemSubTotal))
 
-			// 🛡️ SAFE POINTER DEREFERENCE: Solusi jitu biar ga crash kalau SKU produk di database null !
 			skuSnapshot := ""
 			if product.SKU != nil {
-				skuSnapshot = *product.SKU // Ambil nilai string asli di balik pointer
+				skuSnapshot = *product.SKU
 			}
 
 			// Masukkan ke detail item transaksi
 			details = append(details, models.TransactionDetail{
 				ProductID:          product.ID,
 				NamaProdukSnapshot: product.NamaProduk,
-				SKUProductSnapshot: skuSnapshot, // FIX: Masuk berupa string bersih 100% aman !
+				SKUProductSnapshot: skuSnapshot,
 				HargaSatuan:        hargaSatuanResmi,
-				Kuantitas:          item.Kuantitas,
+				Kuantitas:          item.Kuantitas, // Auto-sinkron karena models.TransactionDetail sudah float64 bray
 				ItemType:           "PRODUCT",
 				DetailNotes:        item.UomLabel,
 				SubTotal:           itemSubTotal,

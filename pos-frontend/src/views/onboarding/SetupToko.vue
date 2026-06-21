@@ -164,107 +164,105 @@ const bukaSnapMidtrans = (snapToken) => {
 };
 
 const submit = async () => {
-	if (!form.value.kelurahan) {
-		return Swal.fire('Data Kurang', 'Harap lengkapi pilihan Kelurahan atau Desa terlebih dahulu.', 'warning');
-	}
-	isLoading.value = true;
+    if (!form.value.kelurahan) {
+        return Swal.fire('Data Kurang', 'Harap lengkapi pilihan Kelurahan atau Desa terlebih dahulu.', 'warning');
+    }
+    isLoading.value = true;
 
-	try {
-		const finalTipeBisnis = String(form.value.detail_bisnis || form.value.kategori_bisnis).toLowerCase();
-		const existingOwnerToken = localStorage.getItem('token');
+    try {
+        const existingOwnerToken = localStorage.getItem('token');
+        const clusterCode = pendingIndustry === 'laundry' ? 'JASA' : pendingIndustry.toUpperCase();
 
-		const payload = {
-			nama_toko: form.value.nama_toko,
-			telepon: `62${form.value.telepon}`,
-			business_type: finalTipeBisnis,
-			industry: pendingIndustry,
-			plan: pendingPlan,
-			alamat_toko: form.value.alamat,
-			provinsi: form.value.provinsi,
-			kota: form.value.kota,
-			kecamatan: form.value.kecamatan,
-			kelurahan: form.value.kelurahan,
-			kode_pos: String(form.value.kode_pos),
-			latitude: parseFloat(form.value.latitude) || 0,
-			longitude: parseFloat(form.value.longitude) || 0,
-		};
+        // 🚀 SINKRONISASI KASTA TERTINGGI: Ambil spesifikasi sub-bisnis (LAUNDRY / MINIMARKET) 
+        // yang di-set dari komponen BusinessIdentity.vue bray!
+        const subTypeCode = String(form.value.detail_bisnis).toUpperCase(); 
 
-		const response = await api.post('/setup', payload);
-		const tokenTerupdate = response.data?.token;
+        const payload = {
+            nama_toko: form.value.nama_toko,
+            telepon: `62${form.value.telepon}`,
+            industry: clusterCode,      // Mengirim 'JASA' atau 'RETAIL' sesuai keinginan backend Go bray
+            business_type: subTypeCode,  // Mengirim 'LAUNDRY' atau 'MINIMARKET'
+            plan: pendingPlan,
+            alamat_toko: form.value.alamat,
+            provinsi: form.value.provinsi,
+            kota: form.value.kota,
+            kecamatan: form.value.kecamatan,
+            kelurahan: form.value.kelurahan,
+            kode_pos: String(form.value.kode_pos),
+            latitude: parseFloat(form.value.latitude) || 0,
+            longitude: parseFloat(form.value.longitude) || 0,
+        };
 
-		if (tokenTerupdate) {
-			api.defaults.headers.common['Authorization'] = `Bearer ${tokenTerupdate}`;
-			localStorage.setItem('token', tokenTerupdate);
-			localStorage.setItem('store_id', response.data.store_id);
-			localStorage.setItem('storeName', response.data.store_name || 'POS UMKM');
-			localStorage.setItem('subscriptionPlan', response.data.subscription_plan || 'basic');
-			localStorage.setItem('role', 'owner');
+        const response = await api.post('/setup', payload);
+        const tokenTerupdate = response.data?.token;
 
-			const oldStoresRaw = localStorage.getItem('temp_stores');
-			let currentStores = oldStoresRaw ? JSON.parse(oldStoresRaw) : [];
+        if (tokenTerupdate) {
+            api.defaults.headers.common['Authorization'] = `Bearer ${tokenTerupdate}`;
+            localStorage.setItem('token', tokenTerupdate);
+            localStorage.setItem('store_id', response.data.store_id);
+            localStorage.setItem('storeName', response.data.store_name || 'POS UMKM');
+            localStorage.setItem('subscriptionPlan', response.data.subscription_plan || 'basic');
+            localStorage.setItem('role', 'owner');
 
-			currentStores.push({
-				id: response.data.store_id,
-				nama_toko: form.value.nama_toko,
-				industry: pendingIndustry,
-				subscription_plan: pendingPlan,
-				subscription_status: response.data.subscription_status || 'pending',
-				kota: form.value.kota || 'Lokasi Belum Diatur',
-			});
-			localStorage.setItem('temp_stores', JSON.stringify(currentStores));
-		}
+            const oldStoresRaw = localStorage.getItem('temp_stores');
+            let currentStores = oldStoresRaw ? JSON.parse(oldStoresRaw) : [];
 
-		if (['basic', 'pro', 'premium'].includes(pendingPlan)) {
-			isLoading.value = false;
-			Swal.fire({
-				title: 'Menyiapkan Pembayaran',
-				text: 'Menghubungkan ke gerbang aman Midtrans...',
-				allowOutsideClick: false,
-				didOpen: () => {
-					Swal.showLoading();
-				},
-			});
+            currentStores.push({
+                id: response.data.store_id,
+                nama_toko: form.value.nama_toko,
+                industry: clusterCode.toLowerCase(), // Simpan lowercase 'jasa' di local bray
+                subscription_plan: pendingPlan,
+                subscription_status: response.data.subscription_status || 'pending',
+                kota: form.value.kota || 'Lokasi Belum Diatur',
+            });
+            localStorage.setItem('temp_stores', JSON.stringify(currentStores));
+        }
 
-			try {
-				const activeToken = tokenTerupdate || existingOwnerToken;
-				if (!activeToken) throw new Error('Sesi token owner tidak ditemukan di sistem. Harap login ulang.');
+        // 💳 REDIRECT MIDTRANS GATEWAY JIKA PAKET BERBAYAR BRAY
+        if (['basic', 'pro', 'premium'].includes(pendingPlan)) {
+            isLoading.value = false;
+            Swal.fire({
+                title: 'Menyiapkan Pembayaran',
+                text: 'Menghubungkan ke gerbang aman Midtrans...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); },
+            });
 
-				const payRes = await api.post('/retail/subscription/upgrade', { plan_name: pendingPlan }, { headers: { Authorization: `Bearer ${activeToken}` } });
-				Swal.close();
-				bukaSnapMidtrans(payRes.data.token);
-			} catch (err) {
-				Swal.close();
-				if (err.response?.status === 402 && (err.response.data?.token || err.response.data?.snap_token)) {
-					bukaSnapMidtrans(err.response.data.token || err.response.data.snap_token);
-					return;
-				}
-				Swal.fire('Error Gateway', err.response?.data?.error || err.message, 'error').then(() => {
-					window.location.href = '/retail/account';
-				});
-			}
-		} else {
-			localStorage.removeItem('pendingIndustry');
-			localStorage.removeItem('pendingPlan');
-			await Swal.fire({ icon: 'success', title: 'Infrastruktur Ready !', text: 'Selamat menikmati fasilitas Free Trial selama 14 hari.', confirmButtonColor: '#4f46e5', customClass: { popup: 'rounded-[32px]' } });
+            try {
+                const activeToken = tokenTerupdate || existingOwnerToken;
+                if (!activeToken) throw new Error('Sesi token owner tidak ditemukan di sistem. Harap login ulang.');
 
-			const kat = form.value.kategori_bisnis;
-			const det = (form.value.detail_bisnis || '').toLowerCase();
+                const payRes = await api.post('/retail/subscription/upgrade', { plan_name: pendingPlan }, { headers: { Authorization: `Bearer ${activeToken}` } });
+                Swal.close();
+                bukaSnapMidtrans(payRes.data.token);
+            } catch (err) {
+                Swal.close();
+                if (err.response?.status === 402 && (err.response.data?.token || err.response.data?.snap_token)) {
+                    bukaSnapMidtrans(err.response.data.token || err.response.data.snap_token);
+                    return;
+                }
+                Swal.fire('Error Gateway', err.response?.data?.error || err.message, 'error').then(() => {
+                    window.location.href = '/select-store';
+                });
+            }
+        } else {
+            // 🎁 REDIRECT JALUR FREE TRIAL 14 HARI BRAY bray bray!
+            localStorage.removeItem('pendingIndustry');
+            localStorage.removeItem('pendingPlan');
+            await Swal.fire({ icon: 'success', title: 'Infrastruktur Ready !', text: 'Selamat menikmati fasilitas Free Trial selama 14 hari.', confirmButtonColor: '#4f46e5', customClass: { popup: 'rounded-[32px]' } });
 
-			if (kat === 'Retail' || kat === 'Lainnya') window.location.href = '/retail/dashboard';
-			else if (kat === 'F&B') window.location.href = '/fnb/dashboard';
-			else if (kat === 'Jasa') {
-				if (det.includes('laundry')) window.location.href = '/laundry/laporan';
-				else if (det.includes('bengkel') || det.includes('otomotif')) window.location.href = '/bengkel/dashboard';
-				else if (det.includes('barbershop') || det.includes('salon')) window.location.href = '/salon/dashboard';
-				else if (det.includes('cuci')) window.location.href = '/cuci-kendaraan/dashboard';
-				else window.location.href = '/retail/dashboard';
-			}
-		}
-	} catch (error) {
-		Swal.fire({ icon: 'error', title: 'Gagal Setup Toko', text: error.response?.data?.error || error.message, confirmButtonColor: '#ef4444' });
-	} finally {
-		isLoading.value = false;
-	}
+            // Pengalihan cerdas: Lempar langsung ke router bisnis yang sesuai kasta modulenya!
+            if (clusterCode === 'JASA' && subTypeCode === 'LAUNDRY') {
+                window.location.href = '/laundry/pos/riwayat'; // Dashboard laundry ruko lu bray!
+            } else {
+                window.location.href = '/retail/pos/riwayat';
+            }
+        }
+    } catch (error) {
+        Swal.fire({ icon: 'error', title: 'Gagal Setup Toko', text: error.response?.data?.error || error.message, confirmButtonColor: '#ef4444' });
+    } finally {
+        isLoading.value = false;
+    }
 };
 </script>
 

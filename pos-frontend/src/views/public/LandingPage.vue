@@ -1,8 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-// 🚀 IMPORT KOMPONEN TERPADU BARU LU
-import PricingPlan from '../../modules/retail/components/PricingPlan.vue';
+import PricingPlan from '../../components/PricingPlan.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -48,13 +47,38 @@ const features = [
 ];
 
 const industries = [
-	{ id: 'retail', title: 'Retail & Distribusi', desc: 'Supermarket, Butik, Minimarket, Toko Kelontong, Elektronik', icon: 'M16 11V7a4 4 0 0 0-8 0v4M5 9h14l1 12H4L5 9z', isReady: true },
-	{ id: 'fnb', title: 'Food & Beverage', desc: 'Cafe, Restoran, Kedai Kopi, Waralaba / Franchise', icon: 'M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z M6 1v3 M10 1v3 M14 1v3', isReady: false },
-	{ id: 'jasa', title: 'Layanan & Jasa', desc: 'Laundry Kiloan, Barbershop, Salon Kecantikan, Bengkel', icon: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.27 6.96L12 12.01l8.73-5.05', isReady: false },
+	{
+		id: 'retail',
+		title: 'Retail & Distribusi',
+		desc: 'Supermarket, Butik, Minimarket, Toko Kelontong, Elektronik',
+		icon: 'M16 11V7a4 4 0 0 0-8 0v4M5 9h14l1 12H4L5 9z',
+		isReady: true,
+	},
+	{
+		id: 'fnb',
+		title: 'Food & Beverage',
+		desc: 'Cafe, Restoran, Kedai Kopi, Waralaba / Franchise',
+		icon: 'M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z M6 1v3 M10 1v3 M14 1v3',
+		isReady: false,
+	},
+	{
+		id: 'jasa',
+		title: 'Layanan Jasa Laundry',
+		desc: 'Sistem Antrean Cucian, Timbangan Curah Kg, Rak Nomor Tracking, CRUD Parfum [Barbershop & Bengkel: COOMING SOON]',
+		icon: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.27 6.96L12 12.01l8.73-5.05',
+		isReady: true,
+	},
 ];
 
-const scrollToSection = (id) => {
+// 🚀 UPGRADE: Fungsi scroll pintar yang merubah tab pricing otomatis!
+const scrollToSection = (id, selectedIndustry = null) => {
 	isMenuOpen.value = false;
+
+	if (selectedIndustry) {
+		localStorage.setItem('activeLandingTab', selectedIndustry);
+		window.dispatchEvent(new CustomEvent('switch-pricing-tab', { detail: selectedIndustry }));
+	}
+
 	const el = document.getElementById(id);
 	if (el) el.scrollIntoView({ behavior: 'smooth' });
 };
@@ -209,7 +233,7 @@ const handlePilihPaket = (payload) => {
 				</div>
 
 				<div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-					<div v-for="ind in industries" :key="ind.title" @click="scrollToSection('pricing')" :class="[!ind.isReady ? 'opacity-40 cursor-not-allowed border-slate-800 bg-slate-950/20 select-none' : 'bg-slate-800/40 cursor-pointer border-slate-800/80 hover:border-indigo-500 hover:bg-slate-800/90']" class="p-6 sm:p-8 rounded-[28px] border transition-all duration-300 flex flex-col items-start gap-6 group shadow-xl relative">
+					<div v-for="ind in industries" :key="ind.title" @click="ind.isReady ? scrollToSection('pricing', ind.id) : null" :class="[!ind.isReady ? 'opacity-40 cursor-not-allowed border-slate-800 bg-slate-950/20 select-none' : 'bg-slate-800/40 cursor-pointer border-slate-800/80 hover:border-indigo-500 hover:bg-slate-800/90']" class="p-6 sm:p-8 rounded-[28px] border transition-all duration-300 flex flex-col items-start gap-6 group shadow-xl relative">
 						<div v-if="!ind.isReady" class="absolute top-4 right-4 bg-amber-500/20 border border-amber-500/30 text-amber-400 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest">SOON / DEVELOPING</div>
 
 						<div class="w-14 h-14 rounded-xl bg-slate-800 text-indigo-400 flex items-center justify-center border border-slate-700" :class="{ 'group-hover:bg-gradient-to-tr group-hover:from-indigo-600 group-hover:to-purple-500 group-hover:text-white group-hover:scale-105 group-hover:border-transparent transition-all duration-300': ind.isReady }">
@@ -322,8 +346,8 @@ const handlePilihPaket = (payload) => {
 						<h4 class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Klaster Solusi</h4>
 						<ul class="flex flex-col gap-2.5 text-xs font-bold text-slate-600">
 							<li><button @click="scrollToSection('pricing')" class="hover:text-indigo-600 transition-colors">Ritel & Minimarket</button></li>
+							<li><button @click="scrollToSection('pricing')" class="hover:text-indigo-600 transition-colors">Layanan Jasa Laundry</button></li>
 							<li><button class="text-slate-400 cursor-not-allowed line-through" disabled>F&B Resto (Soon)</button></li>
-							<li><button class="text-slate-400 cursor-not-allowed line-through" disabled>Layanan Jasa (Soon)</button></li>
 							<li><button @click="scrollToSection('hero')" class="hover:text-indigo-600 transition-colors">Multi-Store Expansion</button></li>
 						</ul>
 					</div>

@@ -1,6 +1,6 @@
 <script setup>
 import L from 'leaflet';
-import { nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 const props = defineProps({
 	formData: {
@@ -21,37 +21,40 @@ const listKelurahan = ref([]);
 const mapContainer = ref(null);
 let map = null;
 let marker = null;
+const isTrackingGps = ref(false);
 
-// Inisialisasi Peta Awal (Default pusat Jakarta / Indonesia)
+// 🚀 STRATEGI REKAYASA STRING: Gabungin kelurahan + kode pos biar titiknya makin mengkerut presisi!
+const alamatWilayahSaja = computed(() => {
+	const d = props.formData;
+	if (!d.kelurahan) return '';
+	// Menambahkan kode pos di bagian belakang agar query pencarian OpenStreetMap menyempit bray bray
+	return `${d.kelurahan || ''}, ${d.kecamatan || ''}, ${d.kota || ''}, ${d.provinsi || ''}, ${d.kode_pos || ''}`.trim();
+});
+
+// Inisialisasi Peta Awal
 const initMap = () => {
 	if (!mapContainer.value) return;
 
-	// 🚀 FIX: Ubah dari props.form menjadi props.formData ! Kasih fallback aman jika undefined
-	const initLat = props.formData && parseFloat(props.formData.latitude) && parseFloat(props.formData.latitude) !== 0 ? parseFloat(props.formData.latitude) : -6.224168;
+	const initLat = props.formData && parseFloat(props.formData.latitude) && props.formData.latitude !== 0 ? parseFloat(props.formData.latitude) : -6.224168;
 
-	const initLng = props.formData && parseFloat(props.formData.longitude) && parseFloat(props.formData.longitude) !== 0 ? parseFloat(props.formData.longitude) : 106.864388;
+	const initLng = props.formData && parseFloat(props.formData.longitude) && props.formData.longitude !== 0 ? parseFloat(props.formData.longitude) : 106.864388;
 
 	map = L.map(mapContainer.value, {
 		center: [initLat, initLng],
-		zoom: 14,
+		zoom: 16, // Zoom kita naikin ke 16 biar pas loading langsung deket ruko bray
 		zoomControl: false,
 	});
 
-	// Tambah tombol zoom di kanan bawah biar rapi
 	L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-	// Pake tile layer OpenStreetMap gratisan kasta tertinggi
 	L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-		attribution: '&copy; OpenStreetMap contributors',
+		attribution: '&copy; OpenStreetMap',
 	}).addTo(map);
 
-	// Bikin Marker yang bisa digeser-geser (draggable: true)
 	marker = L.marker([initLat, initLng], { draggable: true }).addTo(map);
 
-	// Event pas marker selesai digeser manual sama owner
-	marker.on('dragend', function (event) {
+	marker.on('dragend', function () {
 		const position = marker.getLatLng();
-		// Pastikan nulisnya konsisten ke formData   !
 		if (props.formData) {
 			props.formData.latitude = position.lat;
 			props.formData.longitude = position.lng;
@@ -59,13 +62,13 @@ const initMap = () => {
 	});
 };
 
-// Fungsi Geocoding sederhana memanfaatkan nominatim gratisan untuk tracking wilayah
-const seachLocationByAddress = async () => {
-	const alamatLengkap = `${props.formData.alamat || ''}, ${props.formData.kelurahan || ''}, ${props.formData.kecamatan || ''}, ${props.formData.kota || ''}, ${props.formData.provinsi || ''}`;
-	if (!props.formData.kelurahan) return;
+// 🚀 ENGINE TARGET SATELIT KODE POS + KELURAHAN
+const targetSatelitLokasi = async () => {
+	const q = alamatWilayahSaja.value;
+	if (!q) return;
 
 	try {
-		const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(alamatLengkap)}&limit=1`);
+		const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`);
 		const data = await response.json();
 
 		if (data && data.length > 0) {
@@ -75,22 +78,60 @@ const seachLocationByAddress = async () => {
 			props.formData.latitude = lat;
 			props.formData.longitude = lon;
 
-			// Geser kamera peta dan marker ke lokasi baru hasil pencarian alamat
 			if (map && marker) {
 				map.setView([lat, lon], 16);
 				marker.setLatLng([lat, lon]);
+				setTimeout(() => {
+					map.invalidateSize();
+				}, 200);
 			}
 		}
 	} catch (error) {
-		console.error('Gagal tracking koordinat alamat:', error);
+		console.error('Gagal sinkronisasi peta lokal:', error);
 	}
 };
 
+// 🎯 JURUS PAMUNGKAS: TEMBAK CHIP GPS INTERNAL HP / LAPTOP
+const dapatkanLokasiGpsUser = () => {
+	if (!navigator.geolocation) {
+		alert('Fitur GPS tidak didukung oleh browser atau perangkat Anda bray.');
+		return;
+	}
+
+	isTrackingGps.value = true;
+
+	navigator.geolocation.getCurrentPosition(
+		(position) => {
+			const lat = position.coords.latitude;
+			const lon = position.coords.longitude;
+
+			props.formData.latitude = lat;
+			props.formData.longitude = lon;
+
+			// Peta langsung lompat instan ke akurasi GPS HP ruko owner bray!
+			if (map && marker) {
+				map.setView([lat, lon], 17); // Set zoom lebih dalem (17) biar keliatan gang jalan rukonya
+				marker.setLatLng([lat, lon]);
+				setTimeout(() => {
+					map.invalidateSize();
+				}, 200);
+			}
+			isTrackingGps.value = false;
+		},
+		(error) => {
+			isTrackingGps.value = false;
+			console.error('Eror sensor lokasi:', error);
+			alert('Gagal membaca GPS. Pastikan ijin lokasi (Permission) di HP sudah lu izinkan bray!');
+		},
+		{ enableHighAccuracy: true, timeout: 10000, maximumAge: 0 } // Paksa akurasi kasta tertinggi bray
+	);
+};
+
+// --- DATA REGIONAL INDONESIA FETCH API ---
 const loadProvinsi = async () => {
 	try {
 		const res = await fetch(`${BASE_REGIONAL_API}/provinsi.json`);
-		const data = await res.json();
-		listProvinsi.value = data.map((item) => ({ id: item.id, name: item.nama }));
+		listProvinsi.value = (await res.json()).map((item) => ({ id: item.id, name: item.nama }));
 	} catch (e) {
 		console.error('Gagal memuat data provinsi:', e);
 	}
@@ -141,15 +182,14 @@ watch(
 	}
 );
 
+// Pemicu pas kelurahan ATAU kode pos kelar diisi bray
 watch(
-	() => regIds.value.kelurahan,
-	(newId) => {
-		props.formData.kelurahan = listKelurahan.value.find((p) => p.id === newId)?.name || '';
-		if (newId) {
-			// Pas kelurahan dipilih, lari cari koordinat kasarnya dulu buat penempatan peta awal
-			setTimeout(() => {
-				seachLocationByAddress();
-			}, 500);
+	() => [regIds.value.kelurahan, props.formData.kode_pos],
+	() => {
+		// Jalan kalau kelurahan udah ada, dan kode pos udah diketik lengkap (minimal 5 angka)
+		if (regIds.value.kelurahan && props.formData.kode_pos && props.formData.kode_pos.toString().length === 5) {
+			props.formData.kelurahan = listKelurahan.value.find((p) => p.id === regIds.value.kelurahan)?.name || '';
+			targetSatelitLokasi();
 		}
 	}
 );
@@ -164,15 +204,25 @@ onMounted(() => {
 
 <template>
 	<div class="flex flex-col gap-6 pt-4 border-t border-slate-100">
-		<div class="flex items-center gap-3 border-b border-slate-100 pb-3">
-			<div class="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-black text-xs border border-emerald-100 shadow-sm">2</div>
-			<h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">Lokasi Operasional Cabang</h3>
+		<div class="flex items-center justify-between border-b border-slate-100 pb-3">
+			<div class="flex items-center gap-3">
+				<div class="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-black text-xs border border-emerald-100 shadow-sm">2</div>
+				<h3 class="text-lg font-black text-slate-800 uppercase tracking-tight">Lokasi Operasional Cabang</h3>
+			</div>
+
+			<button type="button" @click="dapatkanLokasiGpsUser" :disabled="isTrackingGps" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-black text-[10px] tracking-widest uppercase rounded-xl transition-all shadow-md active:scale-95">
+				<svg xmlns="http://www.w3.org/2000/svg" :class="{ 'animate-spin': isTrackingGps }" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+					<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25A7.5 7.5 0 1119.5 10.5z" />
+				</svg>
+				<span>{{ isTrackingGps ? 'Membaca GPS...' : 'Gunakan Lokasi Saya' }}</span>
+			</button>
 		</div>
 
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
 			<div class="md:col-span-2">
 				<label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Detail Alamat Ruko (Jalan, No, Blok)</label>
-				<textarea v-model="formData.alamat" @blur="seachLocationByAddress" rows="2" required class="block w-full px-5 py-4 bg-white border-2 border-slate-200 rounded-2xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none font-black text-slate-800 transition-all placeholder:text-slate-300 placeholder:font-bold shadow-sm resize-none uppercase" placeholder="Contoh: Ruko Frankfurt Blok C No. 12, Jl. Boulevard Raya..."></textarea>
+				<textarea v-model="formData.alamat" rows="2" required class="block w-full px-5 py-4 bg-white border-2 border-slate-200 rounded-2xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none font-black text-slate-800 transition-all placeholder:text-slate-300 placeholder:font-bold shadow-sm resize-none uppercase" placeholder="Contoh: Ruko Frankfurt Blok C No. 12, Jl. Boulevard Raya..."></textarea>
 			</div>
 
 			<div class="relative">

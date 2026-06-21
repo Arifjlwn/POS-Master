@@ -1,37 +1,58 @@
 package delivery
 
-import "github.com/gin-gonic/gin"
+import (
+	"pos-backend/src/modules/jasalayanan/laundry/repository"
+	"pos-backend/src/modules/jasalayanan/laundry/usecase"
 
-func RegisterLaundryRoutes(rg *gin.RouterGroup, h *LaundryHandler) {
-	// Kasir Karyawan Management
-	rg.GET("/kasir", h.GetKasirList)
-	rg.POST("/kasir", h.CreateKasir)
-	rg.DELETE("/kasir/:id", h.DeleteKasir)
+	"github.com/gin-gonic/gin"
+)
 
-	// Kasir POS Laundry & Live Search
-	rg.GET("/services", h.AmbilDaftarLayananLaundry)
-	rg.POST("/checkout", h.ProsesCheckoutLaundry)
-	rg.GET("/customers/search", h.CariPelanggan)
+func RegisterLaundryRoutes(rg *gin.RouterGroup, repo repository.LaundryRepository) {
+	laundryUC := usecase.NewLaundryUseCase(repo)
 
-	// Pelunasan Piutang / Bill
-	rg.PUT("/transactions/:id/lunas", h.LunasiTransaksi)
+	txHandler := NewLaundryTransactionHandler(laundryUC)
+	serviceHandler := NewLaundryServiceHandler(repo)
+	perfumeHandler := NewLaundryPerfumeHandler(repo)
+	staffHandler := NewLaundryStaffHandler(repo)
+	reportHandler := NewLaundryReportHandler(laundryUC, repo)
 
-	// Master Paket / Jasa Laundry
-	rg.POST("/services/new", h.TambahLayananLaundry) // Diubah dikit pathnya biar gampang dibedain sama GET services
-	rg.PUT("/services/:id", h.EditLayananLaundry)
-	rg.DELETE("/services/:id", h.HapusLayananLaundry)
+	// 🚀 INSTANSIASI HANDLER RAK BARU KITA BRAY!
+	rackHandler := NewLaundryRackHandler(repo)
 
-	// Perfume Management
-	rg.GET("/perfumes", h.GetPerfumes)
-	rg.POST("/perfumes", h.CreatePerfume)
-	rg.DELETE("/perfumes/:id", h.DeletePerfume)
+	// Staff
+	rg.GET("/kasir", staffHandler.GetKasirList)
+	rg.POST("/kasir", staffHandler.CreateKasir)
+	rg.DELETE("/kasir/:id", staffHandler.DeleteKasir)
 
-	// Report Keuangan & Antrean Cucian
-	rg.GET("/report", h.GetLaporan)
+	// POS Core & Customer Search
+	rg.GET("/services", serviceHandler.AmbilDaftarLayananLaundry)
+	rg.POST("/checkout", txHandler.ProsesCheckoutLaundry)
+	rg.POST("/midtrans-token", txHandler.GetMidtransTokenLaundry)
+	rg.GET("/customers/search", reportHandler.CariPelanggan)
+	rg.PUT("/transactions/:id/lunas", txHandler.LunasiTransaksi)
 
-	// TRACKING & SETTING TOKO
-	rg.GET("/setting", h.GetSettingToko)
-	rg.PUT("/setting", h.UpdateSettingToko)
-	rg.GET("/tracking", h.AmbilDataTracking)
-	rg.PUT("/tracking/:id/status", h.UpdateStatusCucian)
+	// CRUD Services
+	rg.POST("/services", serviceHandler.TambahLayananLaundry)
+	rg.PUT("/services/:id", serviceHandler.EditLayananLaundry)
+	rg.DELETE("/services/:id", serviceHandler.HapusLayananLaundry)
+
+	// Perfumes
+	rg.GET("/perfumes", perfumeHandler.GetPerfumes)
+	rg.POST("/perfumes", perfumeHandler.CreatePerfume)
+	rg.DELETE("/perfumes/:id", perfumeHandler.DeletePerfume)
+
+	// Reports & Settings
+	rg.GET("/report", txHandler.GetLaporan)
+	rg.GET("/tracking", reportHandler.AmbilDataTracking)
+	rg.PUT("/transactions/:id/status", txHandler.UpdateStatusCucian)
+
+	// =====================================
+	// 📦 FITUR SMART RACK LAUNDRY BRAY
+	// =====================================
+	rg.GET("/racks", rackHandler.GetRacks)
+	rg.POST("/racks/setup", rackHandler.SetupInitialRacks)
+	rg.PUT("/racks/:id/status", rackHandler.ToggleRackStatus)
+	rg.PUT("/transactions/:id/pindah-rak", rackHandler.ChangeOrderRack)
+	rg.PUT("/racks/zona", rackHandler.UpdateZonaRack)
+	rg.DELETE("/racks/zona", rackHandler.DeleteZonaRack)
 }

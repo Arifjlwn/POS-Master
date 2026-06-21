@@ -22,6 +22,10 @@ import (
 	retailDelivery "pos-backend/src/modules/retail/delivery"
 	retailRepository "pos-backend/src/modules/retail/repository"
 
+	// 🚀 SUNTIKAN PATH IMPORT BARU LU YANG BENER BRAY (Sesuai folder fisik src/core/):
+	coreDelivery "pos-backend/src/core/delivery"
+	coreRepository "pos-backend/src/core/repository"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -32,18 +36,25 @@ func main() {
 		log.Println("Peringatan: File .env tidak ditemukan, menggunakan environment default system")
 	}
 
+	// =====================================================================
 	// 1. KONEKSI & INSTANSIASI LAYER (Dependency Injection Terpusat)
+	// =====================================================================
 	src.ConnectDatabase()
 	utils.SeedSuperAdmin(src.DB)
 	utils.InitSubscriptionCronJob()
 
-	// Inisialisasi Modul Retail
+	// 👑 INSTANSIASI MODUL CORE GLOBAL BARU LU RIF!
+	// Menggunakan object repo dari folder src/core/repository bray
+	coreRepo := coreRepository.NewCoreRepo(src.DB)
+	storeCoreHandler := coreDelivery.NewStoreCoreHandler(coreRepo)
+	billingHandler := coreDelivery.NewBillingHandler(coreRepo)
+
+	// Inisialisasi Modul Retail (Murni steril cuma inventory & kasir bray)
 	retailRepo := retailRepository.NewRetailRepo(src.DB)
 	retailHandler := retailDelivery.NewRetailHandler(retailRepo)
 
 	// Inisialisasi Modul Laundry
 	laundryRepo := laundryRepository.NewLaundryRepo(src.DB)
-	laundryHandler := &laundryDelivery.LaundryHandler{Repo: laundryRepo}
 
 	// Inisialisasi Modul Food & Beverages (FnB)
 	fnbMenuRepo := fnbRepository.NewMenuRepo(src.DB)
@@ -51,22 +62,22 @@ func main() {
 	fnbOrderRepo := fnbRepository.NewOrderRepo(src.DB)
 	fnbOrderHandler := fnbDelivery.NewOrderHandler(fnbOrderRepo)
 
+	// =====================================================================
 	// 2. KONFIGURASI ENGINE WEB SERVER
+	// =====================================================================
 	r := gin.Default()
 
-	// CORS Tight Guard dinamis berbasis ENV untuk mengunci eksploitasi di Production
+	// CORS Tight Guard dinamis berbasis ENV
 	r.Use(cors.New(cors.Config{
 		AllowOriginFunc: func(origin string) bool {
 			if os.Getenv("APP_ENV") == "development" {
 				return true
 			}
-
 			allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 			if allowedOrigins == "" {
 				log.Println("CRITICAL ERROR: ALLOWED_ORIGINS tidak terdeteksi di lingkungan Production!")
 				return false
 			}
-
 			for _, allowed := range strings.Split(allowedOrigins, ",") {
 				if origin == strings.TrimSpace(allowed) {
 					return true
@@ -84,7 +95,7 @@ func main() {
 	r.Static("/uploads", "./uploads")
 	r.Static("/public", "./public")
 
-	// Payload Size Global Limiter (Max 5 MB upload protection)
+	// Payload Size Global Limiter (Max 5 MB)
 	r.Use(func(c *gin.Context) {
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 5*1024*1024)
 		c.Next()
@@ -106,32 +117,30 @@ func main() {
 	r.POST("/api/auth/check-account", auth.CheckAccount)
 	r.POST("/api/re-trigger-payment", auth.ReTriggerPaymentHandler)
 
-	// Webhook Gateway Midtrans
-	r.POST("/api/retail/midtrans/webhook", retailHandler.MidtransWebhook)
+	// 🚀 GLOBAL WEBHOOK: Sekarang webhook diarahkan ke billingHandler global terpusat bray!
+	r.POST("/api/billing/midtrans/webhook", billingHandler.MidtransWebhook)
 
 	// ==========================================
 	// --       🚀 GERBANG UTAMA ADMIN         --
 	// ==========================================
-	// 🚀 DI DALAM FUNCTION MAIN() LU , PAS BAGIAN INSTANSIASI CONTROLLER ADMIN:
-		adminAuthCtrl := &admin.AuthController{DB: src.DB}
-		adminDashboardCtrl := &admin.DashboardController{DB: src.DB}
-		analyticsCtrl := &admin.AnalyticsController{DB: src.DB}
-		adminTenantCtrl := &admin.TenantController{DB: src.DB}
-		adminAuditCtrl := &admin.AuditController{DB: src.DB}
-		adminSubCtrl := &admin.SubscriptionController{DB: src.DB}
+	adminAuthCtrl := &admin.AuthController{DB: src.DB}
+	adminDashboardCtrl := &admin.DashboardController{DB: src.DB}
+	analyticsCtrl := &admin.AnalyticsController{DB: src.DB}
+	adminTenantCtrl := &admin.TenantController{DB: src.DB}
+	adminAuditCtrl := &admin.AuditController{DB: src.DB}
+	adminSubCtrl := &admin.SubscriptionController{DB: src.DB}
 
-		// Bagian Group Routing Admin Lu Tinggal Colok Sesuai Modular-nya :
-		adminRoutes := r.Group("/api/admin")
-		{
-			adminRoutes.POST("/login", adminAuthCtrl.AdminLogin)
-			adminRoutes.GET("/dashboard-stats", adminDashboardCtrl.GetTelemetryStats)
-			adminRoutes.GET("/analytics/telemetry", analyticsCtrl.GetSaaSTelemetry)
-			adminRoutes.GET("/stores", adminTenantCtrl.GetAllTenants)
-			adminRoutes.PUT("/stores/:id/suspend", adminTenantCtrl.SuspendTenant)
-			adminRoutes.PUT("/stores/:id/activate", adminTenantCtrl.ActivateTenant)
-			adminRoutes.GET("/audit-logs", adminAuditCtrl.GetDetailedAuditLogs)
-			adminRoutes.GET("/subscription-overview", adminSubCtrl.GetSubscriptionOverview)
-		}
+	adminRoutes := r.Group("/api/admin")
+	{
+		adminRoutes.POST("/login", adminAuthCtrl.AdminLogin)
+		adminRoutes.GET("/dashboard-stats", adminDashboardCtrl.GetTelemetryStats)
+		adminRoutes.GET("/analytics/telemetry", analyticsCtrl.GetSaaSTelemetry)
+		adminRoutes.GET("/stores", adminTenantCtrl.GetAllTenants)
+		adminRoutes.PUT("/stores/:id/suspend", adminTenantCtrl.SuspendTenant)
+		adminRoutes.PUT("/stores/:id/activate", adminTenantCtrl.ActivateTenant)
+		adminRoutes.GET("/audit-logs", adminAuditCtrl.GetDetailedAuditLogs)
+		adminRoutes.GET("/subscription-overview", adminSubCtrl.GetSubscriptionOverview)
+	}
 
 	// ==========================================
 	// -- RUTE TERPROTEKSI MERCHANT (STORE-LEVEL)--
@@ -145,19 +154,30 @@ func main() {
 		apiGroup.POST("/auth/select-store", auth.SelectStore)
 		apiGroup.POST("/setup", auth.SetupTokoBaru)
 
+		// 🚀 1. GERBANG BILLING PREMIUM MURNI GLOBAL AGNOSTIK
+		billingAPI := apiGroup.Group("/billing")
+		{
+			billingAPI.POST("/upgrade", billingHandler.CreateUpgradePayment)
+		}
+
+		// 🚀 2. GERBANG PENGATURAN TOKO MURNI GLOBAL AGNOSTIK
+		storeSettingsAPI := apiGroup.Group("/store")
+		{
+			storeSettingsAPI.GET("/settings", storeCoreHandler.GetStoreSettings)
+			storeSettingsAPI.PUT("/settings", storeCoreHandler.UpdateStoreSettings)
+			storeSettingsAPI.POST("/whatsapp/test", storeCoreHandler.TestWhatsApp)
+		}
+
 		// 🛒 Modul Bisnis: RETAIL MULTI-TENANT
 		retailAPI := apiGroup.Group("/retail")
 		{
 			retailDelivery.RegisterRetailInventoryRoutes(retailAPI, retailHandler)
-			retailAPI.POST("/pos/checkout", retailHandler.CreateTransaction)
-			retailAPI.GET("/pos/transactions", retailHandler.GetTransactions)
-			retailAPI.GET("/pos/daily-closing", retailHandler.GetDailyClosing)
 		}
 
 		// 🧺 Modul Bisnis: LAUNDRY ECOSYSTEM
 		laundryAPI := apiGroup.Group("/laundry")
 		{
-			laundryDelivery.RegisterLaundryRoutes(laundryAPI, laundryHandler)
+			laundryDelivery.RegisterLaundryRoutes(laundryAPI, laundryRepo)
 		}
 
 		// 🍔 Modul Bisnis: FOOD & BEVERAGES (FnB)
