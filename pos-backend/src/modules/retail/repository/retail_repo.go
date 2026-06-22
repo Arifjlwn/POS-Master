@@ -30,6 +30,7 @@ type RetailRepository interface {
 	CreatePurchase(tx *gorm.DB, purchase *domain.Purchase) error
 	CreatePurchaseDetail(tx *gorm.DB, detail *domain.PurchaseDetail) error
 	CreatePurchaseWithMovingAverage(db *gorm.DB, purchase *domain.Purchase) error
+	GetLaporanInbound(storeID uint) ([]domain.InboundReportResponse, error)
 
 	// Absensi Karyawan
 	GetAttendanceToday(userID uint, tanggal string) (*models.Attendance, error)
@@ -125,6 +126,60 @@ func (r *retailRepo) CreatePurchaseWithMovingAverage(db *gorm.DB, purchase *doma
 		}
 		return nil
 	})
+}
+
+func (r *retailRepo) GetLaporanInbound(storeID uint) ([]domain.InboundReportResponse, error) {
+	var purchases []domain.Purchase
+
+	// 1. Narik Data Induk + Anak (Details) + Cucu (Product) pakai Preload
+	err := r.db.Preload("Details").
+		Preload("Details.Product").
+		Where("store_id = ?", storeID).
+		Order("created_at DESC"). // Urutkan dari yang terbaru
+		Find(&purchases).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	var reportData []domain.InboundReportResponse
+
+	// 2. Mapping Data dari DB Model ke DTO JSON Vue
+	for _, p := range purchases {
+		var items []domain.InboundItemResponse
+
+		for _, d := range p.Details {
+			namaProduk := "Item Dihapus"
+			if d.Product.NamaProduk != "" {
+				namaProduk = d.Product.NamaProduk
+			}
+
+			items = append(items, domain.InboundItemResponse{
+				ID:         d.ProductID,
+				NamaProduk: namaProduk,
+				Qty:        d.QtyMasuk,
+				HargaModal: d.HargaModal,
+				SubTotal:   d.SubTotal,
+			})
+		}
+
+		reportData = append(reportData, domain.InboundReportResponse{
+			ID:           p.ID,
+			NoFaktur:     p.NoFaktur,
+			NamaSupplier: p.SupplierName,
+			TotalItem:    p.TotalItem,
+			TotalModal:   p.TotalHarga,
+			CreatedAt:    p.CreatedAt,
+			Items:        items,
+		})
+	}
+
+	// 3. Jaring Pengaman biar balasan JSON Vue ga dapet "null" kalau kosong
+	if reportData == nil {
+		reportData = make([]domain.InboundReportResponse, 0)
+	}
+
+	return reportData, nil
 }
 
 func (r *retailRepo) GetProductByID(tx *gorm.DB, id uint, storeID uint) (*models.Product, error) {

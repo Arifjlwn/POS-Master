@@ -49,7 +49,6 @@ onMounted(async () => {
 	const role = localStorage.getItem('role') || user.value?.role;
 
 	try {
-		// FIX: Semua role harus menarik data ini agar langganan tidak kereset jadi Basic
 		const res = await api.get('/store/settings');
 		const data = res.data.data;
 		const status = data.subscription_status;
@@ -83,9 +82,9 @@ onMounted(async () => {
 
 		if (isDead) {
 			if (role === 'owner' && route.path !== '/retail/account') {
-				router.push('/retail/account'); // Owner ditendang ke halaman bayar
+				router.push('/retail/account');
 			} else if (role !== 'owner' && route.path !== '/retail/pos') {
-				router.push('/retail/pos'); // Staff ditahan di halaman POS
+				router.push('/retail/pos');
 			}
 		}
 	} catch (e) {
@@ -257,6 +256,7 @@ onUnmounted(() => {
 								</span>
 							</a>
 							<router-link v-else to="/retail/dashboard" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/dashboard' }">Dashboard Analitik</router-link>
+
 							<a v-if="planLevel < 2" href="#" @click.prevent="triggerUpgrade('Manajemen Karyawan', 2)" class="sub-link-locked">
 								<span class="flex-1">Manajemen Karyawan</span>
 								<span class="text-amber-500">
@@ -268,7 +268,8 @@ onUnmounted(() => {
 							</a>
 							<router-link v-else to="/retail/sdm/karyawan" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/sdm/karyawan' }">Manajemen Karyawan</router-link>
 						</template>
-						<a v-if="planLevel < 3" href="#" @click.prevent="triggerUpgrade('Laporan Audit Lanjutan', 3)" class="sub-link-locked">
+
+						<a v-if="planLevel < 3" href="#" @click.prevent="triggerUpgrade('Laporan Hasil SO', 3)" class="sub-link-locked">
 							<span class="flex-1">Laporan Hasil SO</span>
 							<span class="text-amber-500">
 								<svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -278,7 +279,8 @@ onUnmounted(() => {
 							</span>
 						</a>
 						<router-link v-else to="/retail/stock-opname/report" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/stock-opname/report' }">Laporan Hasil SO</router-link>
-						<a v-if="planLevel < 3" href="#" @click.prevent="triggerUpgrade('Laporan Audit Lanjutan', 3)" class="sub-link-locked">
+
+						<a v-if="planLevel < 3" href="#" @click.prevent="triggerUpgrade('Laporan Retur Barang', 3)" class="sub-link-locked">
 							<span class="flex-1">Laporan Retur Barang</span>
 							<span class="text-amber-500">
 								<svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -288,6 +290,8 @@ onUnmounted(() => {
 							</span>
 						</a>
 						<router-link v-else to="/retail/produk/retur-barang/report" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/produk/retur-barang/report' }">Laporan Retur Barang</router-link>
+
+						<router-link to="/retail/produk/penerimaan-barang/report" @click="sidebarOpen = false" class="sub-link hover:text-amber-600 hover:bg-amber-50 hover:border-amber-500" :class="{ 'active-sub !text-amber-700 !bg-amber-50/80 !border-amber-500': route.path === '/retail/produk/penerimaan-barang/report' }">Laporan Terima Barang</router-link>
 					</div>
 				</div>
 

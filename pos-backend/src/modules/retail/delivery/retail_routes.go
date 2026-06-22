@@ -25,6 +25,7 @@ func RegisterRetailInventoryRoutes(rg *gin.RouterGroup, h *RetailHandler) {
 
 	// Laporan Penerimaan Barang / LPB (Supplier)
 	rg.POST("/purchases", middlewares.RequireSaaSLevel(1), h.CreateLPB)
+	rg.GET("/inbounds", middlewares.RequireSaaSLevel(1), h.GetLaporanInbound)
 
 	// Shift POS / Cashier Session
 	rg.POST("/pos/open-session", middlewares.RequireSaaSLevel(1), h.OpenSession)

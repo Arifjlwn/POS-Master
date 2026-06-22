@@ -39,7 +39,7 @@ type ProductInput struct {
 	SatuanTengah     string  `form:"satuan_tengah"`
 	IsiBesarKeTengah int     `form:"isi_besar_ke_tengah"`
 	IsiTengahKeDasar int     `form:"isi_tengah_ke_dasar"`
-	HargaJualTengah  float64 `form:"harga_jual_tengah"` 
+	HargaJualTengah  float64 `form:"harga_jual_tengah"`
 }
 
 type PurchaseInput struct {
@@ -51,7 +51,6 @@ type PurchaseInput struct {
 		HargaModal float64 `json:"harga_modal" binding:"required,min=0"` // ◄ Kunci tag json:"harga_modal"!
 	} `json:"items"`
 }
-
 
 func getStoreID(c *gin.Context) uint {
 	storeIDRaw, _ := c.Get("store_id")
@@ -83,7 +82,7 @@ func (h *RetailHandler) CreateProduct(c *gin.Context) {
 		return
 	}
 
-	// 🛡️ SECURITY PATROL: Blokir mutlak angka minus masuk master database  
+	// 🛡️ SECURITY PATROL: Blokir mutlak angka minus masuk master database
 	if input.HargaJual < 0 || input.HargaModal < 0 || input.Stok < 0 || input.HargaJualTengah < 0 || input.HargaJualBesar < 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Nilai nominal harga penjualan/stok dilarang bernilai minus !"})
 		return
@@ -129,8 +128,8 @@ func (h *RetailHandler) CreateProduct(c *gin.Context) {
 
 	product := models.Product{
 		StoreID: storeID, SKU: input.SKU, NamaProduk: input.NamaProduk, Kategori: input.Kategori,
-		ProductType: "retail",  
-		Estimasi:    "Standar", 
+		ProductType: "retail",
+		Estimasi:    "Standar",
 		HargaModal:  input.HargaModal, HargaJual: input.HargaJual, Stok: input.Stok, Gambar: imageURL,
 		SatuanDasar: input.SatuanDasar, SatuanBesar: input.SatuanBesar, IsiPerBesar: input.IsiPerBesar,
 		HargaJualBesar: input.HargaJualBesar, IsNestedUom: input.IsNestedUom, SatuanTengah: input.SatuanTengah,
@@ -146,7 +145,7 @@ func (h *RetailHandler) CreateProduct(c *gin.Context) {
 
 func (h *RetailHandler) GetProducts(c *gin.Context) {
 	storeID := getStoreID(c)
-	search := strings.TrimSpace(c.Query("search")) // FIX CLEANING INDEX SPACE 
+	search := strings.TrimSpace(c.Query("search")) // FIX CLEANING INDEX SPACE
 	category := strings.TrimSpace(c.Query("category"))
 	pageStr := c.Query("page")
 	limitStr := c.Query("limit")
@@ -155,8 +154,12 @@ func (h *RetailHandler) GetProducts(c *gin.Context) {
 
 	if pageStr != "" || limitStr != "" {
 		usePagination = true
-		if pageStr == "" { pageStr = "1" }
-		if limitStr == "" { limitStr = "10" }
+		if pageStr == "" {
+			pageStr = "1"
+		}
+		if limitStr == "" {
+			limitStr = "10"
+		}
 		p, _ := strconv.Atoi(pageStr)
 		l, _ := strconv.Atoi(limitStr)
 		limit = l
@@ -190,24 +193,54 @@ func (h *RetailHandler) UpdateProduct(c *gin.Context) {
 		return
 	}
 
-	if v := c.PostForm("nama_produk"); v != "" { product.NamaProduk = v }
-	if v := c.PostForm("kategori"); v != "" { product.Kategori = v }
-	if sku := c.PostForm("sku"); sku != "" { product.SKU = &sku }
+	if v := c.PostForm("nama_produk"); v != "" {
+		product.NamaProduk = v
+	}
+	if v := c.PostForm("kategori"); v != "" {
+		product.Kategori = v
+	}
+	if sku := c.PostForm("sku"); sku != "" {
+		product.SKU = &sku
+	}
 
-	if hModal, err := strconv.ParseFloat(c.PostForm("harga_modal"), 64); err == nil && hModal >= 0 { product.HargaModal = hModal }
-	if hJual, err := strconv.ParseFloat(c.PostForm("harga_jual"), 64); err == nil && hJual >= 0 { product.HargaJual = hJual }
-	if stok, err := strconv.Atoi(c.PostForm("stok")); err == nil && stok >= 0 { product.Stok = stok }
+	if hModal, err := strconv.ParseFloat(c.PostForm("harga_modal"), 64); err == nil && hModal >= 0 {
+		product.HargaModal = hModal
+	}
+	if hJual, err := strconv.ParseFloat(c.PostForm("harga_jual"), 64); err == nil && hJual >= 0 {
+		product.HargaJual = hJual
+	}
+	if stok, err := strconv.Atoi(c.PostForm("stok")); err == nil && stok >= 0 {
+		product.Stok = stok
+	}
 
-	if sDasar := c.PostForm("satuan_dasar"); sDasar != "" { product.SatuanDasar = sDasar }
-	if sBesar := c.PostForm("satuan_besar"); sBesar != "" { product.SatuanBesar = sBesar }
-	if iPerBesar, err := strconv.Atoi(c.PostForm("isi_per_besar")); err == nil { product.IsiPerBesar = iPerBesar }
-	if hJualBesar, err := strconv.ParseFloat(c.PostForm("harga_jual_besar"), 64); err == nil { product.HargaJualBesar = hJualBesar }
+	if sDasar := c.PostForm("satuan_dasar"); sDasar != "" {
+		product.SatuanDasar = sDasar
+	}
+	if sBesar := c.PostForm("satuan_besar"); sBesar != "" {
+		product.SatuanBesar = sBesar
+	}
+	if iPerBesar, err := strconv.Atoi(c.PostForm("isi_per_besar")); err == nil {
+		product.IsiPerBesar = iPerBesar
+	}
+	if hJualBesar, err := strconv.ParseFloat(c.PostForm("harga_jual_besar"), 64); err == nil {
+		product.HargaJualBesar = hJualBesar
+	}
 
-	if isNested := c.PostForm("is_nested_uom"); isNested != "" { product.IsNestedUom = (isNested == "true") }
-	if sTengah := c.PostForm("satuan_tengah"); sTengah != "" { product.SatuanTengah = sTengah }
-	if ibt, err := strconv.Atoi(c.PostForm("isi_besar_ke_tengah")); err == nil { product.IsiBesarKeTengah = ibt }
-	if itd, err := strconv.Atoi(c.PostForm("isi_tengah_ke_dasar")); err == nil { product.IsiTengahKeDasar = itd }
-	if hJualTengah, err := strconv.ParseFloat(c.PostForm("harga_jual_tengah"), 64); err == nil { product.HargaJualTengah = hJualTengah }
+	if isNested := c.PostForm("is_nested_uom"); isNested != "" {
+		product.IsNestedUom = (isNested == "true")
+	}
+	if sTengah := c.PostForm("satuan_tengah"); sTengah != "" {
+		product.SatuanTengah = sTengah
+	}
+	if ibt, err := strconv.Atoi(c.PostForm("isi_besar_ke_tengah")); err == nil {
+		product.IsiBesarKeTengah = ibt
+	}
+	if itd, err := strconv.Atoi(c.PostForm("isi_tengah_ke_dasar")); err == nil {
+		product.IsiTengahKeDasar = itd
+	}
+	if hJualTengah, err := strconv.ParseFloat(c.PostForm("harga_jual_tengah"), 64); err == nil {
+		product.HargaJualTengah = hJualTengah
+	}
 
 	// =========================================================================
 	// 🚀 FIX SYNTAX ENGINE: Tambahkan pemisah titik koma (;) setelah assignment !
@@ -224,8 +257,8 @@ func (h *RetailHandler) UpdateProduct(c *gin.Context) {
 
 					remotePath := fmt.Sprintf("stores/%s/products/%s_%d", store.PublicID, cleanName, time.Now().Unix())
 					urlResult, errUpload := utils.UploadToSupabase(fileSrc, file.Filename, contentType, bucketName, remotePath)
-					if errUpload == nil { 
-						product.Gambar = urlResult 
+					if errUpload == nil {
+						product.Gambar = urlResult
 					}
 					fileSrc.Close()
 				}
@@ -294,7 +327,9 @@ func (h *RetailHandler) ExportProducts(c *gin.Context) {
 
 	for _, p := range products {
 		sku := ""
-		if p.SKU != nil { sku = *p.SKU }
+		if p.SKU != nil {
+			sku = *p.SKU
+		}
 		w.Write([]string{
 			sku, p.NamaProduk, p.Kategori, p.ProductType, p.Estimasi, fmt.Sprintf("%.0f", p.HargaModal), fmt.Sprintf("%.0f", p.HargaJual),
 			fmt.Sprintf("%d", p.Stok), p.SatuanDasar, p.SatuanTengah, p.SatuanBesar, fmt.Sprintf("%d", p.IsiPerBesar), fmt.Sprintf("%.0f", p.HargaJualBesar), fmt.Sprintf("%.0f", p.HargaJualTengah),
@@ -317,7 +352,7 @@ func (h *RetailHandler) ImportProducts(c *gin.Context) {
 
 	reader := csv.NewReader(file)
 	reader.Comma = '|'
-	_, _ = reader.Read() // Skip Header 
+	_, _ = reader.Read() // Skip Header
 
 	records, err := reader.ReadAll()
 	if err != nil {
@@ -328,16 +363,22 @@ func (h *RetailHandler) ImportProducts(c *gin.Context) {
 	db := h.Repo.GetDB()
 	err = db.Transaction(func(tx *gorm.DB) error {
 		for _, row := range records {
-			if len(row) < 7 { continue }
+			if len(row) < 7 {
+				continue
+			}
 			sku := strings.TrimSpace(row[0])
 			nama := strings.TrimSpace(row[1])
 			kategori := strings.TrimSpace(row[2])
 
 			pType := "retail"
-			if len(row) > 3 && strings.TrimSpace(row[3]) != "" { pType = strings.TrimSpace(row[3]) }
+			if len(row) > 3 && strings.TrimSpace(row[3]) != "" {
+				pType = strings.TrimSpace(row[3])
+			}
 
 			estimasi := "Standar"
-			if len(row) > 4 && strings.TrimSpace(row[4]) != "" { estimasi = strings.TrimSpace(row[4]) }
+			if len(row) > 4 && strings.TrimSpace(row[4]) != "" {
+				estimasi = strings.TrimSpace(row[4])
+			}
 
 			modal, _ := strconv.ParseFloat(row[5], 64)
 			jual, _ := strconv.ParseFloat(row[6], 64)
@@ -347,13 +388,25 @@ func (h *RetailHandler) ImportProducts(c *gin.Context) {
 			tengah, besar := "", ""
 			isi := 0
 			var jualBesar, jualTengah float64
-			if len(row) > 9 { tengah = row[9] }
-			if len(row) > 10 { besar = row[10] }
-			if len(row) > 11 { isi, _ = strconv.Atoi(row[11]) }
-			if len(row) > 12 { jualBesar, _ = strconv.ParseFloat(row[12], 64) }
-			if len(row) > 13 { jualTengah, _ = strconv.ParseFloat(row[13], 64) }
+			if len(row) > 9 {
+				tengah = row[9]
+			}
+			if len(row) > 10 {
+				besar = row[10]
+			}
+			if len(row) > 11 {
+				isi, _ = strconv.Atoi(row[11])
+			}
+			if len(row) > 12 {
+				jualBesar, _ = strconv.ParseFloat(row[12], 64)
+			}
+			if len(row) > 13 {
+				jualTengah, _ = strconv.ParseFloat(row[13], 64)
+			}
 
-			if nama == "" { continue }
+			if nama == "" {
+				continue
+			}
 
 			var product models.Product
 			var res *gorm.DB
@@ -366,9 +419,15 @@ func (h *RetailHandler) ImportProducts(c *gin.Context) {
 				product.Kategori = kategori
 				product.ProductType = pType
 				product.Estimasi = estimasi
-				if modal >= 0 { product.HargaModal = modal }
-				if jual >= 0 { product.HargaJual = jual }
-				if stok >= 0 { product.Stok = stok }
+				if modal >= 0 {
+					product.HargaModal = modal
+				}
+				if jual >= 0 {
+					product.HargaJual = jual
+				}
+				if stok >= 0 {
+					product.Stok = stok
+				}
 				product.SatuanDasar = dasar
 				product.SatuanTengah = tengah
 				product.SatuanBesar = besar
@@ -378,7 +437,9 @@ func (h *RetailHandler) ImportProducts(c *gin.Context) {
 				tx.Save(&product)
 			} else {
 				var skuPtr *string
-				if sku != "" { skuPtr = &sku }
+				if sku != "" {
+					skuPtr = &sku
+				}
 
 				newProduct := models.Product{
 					StoreID: storeID, SKU: skuPtr, NamaProduk: nama, Kategori: kategori,
@@ -407,8 +468,22 @@ func (h *RetailHandler) CreateLPB(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	userIDRaw, _ := c.Get("user_id")
 	var storeID, userID uint
-	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
-	switch v := userIDRaw.(type) { case float64: userID = uint(v); case uint: userID = v; case int: userID = uint(v) }
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
+	}
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	case int:
+		userID = uint(v)
+	}
 
 	var input PurchaseInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -434,7 +509,7 @@ func (h *RetailHandler) CreateLPB(c *gin.Context) {
 		totalHargaFaktur += subTotalItem
 
 		details = append(details, domain.PurchaseDetail{
-			ProductID:  item.ProductID, 
+			ProductID:  item.ProductID,
 			QtyMasuk:   item.QtyMasuk,
 			HargaModal: item.HargaModal,
 			SubTotal:   subTotalItem,
@@ -442,13 +517,13 @@ func (h *RetailHandler) CreateLPB(c *gin.Context) {
 	}
 
 	purchase := domain.Purchase{
-		PublicID:     utils.GenerateULID(), 
+		PublicID:     utils.GenerateULID(),
 		StoreID:      storeID,
 		UserID:       userID,
 		SupplierName: input.SupplierName,
 		NoFaktur:     input.NoFaktur,
 		TotalItem:    len(input.Items),
-		TotalHarga:   totalHargaFaktur, 
+		TotalHarga:   totalHargaFaktur,
 		StatusBayar:  "LUNAS",
 		Details:      details,
 	}
@@ -459,6 +534,29 @@ func (h *RetailHandler) CreateLPB(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Faktur Penerimaan Barang (LPB) diproses, modal HPP Moving Average diperbarui!"})
+}
+
+func (h *RetailHandler) GetLaporanInbound(c *gin.Context) {
+	// 1. Ambil StoreID pakai helper lu yang udah ada
+	storeID := getStoreID(c)
+	if storeID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Sesi identitas toko tidak valid !"})
+		return
+	}
+
+	// 2. Tarik datanya dari UseCase/Repo
+	// (Pastikan fungsi GetLaporanInbound ini udah lu bikin di retail_repo.go / retail_usecase.go sesuai instruksi sebelumnya)
+	reports, err := h.Repo.GetLaporanInbound(storeID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Sirkuit gagal mengambil laporan penerimaan barang: " + err.Error()})
+		return
+	}
+
+	// 3. 🚀 Output Kasta Tertinggi ke Frontend Vue
+	c.JSON(http.StatusOK, gin.H{
+		"status": "sukses",
+		"data":   reports,
+	})
 }
 
 // =========================================================================
@@ -480,8 +578,22 @@ func (h *RetailHandler) CreateReturn(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	userIDRaw, _ := c.Get("user_id")
 	var storeID, userID uint
-	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
-	switch v := userIDRaw.(type) { case float64: userID = uint(v); case uint: userID = v; case int: userID = uint(v) }
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
+	}
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	case int:
+		userID = uint(v)
+	}
 
 	var input ReturnInputBatch
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -491,16 +603,16 @@ func (h *RetailHandler) CreateReturn(c *gin.Context) {
 
 	returnNo := fmt.Sprintf("RET-%s-%d", time.Now().Format("060102150405"), userID)
 	db := h.Repo.GetDB()
-	
+
 	err := db.Transaction(func(tx *gorm.DB) error {
 		var newReturns []domain.ProductReturn
 		for _, item := range input.Items {
 			var product models.Product
-			
+
 			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&product, "id = ? AND store_id = ?", item.ProductID, storeID).Error; err != nil {
 				return fmt.Errorf("produk ID %d tidak terdaftar di rak toko ", item.ProductID)
 			}
-			
+
 			if product.Stok < item.Qty {
 				return fmt.Errorf("stok %s tidak mencukupi untuk diretur (Sisa di DB: %d PCS)", product.NamaProduk, product.Stok)
 			}
@@ -510,7 +622,7 @@ func (h *RetailHandler) CreateReturn(c *gin.Context) {
 			}
 
 			newReturns = append(newReturns, domain.ProductReturn{
-				PublicID:  utils.GenerateULID(), 
+				PublicID:  utils.GenerateULID(),
 				ReturnNo:  returnNo,
 				StoreID:   storeID,
 				ProductID: item.ProductID,
@@ -534,7 +646,14 @@ func (h *RetailHandler) CreateReturn(c *gin.Context) {
 func (h *RetailHandler) GetReturns(c *gin.Context) {
 	storeIDRaw, _ := c.Get("store_id")
 	var storeID uint
-	switch v := storeIDRaw.(type) { case float64: storeID = uint(v); case uint: storeID = v; case int: storeID = uint(v) }
+	switch v := storeIDRaw.(type) {
+	case float64:
+		storeID = uint(v)
+	case uint:
+		storeID = v
+	case int:
+		storeID = uint(v)
+	}
 
 	pageStr := c.Query("page")
 	limitStr := c.Query("limit")
